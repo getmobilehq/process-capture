@@ -128,3 +128,36 @@ decision, why it is the minimal option (§10).
   cross-informant pair.
 - **D5.4 · Copy-to-clipboard only, no email** — Invite links are shown with a
   client copy button; nothing is sent (D3 / FR-1.3).
+
+## Phase 6 — Live-model eval loop
+
+- **D6.1 · Personas share ground truth, vary style** — Terse and rambling reuse the
+  cooperative fact set with a different informant style, stressing the engine's
+  probing and facet-filing on identical ground truth. Why minimal: one well-formed
+  fact set exercises all three §9 assertions; three unrelated fact sets add authoring
+  surface without testing anything new.
+- **D6.2 · A9 fidelity = string-first, model-graded fallback** — Facet fidelity is
+  keyword containment first; only items string matching misses go to a judge model
+  call. Why minimal: bounds judge cost to the genuinely-ambiguous cases (§9 allows a
+  model-graded fallback).
+- **D6.3 · Evals run in-memory, per run** — Each run uses a fresh in-memory SQLite
+  passed to the engine via its `db` parameter, so runs are isolated and leave no file
+  state. Token usage per run is logged (cost guard, §9).
+- **D6.4 · Env loading for tsx scripts** — `scripts/load-env.ts` calls
+  `process.loadEnvFile('.env')` first, so migrate/seed/eval pick up `.env` the way the
+  Next app does (Next auto-loads it; plain tsx does not).
+
+## Phase 7 — Hardening + pilot pack
+
+- **D7.1 · Non-standalone container** — The Dockerfile is multi-stage but copies the
+  full `node_modules` to the runner and migrates via a plain-Node `scripts/migrate.mjs`
+  (no tsx at runtime), rather than Next `standalone` output. Why minimal: standalone
+  dependency-tracing of a migration entrypoint plus the better-sqlite3 native binary is
+  fragile; a larger-but-correct image honours "one deployable" (P6) with less risk.
+- **D7.2 · Pilot-grade CSP** — The CSP allows `'unsafe-inline'` (the UI uses inline
+  style attributes throughout) and `'unsafe-eval'` (Next dev HMR). Tighten with nonces
+  post-pilot. All other security headers (HSTS, X-Frame-Options, nosniff, Referrer-
+  Policy, Permissions-Policy) are strict.
+- **D7.3 · Rate limiting is per-process in-memory** — Login and the public turn
+  endpoint use an in-memory fixed-window limiter; sufficient for a single-instance
+  pilot. Swap for a shared store (Redis) only if the deployment scales horizontally.

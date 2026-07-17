@@ -1,0 +1,18 @@
+node_modules
+.next
+out
+data
+*.db
+*.db-shm
+*.db-wal
+.git
+.env
+.env.local
+tests
+playwright-report
+test-results
+reference
+VMO2 Design System
+VMO2 Design System.zip
+*.log
+.DS_Store
