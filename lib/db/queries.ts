@@ -107,6 +107,15 @@ export function listInterviewees(projectId: string, db: DB = getDb()) {
     .all();
 }
 
+export function updateInterviewee(
+  id: string,
+  patch: Partial<{ fullName: string; email: string; role: string }>,
+  db: DB = getDb(),
+) {
+  const row = db.update(interviewees).set(patch).where(eq(interviewees.id, id)).returning().get();
+  return row;
+}
+
 export function setIntervieweeStatus(
   id: string,
   status: 'invited' | 'in_progress' | 'complete',
