@@ -1,0 +1,222 @@
+/* =====================================================================
+   VMO2 — Virgin Media O2 Business — Foundations
+   Colors + Typography tokens
+   --------------------------------------------------------------------
+   Use the SEMANTIC tokens (--fg, --bg, --brand-primary…) in components.
+   Use the RAW tokens (--vm-red, --o2-blue…) only when you need the
+   exact swatch (logo lockups, brand splashes, etc.)
+   ===================================================================== */
+
+/* ---- Fonts ------------------------------------------------------ */
+@font-face { font-family: "Aeonik Pro"; src: url("fonts/AeonikPro-Air.woff")          format("woff"); font-weight: 100; font-style: normal; font-display: swap; }
+@font-face { font-family: "Aeonik Pro"; src: url("fonts/AeonikPro-AirItalic.woff")    format("woff"); font-weight: 100; font-style: italic; font-display: swap; }
+@font-face { font-family: "Aeonik Pro"; src: url("fonts/AeonikPro-Thin.woff")         format("woff"); font-weight: 200; font-style: normal; font-display: swap; }
+@font-face { font-family: "Aeonik Pro"; src: url("fonts/AeonikPro-ThinItalic.woff")   format("woff"); font-weight: 200; font-style: italic; font-display: swap; }
+@font-face { font-family: "Aeonik Pro"; src: url("fonts/AeonikPro-Light.woff")        format("woff"); font-weight: 300; font-style: normal; font-display: swap; }
+@font-face { font-family: "Aeonik Pro"; src: url("fonts/AeonikPro-LightItalic.woff")  format("woff"); font-weight: 300; font-style: italic; font-display: swap; }
+@font-face { font-family: "Aeonik Pro"; src: url("fonts/AeonikPro-Regular.woff")      format("woff"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Aeonik Pro"; src: url("fonts/AeonikPro-RegularItalic.woff")format("woff"); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: "Aeonik Pro"; src: url("fonts/AeonikPro-Medium.woff")       format("woff"); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: "Aeonik Pro"; src: url("fonts/AeonikPro-MediumItalic.woff") format("woff"); font-weight: 500; font-style: italic; font-display: swap; }
+@font-face { font-family: "Aeonik Pro"; src: url("fonts/AeonikPro-Bold.woff")         format("woff"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Aeonik Pro"; src: url("fonts/AeonikPro-BoldItalic.woff")   format("woff"); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: "Aeonik Pro"; src: url("fonts/AeonikPro-Black.woff")        format("woff"); font-weight: 900; font-style: normal; font-display: swap; }
+@font-face { font-family: "Aeonik Pro"; src: url("fonts/AeonikPro-BlackItalic.woff")  format("woff"); font-weight: 900; font-style: italic; font-display: swap; }
+
+:root {
+  /* =================================================================
+     RAW COLOR TOKENS — VMO2 brand swatches from the 2024 PowerPoint toolkit
+     ================================================================= */
+
+  /* Core duo */
+  --vm-red:        #E10A0A;   /* Virgin Media red — heat, energy, headline accent */
+  --o2-blue:       #0050FF;   /* O2 blue — confidence, trust, primary brand colour */
+
+  /* Connective hot pink — sits between the two parent brands */
+  --vmo2-pink:     #FF0090;   /* "Joining-up" colour; pills, highlights, the gradient mid-stop */
+
+  /* Supporting accents */
+  --vmo2-yellow:   #FFC548;
+  --vmo2-green:    #02D16A;
+  --vmo2-cyan:     #19ACFF;
+
+  /* Hover / followed states (from theme.xml) */
+  --vmo2-hlink:     #41B9E6;
+  --vmo2-followed:  #F456E2;
+
+  /* Tints — generated for hover, focus rings, soft fills */
+  --vm-red-90:     #F23838;
+  --vm-red-80:     #F46B6B;
+  --vm-red-20:     #FACFCF;
+  --vm-red-10:     #FDEAEA;
+
+  --o2-blue-90:    #3373FF;
+  --o2-blue-80:    #6694FF;
+  --o2-blue-20:    #CCDCFF;
+  --o2-blue-10:    #E6EEFF;
+
+  --vmo2-pink-90:  #FF33A6;
+  --vmo2-pink-20:  #FFCCE9;
+  --vmo2-pink-10:  #FFE6F4;
+
+  /* Neutrals */
+  --ink-1000:      #000000;
+  --ink-900:       #111315;
+  --ink-700:       #3E4145;
+  --ink-500:       #6B7075;
+  --ink-300:       #A7ACB1;
+  --ink-200:       #C8CBCF;
+  --ink-100:       #E5E7E9;
+  --ink-50:        #F1F2F3;
+  --ink-25:        #F7F7F7;    /* From theme.xml lt2 */
+  --paper:         #FFFFFF;
+
+  /* =================================================================
+     SEMANTIC TOKENS — what components should reference
+     ================================================================= */
+
+  /* Foregrounds */
+  --fg:            var(--ink-1000);        /* default body text */
+  --fg-strong:     var(--ink-1000);        /* headlines */
+  --fg-muted:      var(--ink-700);         /* secondary copy */
+  --fg-subtle:     var(--ink-500);         /* metadata, labels */
+  --fg-disabled:   var(--ink-300);
+  --fg-on-brand:   var(--paper);           /* text on red/blue/pink fills */
+  --fg-link:       var(--o2-blue);
+
+  /* Backgrounds */
+  --bg:            var(--paper);
+  --bg-subtle:     var(--ink-25);
+  --bg-muted:      var(--ink-50);
+  --bg-inverse:    var(--ink-1000);
+  --bg-brand-blue: var(--o2-blue);
+  --bg-brand-red:  var(--vm-red);
+  --bg-brand-pink: var(--vmo2-pink);
+
+  /* Borders */
+  --border-subtle: var(--ink-100);
+  --border:        var(--ink-200);
+  --border-strong: var(--ink-700);
+  --border-focus:  var(--o2-blue);
+
+  /* Brand */
+  --brand-primary:    var(--o2-blue);
+  --brand-primary-hover: #003ECC;
+  --brand-secondary:  var(--vm-red);
+  --brand-secondary-hover: #B30808;
+  --brand-accent:     var(--vmo2-pink);
+
+  /* Status */
+  --status-success: var(--vmo2-green);
+  --status-warning: var(--vmo2-yellow);
+  --status-danger:  var(--vm-red);
+  --status-info:    var(--vmo2-cyan);
+
+  /* =================================================================
+     SPACING — 4pt base
+     ================================================================= */
+  --space-1:   4px;
+  --space-2:   8px;
+  --space-3:   12px;
+  --space-4:   16px;
+  --space-5:   20px;
+  --space-6:   24px;
+  --space-8:   32px;
+  --space-10:  40px;
+  --space-12:  48px;
+  --space-16:  64px;
+  --space-20:  80px;
+  --space-24:  96px;
+  --space-32:  128px;
+
+  /* =================================================================
+     RADII — VMO2 leans on the "capsule" (fully-rounded pill).
+     Hard rectangles are rare; everything is softly or fully rounded.
+     ================================================================= */
+  --radius-xs:    4px;
+  --radius-sm:    8px;
+  --radius-md:    14px;
+  --radius-lg:    24px;
+  --radius-xl:    32px;
+  --radius-pill:  9999px;       /* The signature shape */
+
+  /* =================================================================
+     ELEVATION — soft, low; brand is FLAT first, shadows are restrained
+     ================================================================= */
+  --shadow-sm:  0 1px 2px rgba(15, 22, 36, 0.06), 0 1px 1px rgba(15, 22, 36, 0.04);
+  --shadow-md:  0 4px 10px rgba(15, 22, 36, 0.08), 0 1px 2px rgba(15, 22, 36, 0.04);
+  --shadow-lg:  0 14px 30px rgba(15, 22, 36, 0.10), 0 4px 8px rgba(15, 22, 36, 0.04);
+  --shadow-pop: 0 24px 48px rgba(15, 22, 36, 0.18);
+
+  /* =================================================================
+     TYPOGRAPHY
+     Aeonik Pro is the corporate face. Numeric & UI use the same family
+     (telco brands rarely mix in a serif).
+     ================================================================= */
+  --font-sans:    "Aeonik Pro", "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+  --font-mono:    ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+  --font-display: "Aeonik Pro", "Helvetica Neue", Helvetica, Arial, sans-serif;
+
+  /* Type ramp — values reflect web defaults, decks scale these up 2-2.5x */
+  --t-display-xl-size: 80px;  --t-display-xl-lh: 0.95; --t-display-xl-tracking: -0.02em; --t-display-xl-weight: 900;
+  --t-display-l-size:  64px;  --t-display-l-lh:  0.98; --t-display-l-tracking:  -0.02em; --t-display-l-weight:  900;
+  --t-display-m-size:  48px;  --t-display-m-lh:  1.04; --t-display-m-tracking:  -0.01em; --t-display-m-weight:  900;
+  --t-h1-size:         40px;  --t-h1-lh:         1.10; --t-h1-tracking:         -0.01em; --t-h1-weight:         700;
+  --t-h2-size:         32px;  --t-h2-lh:         1.15; --t-h2-tracking:          0;       --t-h2-weight:         700;
+  --t-h3-size:         24px;  --t-h3-lh:         1.25; --t-h3-tracking:          0;       --t-h3-weight:         700;
+  --t-h4-size:         20px;  --t-h4-lh:         1.30; --t-h4-tracking:          0;       --t-h4-weight:         500;
+  --t-body-l-size:     18px;  --t-body-l-lh:     1.55; --t-body-l-weight:        400;
+  --t-body-size:       16px;  --t-body-lh:       1.55; --t-body-weight:          400;
+  --t-body-s-size:     14px;  --t-body-s-lh:     1.50; --t-body-s-weight:        400;
+  --t-caption-size:    12px;  --t-caption-lh:    1.45; --t-caption-weight:       500;
+  --t-eyebrow-size:    13px;  --t-eyebrow-lh:    1.20; --t-eyebrow-tracking:     0.08em; --t-eyebrow-weight:    700;
+
+  /* =================================================================
+     MOTION
+     ================================================================= */
+  --ease-standard: cubic-bezier(0.2, 0.0, 0, 1);    /* default UI */
+  --ease-emphasized: cubic-bezier(0.2, 0.7, 0, 1);  /* swooshy hero motion */
+  --ease-bounce:   cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-instant:   80ms;
+  --dur-fast:      160ms;
+  --dur-base:      220ms;
+  --dur-slow:      400ms;
+}
+
+/* =====================================================================
+   SEMANTIC TYPE HELPERS — drop on any element
+   ===================================================================== */
+
+html, body {
+  font-family: var(--font-sans);
+  color: var(--fg);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+.t-display-xl { font: var(--t-display-xl-weight) var(--t-display-xl-size)/var(--t-display-xl-lh) var(--font-display); letter-spacing: var(--t-display-xl-tracking); }
+.t-display-l  { font: var(--t-display-l-weight)  var(--t-display-l-size)/ var(--t-display-l-lh)  var(--font-display); letter-spacing: var(--t-display-l-tracking); }
+.t-display-m  { font: var(--t-display-m-weight)  var(--t-display-m-size)/ var(--t-display-m-lh)  var(--font-display); letter-spacing: var(--t-display-m-tracking); }
+.t-h1   { font: var(--t-h1-weight)   var(--t-h1-size)/  var(--t-h1-lh)   var(--font-display); letter-spacing: var(--t-h1-tracking); }
+.t-h2   { font: var(--t-h2-weight)   var(--t-h2-size)/  var(--t-h2-lh)   var(--font-display); }
+.t-h3   { font: var(--t-h3-weight)   var(--t-h3-size)/  var(--t-h3-lh)   var(--font-display); }
+.t-h4   { font: var(--t-h4-weight)   var(--t-h4-size)/  var(--t-h4-lh)   var(--font-display); }
+.t-body-l { font: var(--t-body-l-weight) var(--t-body-l-size)/var(--t-body-l-lh) var(--font-sans); }
+.t-body   { font: var(--t-body-weight)   var(--t-body-size)/  var(--t-body-lh)   var(--font-sans); }
+.t-body-s { font: var(--t-body-s-weight) var(--t-body-s-size)/var(--t-body-s-lh) var(--font-sans); }
+.t-caption{ font: var(--t-caption-weight) var(--t-caption-size)/var(--t-caption-lh) var(--font-sans); color: var(--fg-muted); }
+.t-eyebrow{
+  font: var(--t-eyebrow-weight) var(--t-eyebrow-size)/var(--t-eyebrow-lh) var(--font-sans);
+  letter-spacing: var(--t-eyebrow-tracking);
+  text-transform: uppercase;
+}
+
+/* Display screams: when the brand wants a SHOUTY tabloid headline,
+   it's set ALL CAPS in Aeonik Black with a trailing period. */
+.t-shout {
+  font: 900 var(--t-display-l-size)/0.95 var(--font-display);
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+}

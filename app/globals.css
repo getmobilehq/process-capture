@@ -1,0 +1,45 @@
+/* Brand tokens + Aeonik Pro faces are copied verbatim into /public/brand and
+   loaded as-is (do not restyle or approximate — BUILD-REQUIREMENTS §4/FR-6.1).
+   Served statically, so @import by absolute URL. */
+@import url('/brand/colors_and_type.css');
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+}
+
+body {
+  font: var(--t-body-weight) var(--t-body-size) / var(--t-body-lh) var(--font-sans);
+  color: var(--fg);
+  background: var(--bg);
+}
+
+a {
+  color: var(--fg-link);
+}
+
+/* Visible keyboard focus everywhere (FR-6.3). */
+:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

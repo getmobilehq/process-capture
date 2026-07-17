@@ -1,0 +1,35 @@
+# dependencies
+/node_modules
+
+# next
+/.next
+/out
+next-env.d.ts
+
+# production
+/build
+
+# database (SQLite files + WAL/SHM)
+/data
+*.db
+*.db-shm
+*.db-wal
+
+# env — never commit real values
+.env
+.env.local
+.env*.local
+
+# test artefacts
+/test-results
+/playwright-report
+/.playwright
+tests/eval/runs
+
+# misc
+.DS_Store
+*.pem
+*.tsbuildinfo
+
+# large source archive kept out of the repo
+/VMO2 Design System.zip
