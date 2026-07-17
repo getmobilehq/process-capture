@@ -25,6 +25,11 @@ next-env.d.ts
 /playwright-report
 /.playwright
 tests/eval/runs
+tests/eval/*.log
+
+# logs and harness scratch
+*.log
+.claude/
 
 # misc
 .DS_Store

@@ -8,6 +8,7 @@ import { config } from '@/lib/config';
 import type { DB } from '@/lib/db';
 import { TOOL_DEFINITIONS } from './tools';
 import { mockRespond } from './mock';
+import { addUsage } from '@/lib/usage';
 
 export interface ModelToolCall {
   id: string;
@@ -54,6 +55,7 @@ export async function callModel(params: CallParams): Promise<ModelResponse> {
     ...(params.noTools ? {} : { tools: TOOL_DEFINITIONS as unknown as Anthropic.Tool[] }),
     messages: params.messages,
   });
+  addUsage(resp.usage);
 
   const text = resp.content
     .filter((b): b is Anthropic.TextBlock => b.type === 'text')

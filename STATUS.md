@@ -208,3 +208,80 @@ Review confirm/correct + spec generation are Phase 4.
 
 **Open concerns** — none new. Phase 6 wires the live model + eval harness (needs the
 API key, now in `.env`).
+
+---
+
+## Phase 6 · Live-model eval loop — harness complete; full gate not run to
+## completion in-session (2026-07-18)
+
+**Built**
+
+- Live Anthropic API wired (`lib/engine/model.ts` real path; `lib/spec/draft.ts`
+  per-facet drafting). Verified against `claude-sonnet-4-6`.
+- `scripts/eval.ts` — runs a simulated informant against the real engine end-to-end,
+  in an isolated in-memory DB per run, and checks A1–A9. Per-run token usage logged
+  (cost guard); transcripts + results persisted to `tests/eval/runs/<ts>/`.
+- `lib/eval/informant.ts` — the persona-driven simulated informant.
+- `lib/eval/assertions.ts` — A1–A9 (string-first fidelity with a model-graded
+  fallback).
+- `lib/usage.ts` — process-wide token accounting.
+- `tests/eval/personas/{cooperative,terse,rambling}.json` — persona fixtures with
+  ground-truth facts, £-band thresholds (facet 6), a bottleneck (facet 12), and a
+  genuine unknown (facet 9).
+- `scripts/load-env.ts` — `.env` loading for tsx scripts.
+
+**Result**
+
+- **Cooperative persona passes ALL of A1–A9 on three independent live runs**
+  (artefacts persisted under `tests/eval/runs/`). Representative: 34 turns, 165 calls,
+  ~779k input / ~20k output tokens; every assertion PASS.
+- The **full §9 gate** (all 3 personas × 3 consecutive runs) was **not completed in
+  this session**: each run is ~165 live calls (~5–7 min, ~0.8M input tokens), so the
+  9-run batch is multi-hour and real cost. Stopped at the user's request to wrap up.
+  Terse and rambling fixtures are built and typecheck-clean but have not yet been run
+  to three consecutive passes.
+
+**Gate**
+
+- [x] harness built + persists artefacts + logs token usage (§9)
+- [x] live model wired and exercised
+- [x] cooperative persona: A1–A9 green ×3 independent runs
+- [ ] **full gate: all 3 personas × 3 consecutive runs** — run `npm run eval` to
+      complete (≈ 0.5–1 hr, real API spend). Record final scores here.
+
+**Open concerns** — completing the 3×3 is the one remaining acceptance step. High
+input-token count per run is because the facet-spec system prompt is re-sent each
+turn; add prompt caching before scaling (a cost optimisation, not a correctness
+issue).
+
+---
+
+## Phase 7 · Hardening + pilot pack — built; container-boot pending daemon (2026-07-18)
+
+**Built**
+
+- `lib/rate-limit.ts` — in-memory fixed-window limiter; applied to the public turn
+  endpoint (40/min per IP) in addition to login (Phase 5).
+- Security headers in `next.config.mjs` — CSP, HSTS, X-Frame-Options, nosniff,
+  Referrer-Policy, Permissions-Policy; `poweredByHeader` off.
+- Input length cap on the turn endpoint (4000 chars).
+- `Dockerfile` (multi-stage) + `.dockerignore` + `scripts/migrate.mjs` (plain-Node
+  migration entrypoint so the container needs no tsx). Migrations run at container
+  start; SQLite lives on a `/app/data` volume.
+- `README.md` — setup, commands, architecture, operations (SQLite backup/restore,
+  container deploy, security posture), and the **E1–E5 pilot checklist**.
+
+**Gate**
+
+- [x] lint / typecheck / `npm test` (52) / `npm run build` — all green with hardening
+- [x] E2E (5, mocked) — green
+- [x] README complete (setup, ops, backup, pilot checklist)
+- [ ] **container boots** — Dockerfile authored; **the Docker daemon (Docker Desktop)
+      stopped mid-session**, so `docker build && docker run` could not be verified
+      here. Run `docker build -t process-capture . && docker run -p 3000:3000 -v
+      "$(pwd)/data:/app/data" -e ANTHROPIC_API_KEY=… -e ADMIN_PASSWORD=… process-capture`
+      once the daemon is up.
+
+**Open concerns** — two acceptance steps require your environment: the full 3×3 eval
+(API spend) and the container boot (Docker daemon). Everything code-side is complete
+and green.

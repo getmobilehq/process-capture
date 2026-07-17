@@ -1,13 +1,23 @@
 import { NextResponse } from 'next/server';
 import { processUserTurn } from '@/lib/engine/engine';
 import { getSession } from '@/lib/db/queries';
+import { clientIp, rateLimit } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const MAX_CONTENT_CHARS = 4000; // input length cap (hardened further in Phase 7)
+const MAX_CONTENT_CHARS = 4000; // input length cap
 
 export async function POST(req: Request, { params }: { params: { sessionId: string } }) {
+  // Rate limit the public write path: 40 turns/min per IP.
+  const rl = rateLimit(`turn:${clientIp(req)}`, { limit: 40, windowMs: 60_000 });
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Too many messages — please slow down.' },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } },
+    );
+  }
+
   const session = getSession(params.sessionId);
   if (!session) {
     return NextResponse.json({ error: 'Unknown session' }, { status: 404 });

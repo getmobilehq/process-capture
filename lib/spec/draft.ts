@@ -7,6 +7,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { config } from '@/lib/config';
 import type { Facet } from '@/lib/facets/facets';
+import { addUsage } from '@/lib/usage';
 
 export interface DraftStatement {
   content: string;
@@ -72,6 +73,7 @@ export async function draftFacet(input: {
       },
     ],
   });
+  addUsage(resp.usage);
 
   const text = resp.content
     .filter((b): b is Anthropic.TextBlock => b.type === 'text')

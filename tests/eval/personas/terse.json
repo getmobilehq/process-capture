@@ -1,0 +1,82 @@
+{
+  "id": "terse",
+  "style": "terse",
+  "role": "Complaints advisor",
+  "processName": "Billing complaint resolution",
+  "knownUnknownFacet": 9,
+  "turnLimit": 55,
+  "facts": {
+    "1": [
+      "The process is resolving a customer's billing complaint.",
+      "It starts when a complaint lands in the advisor's queue, by phone or web form.",
+      "It ends when the customer is told the outcome and the case is closed on the account."
+    ],
+    "2": [
+      "A complaints advisor owns the case from start to finish.",
+      "A billing analyst confirms whether the charge was correct.",
+      "A team leader approves any goodwill credit above the advisor's own limit.",
+      "The customer is kept informed throughout."
+    ],
+    "3": [
+      "It is triggered when a customer raises a billing complaint.",
+      "Roughly forty complaints come in per advisor per day.",
+      "It is heaviest just after the monthly bills go out."
+    ],
+    "4": [
+      "The inputs are the complaint record and the account's billing history.",
+      "The output is a resolution decision, any credit applied, and a closure note on the account."
+    ],
+    "5": [
+      "First the advisor reads the complaint in the CRM.",
+      "Then the advisor pulls the billing history from the billing platform.",
+      "If the charge is wrong, the advisor raises a credit.",
+      "If the credit is over their limit, they route it to a team leader for approval.",
+      "Finally the advisor calls the customer and closes the case."
+    ],
+    "6": [
+      "An advisor can credit up to £25 on their own authority.",
+      "Between £25 and £100 needs a team leader's approval.",
+      "Between £100 and £500 needs a duty manager.",
+      "Anything above £500 goes to the billing governance board."
+    ],
+    "7": [
+      "The case record lives in the CRM.",
+      "The credit is posted in the billing platform.",
+      "A monthly reconciliation is kept in a shared spreadsheet."
+    ],
+    "8": [
+      "The advisor uses the CRM for the case and the billing platform for charges and credits.",
+      "Outlook is used for internal chasers and the phone system for the outbound call."
+    ],
+    "9": [],
+    "10": [
+      "If the customer has already been credited once for the same issue, it skips straight to a team leader.",
+      "If the billing system is down, the case is parked and picked up the next day."
+    ],
+    "11": [
+      "About forty cases a day per advisor.",
+      "A straightforward case takes about fifteen minutes; a complex one can run over two days waiting on approvals.",
+      "The SLA is five working days."
+    ],
+    "12": [
+      "Waiting on team-leader approval is the biggest delay; cases can sit for a day in that queue.",
+      "People keep their own spreadsheets to track what is pending, and everyone does it slightly differently."
+    ]
+  },
+  "facet6Thresholds": ["25", "100", "500"],
+  "facet12Bottleneck": ["approval", "queue", "spreadsheet", "wait"],
+  "groundTruth": [
+    { "facet": 1, "keyword": "complaint" },
+    { "facet": 2, "keyword": "team leader" },
+    { "facet": 3, "keyword": "forty" },
+    { "facet": 4, "keyword": "billing history" },
+    { "facet": 5, "keyword": "credit" },
+    { "facet": 6, "keyword": "£25" },
+    { "facet": 6, "keyword": "£500" },
+    { "facet": 7, "keyword": "CRM" },
+    { "facet": 8, "keyword": "billing platform" },
+    { "facet": 10, "keyword": "parked" },
+    { "facet": 11, "keyword": "five working days" },
+    { "facet": 12, "keyword": "approval" }
+  ]
+}
