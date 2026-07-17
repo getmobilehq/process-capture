@@ -5,7 +5,7 @@
  * rest → answered), then end the interview. This lets the Phase 3–5 gates run
  * offline and reproducibly (11 answered + 1 unknown at review).
  */
-import { getCoverage, getSession } from '@/lib/db/queries';
+import { getCoverage, getInterviewee, getSession } from '@/lib/db/queries';
 import { FACETS, getFacet } from '@/lib/facets/facets';
 import type { CallParams, ModelResponse, ModelToolCall } from './model';
 
@@ -41,7 +41,15 @@ function questionFor(facetId: number): string {
   return facet.probes[0];
 }
 
-function resolveFacet(facetId: number): { name: string; input: unknown }[] {
+/** A £ approval band that varies by role, so two informants differ on facet 6. */
+function approvalBand(role: string): string {
+  const r = role.toLowerCase();
+  if (r.includes('leader') || r.includes('manager')) return '£100';
+  if (r.includes('analyst')) return '£50';
+  return '£25';
+}
+
+function resolveFacet(facetId: number, role: string): { name: string; input: unknown }[] {
   // Facet 9 (risk, controls & compliance) is the persona's genuine unknown.
   if (facetId === 9) {
     return [
@@ -60,16 +68,22 @@ function resolveFacet(facetId: number): { name: string; input: unknown }[] {
       },
     ];
   }
-  const facet = getFacet(facetId);
+
+  // Facet 6 (business rules) records a rule with a role-specific threshold, and
+  // facet 11 (performance) a metric — so the console can surface cross-informant
+  // candidate conflicts (FR-1.6).
+  let kind = 'fact';
+  let content = `Captured from the informant for ${getFacet(facetId).name.toLowerCase()}.`;
+  if (facetId === 6) {
+    kind = 'rule';
+    content = `A ${role} can authorise credits up to ${approvalBand(role)} without escalation.`;
+  } else if (facetId === 11) {
+    kind = 'metric';
+    content = 'Volume is roughly forty cases a day, with a five-working-day SLA.';
+  }
+
   return [
-    {
-      name: 'record_statement',
-      input: {
-        facetId,
-        kind: 'fact',
-        content: `Captured from the informant for ${facet.name.toLowerCase()}.`,
-      },
-    },
+    { name: 'record_statement', input: { facetId, kind, content } },
     { name: 'set_coverage', input: { facetId, state: 'answered', rationale: 'Rubric met.' } },
   ];
 }
@@ -105,7 +119,8 @@ export function mockRespond(params: CallParams): ModelResponse {
   // Fresh informant answer (or the very first user turn): resolve the lowest facet,
   // or end the interview if all are terminal.
   if (lowest === null) return toolResponse([{ name: 'end_interview', input: {} }]);
-  return toolResponse(resolveFacet(lowest));
+  const role = getInterviewee(session.intervieweeId, db)?.role ?? 'process user';
+  return toolResponse(resolveFacet(lowest, role));
 }
 
 const REVIEW_ACK =

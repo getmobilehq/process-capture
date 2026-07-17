@@ -3,13 +3,15 @@ import Database from 'better-sqlite3';
 
 const DB_PATH = './data/e2e.db';
 
-function lastToken(): string {
+// Pin to a specific seed interviewee that no other spec touches, to avoid
+// cross-test coupling (entry uses the first; console adds its own).
+function tomToken(): string {
   const db = new Database(DB_PATH, { readonly: true });
   try {
     const row = db
-      .prepare('SELECT invite_token FROM interviewees ORDER BY created_at DESC LIMIT 1')
-      .get() as { invite_token: string } | undefined;
-    if (!row) throw new Error('No seeded interviewee found');
+      .prepare('SELECT invite_token FROM interviewees WHERE email = ?')
+      .get('tom.okafor@example.com') as { invite_token: string } | undefined;
+    if (!row) throw new Error('Seed interviewee tom.okafor@example.com not found');
     return row.invite_token;
   } finally {
     db.close();
@@ -32,7 +34,7 @@ function sessionFor(token: string): { id: string; status: string } | undefined {
 }
 
 test('golden path: mocked interview reaches review with 11 answered + 1 unknown', async ({ page }) => {
-  const token = lastToken();
+  const token = tomToken();
 
   // Start the interview.
   await page.goto(`/i/${token}`);
