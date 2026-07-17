@@ -1,39 +1,48 @@
 import { redirect } from 'next/navigation';
-import { getIntervieweeByToken, getResumableSession, getCoverage, getSession } from '@/lib/db/queries';
-import { CoverageRail } from '@/components/interview/CoverageRail';
+import {
+  getIntervieweeByToken,
+  getLatestSession,
+  getCoverage,
+  getSession,
+  listTurns,
+} from '@/lib/db/queries';
+import { openInterview } from '@/lib/engine/engine';
+import { InterviewRoom } from '@/components/interview/InterviewRoom';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
-// Phase 2 shell. The live conversational engine (FR-3) lands here in Phase 3;
-// for now this proves a session exists and renders the coverage rail.
-export default function InterviewPage({ params }: { params: { token: string } }) {
+export default async function InterviewPage({ params }: { params: { token: string } }) {
   const interviewee = getIntervieweeByToken(params.token);
   if (!interviewee) redirect(`/i/${params.token}`);
 
-  const session = getResumableSession(interviewee.id) ?? undefined;
-  if (!session) redirect(`/i/${params.token}`);
+  const latest = getLatestSession(interviewee.id);
+  if (!latest || latest.status === 'abandoned') redirect(`/i/${params.token}`);
 
-  const activeSession = getSession(session.id)!;
-  const coverage = getCoverage(activeSession.id);
+  // Ensure the opening agent turn exists (idempotent). No-op once opened.
+  if (latest.status === 'open') {
+    await openInterview(latest.id);
+  }
+
+  const session = getSession(latest.id)!;
+  const turns = listTurns(session.id).map((t) => ({ seq: t.seq, speaker: t.speaker, content: t.content }));
+  const coverage = getCoverage(session.id).map((c) => ({ facetId: c.facetId, state: c.state }));
 
   return (
     <main className="pc-wrap">
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 320px', gap: 'var(--space-8)' }}>
-        <section>
-          <span className="pc-secpill blue">
-            Your interview
-            <i className="pc-cap" aria-hidden="true" />
-          </span>
-          <h1 className="t-h3" style={{ marginTop: 'var(--space-5)' }}>
-            {activeSession.processName ?? 'A process you run'}
-          </h1>
-          <p className="t-body" style={{ color: 'var(--fg-muted)', marginTop: 'var(--space-3)' }}>
-            The conversation will appear here.
-          </p>
-        </section>
-        <aside>
-          <CoverageRail coverage={coverage} />
-        </aside>
+      <span className="pc-secpill blue">
+        Your interview
+        <i className="pc-cap" aria-hidden="true" />
+      </span>
+      <div style={{ marginTop: 'var(--space-5)' }}>
+        <InterviewRoom
+          sessionId={session.id}
+          processName={session.processName}
+          initialTurns={turns}
+          initialCoverage={coverage}
+          initialStatus={session.status}
+          startedAtMs={(session.startedAt ?? new Date()).getTime()}
+        />
       </div>
     </main>
   );
