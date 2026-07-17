@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Neutrals</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { margin: 0; padding: 28px; background: var(--bg); font-family: var(--font-sans); }
+  .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; }
+  .sw { display: flex; flex-direction: column; gap: 6px; }
+  .chip { height: 64px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); }
+  .name { font-size: 11px; font-weight: 600; }
+  .hex { font-size: 10px; color: var(--fg-muted); font-family: var(--font-mono); }
+  .label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-muted); font-weight: 700; margin: 0 0 12px; }
+</style>
+</head>
+<body>
+  <p class="label">Neutrals · paper → ink</p>
+  <div class="grid">
+    <div class="sw"><div class="chip" style="background:#FFFFFF"></div><div class="name">Paper</div><div class="hex">#FFFFFF</div></div>
+    <div class="sw"><div class="chip" style="background:#F7F7F7"></div><div class="name">Ink 25</div><div class="hex">#F7F7F7</div></div>
+    <div class="sw"><div class="chip" style="background:#F1F2F3"></div><div class="name">Ink 50</div><div class="hex">#F1F2F3</div></div>
+    <div class="sw"><div class="chip" style="background:#E5E7E9"></div><div class="name">Ink 100</div><div class="hex">#E5E7E9</div></div>
+    <div class="sw"><div class="chip" style="background:#C8CBCF"></div><div class="name">Ink 200</div><div class="hex">#C8CBCF</div></div>
+    <div class="sw"><div class="chip" style="background:#6B7075"></div><div class="name">Ink 500</div><div class="hex">#6B7075</div></div>
+    <div class="sw"><div class="chip" style="background:#3E4145"></div><div class="name">Ink 700</div><div class="hex">#3E4145</div></div>
+    <div class="sw"><div class="chip" style="background:#000000"></div><div class="name">Ink 1000</div><div class="hex">#000000</div></div>
+  </div>
+</body>
+</html>

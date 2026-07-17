@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Cards</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { margin: 0; padding: 24px; background: var(--bg-subtle); font-family: var(--font-sans); }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .card { background: white; border-radius: var(--radius-lg); padding: 22px; box-shadow: var(--shadow-sm); }
+  .card.solid { background: var(--o2-blue); color: white; }
+  .card.solid h3 { color: white; }
+  h3 { margin: 6px 0 8px; font-size: 18px; font-weight: 700; }
+  p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--fg-muted); }
+  .card.solid p { color: rgba(255,255,255,0.85); }
+  .cap { display: inline-flex; align-items: center; height: 30px; padding: 0 16px 0 12px; border-radius: 9999px; background: var(--vm-red); color: white; font-weight: 700; font-size: 12px; position: relative; }
+  .cap::after { content:''; width: 30px; height: 30px; border-radius: 50%; background: var(--o2-blue); position: absolute; right: -18px; top: 0; }
+  .arrow { font-size: 22px; margin-top: 10px; }
+</style>
+</head>
+<body>
+  <div class="grid">
+    <div class="card">
+      <div class="cap">Fibre</div>
+      <h3 style="margin-top:18px">Gig1 leased line</h3>
+      <p>Symmetrical 1 Gbps with 99.99% SLA and dedicated 4-hour fix.</p>
+    </div>
+    <div class="card solid">
+      <div style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;opacity:0.85">Mobile</div>
+      <h3>Unlimited Business</h3>
+      <p>5G data on the UK's largest network. Unlimited UK calls and texts.</p>
+      <div class="arrow">→</div>
+    </div>
+  </div>
+</body>
+</html>

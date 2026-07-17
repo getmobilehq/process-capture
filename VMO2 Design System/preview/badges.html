@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Badges & tags</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { margin: 0; padding: 24px; background: var(--bg); font-family: var(--font-sans); }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; align-items: center; }
+  .tag { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 700; }
+  .tag-blue { background: var(--o2-blue-10); color: var(--o2-blue); }
+  .tag-red  { background: var(--vm-red-10);  color: var(--vm-red); }
+  .tag-pink { background: var(--vmo2-pink-10); color: var(--vmo2-pink); }
+  .tag-success { background: #E6FAF0; color: var(--vmo2-green); }
+  .tag-warning { background: #FFF7E5; color: #B17612; }
+  .tag-danger  { background: var(--vm-red-10); color: var(--vm-red); }
+  .tag-neutral { background: var(--ink-50); color: var(--ink-700); }
+  .tag-solid-red { background: var(--vm-red); color: white; }
+  .tag-solid-blue { background: var(--o2-blue); color: white; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-muted); font-weight: 700; margin: 0 0 8px; }
+</style>
+</head>
+<body>
+  <p class="label">Soft tags</p>
+  <div class="row">
+    <span class="tag tag-blue">5G ready</span>
+    <span class="tag tag-red">Sale</span>
+    <span class="tag tag-pink">New</span>
+    <span class="tag tag-neutral">Business</span>
+  </div>
+  <p class="label">Status</p>
+  <div class="row">
+    <span class="tag tag-success"><span class="dot"></span>Connected</span>
+    <span class="tag tag-warning"><span class="dot"></span>Pending install</span>
+    <span class="tag tag-danger"><span class="dot"></span>Outage</span>
+  </div>
+  <p class="label">Solid</p>
+  <div class="row">
+    <span class="tag tag-solid-red">Most popular</span>
+    <span class="tag tag-solid-blue">Recommended</span>
+  </div>
+</body>
+</html>

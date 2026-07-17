@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Colors — Supporting</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { margin: 0; padding: 28px; background: var(--bg); font-family: var(--font-sans); }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .sw { display: flex; flex-direction: column; gap: 8px; }
+  .chip { height: 78px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); }
+  .name { font-size: 14px; font-weight: 600; }
+  .hex { font-size: 12px; color: var(--fg-muted); font-family: var(--font-mono); }
+  .label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-muted); font-weight: 700; margin: 0 0 12px; }
+</style>
+</head>
+<body>
+  <p class="label">Supporting accents · use sparingly for data viz + status</p>
+  <div class="grid">
+    <div class="sw"><div class="chip" style="background:#FFC548"></div><div class="name">Yellow</div><div class="hex">#FFC548</div></div>
+    <div class="sw"><div class="chip" style="background:#02D16A"></div><div class="name">Green · success</div><div class="hex">#02D16A</div></div>
+    <div class="sw"><div class="chip" style="background:#19ACFF"></div><div class="name">Cyan · info</div><div class="hex">#19ACFF</div></div>
+    <div class="sw"><div class="chip" style="background:#41B9E6"></div><div class="name">Link hover</div><div class="hex">#41B9E6</div></div>
+  </div>
+</body>
+</html>

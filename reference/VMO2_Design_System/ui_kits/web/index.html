@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>VMO2 Business — UI Kit</title>
+<link rel="stylesheet" href="../../colors_and_type.css">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  img { max-width: 100%; }
+
+  /* Header */
+  .vmo2-header { position: sticky; top: 0; z-index: 10; background: white; border-bottom: 1px solid var(--border-subtle); }
+  .vmo2-header__inner { display: flex; align-items: center; gap: 28px; padding: 14px 32px; max-width: 1280px; margin: 0 auto; }
+  .vmo2-header__logo img { height: 38px; display:block; }
+  .vmo2-header__nav { display:flex; gap: 22px; flex: 1; }
+  .vmo2-header__link { color: var(--fg); text-decoration: none; font-weight: 500; font-size: 15px; }
+  .vmo2-header__link:hover { color: var(--o2-blue); }
+  .vmo2-header__actions { display: flex; align-items: center; gap: 16px; }
+  .vmo2-subnav { display: flex; gap: 6px; padding: 0 32px 12px; max-width: 1280px; margin: 0 auto; }
+  .vmo2-subnav__item { background: transparent; border: 0; padding: 8px 16px; border-radius: 9999px; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; color: var(--fg-muted); }
+  .vmo2-subnav__item.is-active { background: var(--ink-1000); color: white; }
+
+  /* Buttons */
+  .vmo2-btn { display: inline-flex; align-items: center; gap: 8px; padding: 0 22px; height: 44px; border-radius: 9999px; font-weight: 700; font-size: 15px; border: 0; cursor: pointer; transition: all .22s var(--ease-standard); font-family: inherit; }
+  .vmo2-btn--primary { background: var(--o2-blue); color: white; }
+  .vmo2-btn--primary:hover { background: var(--brand-primary-hover); }
+  .vmo2-btn--ghost { background: transparent; color: var(--ink-1000); }
+
+  /* Capsule */
+  .vmo2-cap { position: relative; display: inline-flex; align-items: center; height: 44px; padding: 0 30px 0 22px; border-radius: 9999px; color: white; font-weight: 700; font-size: 15px; border: 0; cursor: pointer; font-family: inherit; }
+  .vmo2-cap--red  { background: var(--vm-red); }
+  .vmo2-cap--blue { background: var(--o2-blue); }
+  .vmo2-cap--pink { background: var(--vmo2-pink); }
+  .vmo2-cap--gradient { background: linear-gradient(90deg, var(--vm-red), var(--vmo2-pink)); }
+  .vmo2-cap__circle { display: block; position: absolute; right: -16px; top: 0; width: 44px; height: 44px; border-radius: 50%; background: var(--o2-blue); transition: transform .22s var(--ease-bounce); }
+  .vmo2-cap__circle--red  { background: var(--vm-red); }
+  .vmo2-cap__circle--blue { background: var(--o2-blue); }
+  .vmo2-cap__circle--pink { background: var(--vmo2-pink); }
+  .vmo2-cap:hover .vmo2-cap__circle { transform: scale(1.1); }
+  .vmo2-cap.is-active { box-shadow: 0 0 0 3px white, 0 0 0 5px currentColor; }
+
+  /* Hero */
+  .vmo2-hero { position: relative; overflow: hidden; }
+  .vmo2-hero__bg { position: absolute; inset: 0; background-image: url(../../assets/imagery/swoosh-red-blue.jpg); background-size: cover; background-position: right center; opacity: 0.18; }
+  .vmo2-hero__inner { position: relative; display: grid; grid-template-columns: 1.2fr 1fr; gap: 48px; max-width: 1280px; margin: 0 auto; padding: 80px 32px; align-items: center; }
+  .vmo2-hero__h { margin: 24px 0 18px; }
+  .vmo2-hero__sub { font-size: 19px; line-height: 1.55; color: var(--fg-muted); max-width: 540px; }
+  .vmo2-hero__cta { margin-top: 32px; display: flex; gap: 14px; }
+  .vmo2-hero__visual img { border-radius: 24px; aspect-ratio: 4/3; object-fit: cover; width: 100%; }
+
+  /* Tabs section */
+  .vmo2-tabs { padding: 80px 32px; max-width: 1280px; margin: 0 auto; }
+  .vmo2-tabs__strip { display: flex; gap: 28px; margin-bottom: 32px; flex-wrap: wrap; }
+  .vmo2-tabs__panel { background: var(--bg-subtle); border-radius: 32px; padding: 40px 48px; }
+  .vmo2-tabs__panel h3 { margin: 0 0 18px; font-size: 28px; font-weight: 700; }
+  .vmo2-tabs__panel ul { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 12px; }
+  .vmo2-tabs__panel li { font-size: 17px; line-height: 1.55; max-width: 720px; }
+
+  /* Product grid */
+  .vmo2-grid { padding: 80px 32px; max-width: 1280px; margin: 0 auto; }
+  .vmo2-grid__head { margin-bottom: 40px; }
+  .vmo2-grid__head .t-eyebrow { color: var(--vm-red); margin: 0 0 6px; }
+  .vmo2-grid__items { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+  .vmo2-card { background: white; border-radius: 28px; padding: 32px; box-shadow: var(--shadow-sm); transition: all .22s var(--ease-standard); display: flex; flex-direction: column; gap: 14px; }
+  .vmo2-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+  .vmo2-card h3 { margin: 14px 0 0; font-size: 22px; font-weight: 700; }
+  .vmo2-card p { margin: 0; color: var(--fg-muted); line-height: 1.55; flex: 1; }
+  .vmo2-card__cta { color: var(--o2-blue); font-weight: 700; text-decoration: none; margin-top: 8px; }
+
+  /* Big stat */
+  .vmo2-stat { background: var(--o2-blue); color: white; }
+  .vmo2-stat__inner { max-width: 1280px; margin: 0 auto; padding: 80px 32px; display: grid; grid-template-columns: 1fr 1.4fr; gap: 64px; align-items: center; }
+  .vmo2-stat__num { font: 900 200px/0.9 var(--font-display); letter-spacing: -0.04em; }
+  .vmo2-stat__copy h2 { font-size: 36px; line-height: 1.15; margin: 8px 0 16px; font-weight: 700; }
+  .vmo2-stat__copy p { font-size: 17px; line-height: 1.55; opacity: 0.9; max-width: 560px; }
+
+  /* Footer */
+  .vmo2-footer { background: var(--ink-1000); color: white; padding: 64px 32px 24px; }
+  .vmo2-footer__inner { display: grid; grid-template-columns: 1.2fr 2fr; gap: 48px; max-width: 1280px; margin: 0 auto; }
+  .vmo2-footer__brand img:first-child { height: 42px; margin-bottom: 16px; filter: brightness(0) invert(1); }
+  .vmo2-footer__brand p { color: rgba(255,255,255,0.65); max-width: 280px; }
+  .vmo2-footer__siblings { display: flex; gap: 18px; margin-top: 22px; align-items: center; }
+  .vmo2-footer__siblings img { height: 22px; filter: brightness(0) invert(1); opacity: 0.85; }
+  .vmo2-footer__cols { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+  .vmo2-footer h4 { margin: 0 0 14px; font-size: 14px; text-transform: uppercase; letter-spacing: 0.08em; }
+  .vmo2-footer ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+  .vmo2-footer a { color: rgba(255,255,255,0.75); text-decoration: none; font-size: 14px; }
+  .vmo2-footer a:hover { color: white; }
+  .vmo2-footer__base { max-width: 1280px; margin: 48px auto 0; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.12); display: flex; justify-content: space-between; font-size: 13px; color: rgba(255,255,255,0.5); }
+
+  [data-screen-label]::before { display: none; }
+</style>
+</head>
+<body data-screen-label="VMO2 Business — Home">
+
+<div id="app"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="Header.jsx"></script>
+<script type="text/babel" src="Hero.jsx"></script>
+<script type="text/babel" src="CapsuleNav.jsx"></script>
+<script type="text/babel" src="ProductGrid.jsx"></script>
+<script type="text/babel" src="BigStat.jsx"></script>
+<script type="text/babel" src="Footer.jsx"></script>
+
+<script type="text/babel">
+function App() {
+  return (
+    <>
+      <Header />
+      <Hero />
+      <CapsuleNav />
+      <ProductGrid />
+      <BigStat />
+      <Footer />
+    </>
+  );
+}
+ReactDOM.createRoot(document.getElementById('app')).render(<App />);
+</script>
+</body>
+</html>

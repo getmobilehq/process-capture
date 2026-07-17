@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Voice & tone</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { margin: 0; padding: 24px; background: var(--bg); font-family: var(--font-sans); }
+  .col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .card { padding: 14px 16px; border-radius: var(--radius-md); }
+  .do { background: #E6FAF0; }
+  .dont { background: var(--vm-red-10); }
+  .tag { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; display:inline-block; }
+  .do .tag { color: var(--vmo2-green); }
+  .dont .tag { color: var(--vm-red); }
+  .ex { font-size: 14px; line-height: 1.45; }
+</style>
+</head>
+<body>
+  <div class="col">
+    <div class="card do"><span class="tag">✓ Do</span><div class="ex">"Becoming a true wholesale market challenger."</div></div>
+    <div class="card dont"><span class="tag">✗ Don't</span><div class="ex">"Revolutionary AI-powered next-gen connectivity!!"</div></div>
+    <div class="card do"><span class="tag">✓ Do</span><div class="ex">"For now, nothing changes."</div></div>
+    <div class="card dont"><span class="tag">✗ Don't</span><div class="ex">"We believe that, in our view, things may not change."</div></div>
+  </div>
+</body>
+</html>

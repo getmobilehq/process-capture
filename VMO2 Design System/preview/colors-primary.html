@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Colors — Brand</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { margin: 0; padding: 28px; background: var(--bg); font-family: var(--font-sans); color: var(--fg); }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .sw { display: flex; flex-direction: column; gap: 8px; }
+  .chip { height: 78px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); }
+  .name { font-size: 14px; font-weight: 600; letter-spacing: -0.005em; }
+  .hex { font-size: 12px; color: var(--fg-muted); font-family: var(--font-mono); }
+  .lockup { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 18px; border-radius: var(--radius-pill); background: var(--vm-red); color: white; font-weight: 700; font-size: 14px; position: relative; }
+  .pill::after { content:''; width: 36px; height: 36px; border-radius: 50%; background: var(--o2-blue); position: absolute; right: -22px; }
+  h3 { margin: 0; font-size: 18px; font-weight: 700; }
+  .label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-muted); font-weight: 700; margin: 0 0 8px; }
+</style>
+</head>
+<body>
+  <div class="lockup">
+    <div class="pill">Brand · primary</div>
+  </div>
+  <div class="grid">
+    <div class="sw"><div class="chip" style="background:#0050FF"></div><div class="name">O2 Blue</div><div class="hex">#0050FF</div></div>
+    <div class="sw"><div class="chip" style="background:#E10A0A"></div><div class="name">VM Red</div><div class="hex">#E10A0A</div></div>
+    <div class="sw"><div class="chip" style="background:#FF0090"></div><div class="name">VMO2 Pink</div><div class="hex">#FF0090</div></div>
+    <div class="sw"><div class="chip" style="background:#000000"></div><div class="name">Ink 1000</div><div class="hex">#000000</div></div>
+  </div>
+</body>
+</html>

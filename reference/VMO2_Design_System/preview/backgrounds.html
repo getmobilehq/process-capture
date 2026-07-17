@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Brand backgrounds</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { margin: 0; padding: 18px; background: var(--bg); font-family: var(--font-sans); }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .tile { aspect-ratio: 16/9; border-radius: var(--radius-md); background-size: cover; background-position: center; position: relative; overflow: hidden; }
+  .lbl { position: absolute; bottom: 8px; left: 12px; background: white; padding: 3px 10px; border-radius: 9999px; font-size: 11px; font-weight: 700; }
+  .flat-blue { background: var(--o2-blue); }
+  .flat-red  { background: var(--vm-red); }
+</style>
+</head>
+<body>
+  <div class="grid">
+    <div class="tile" style="background-image:url(../assets/imagery/swoosh-red-blue.jpg)"><span class="lbl">Swoosh hero</span></div>
+    <div class="tile" style="background-image:url(../assets/imagery/curve-blue-red.jpg)"><span class="lbl">Curve blocks</span></div>
+    <div class="tile flat-blue"><span class="lbl">Flat blue</span></div>
+    <div class="tile flat-red"><span class="lbl">Flat red</span></div>
+  </div>
+</body>
+</html>

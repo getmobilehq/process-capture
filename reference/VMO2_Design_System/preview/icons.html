@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Iconography</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.js"></script>
+<style>
+  body { margin: 0; padding: 22px; background: var(--bg); font-family: var(--font-sans); }
+  .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 14px; }
+  .item { display: flex; flex-direction: column; gap: 6px; align-items: center; font-size: 11px; color: var(--fg-muted); }
+  .icon { width: 44px; height: 44px; display:flex; align-items:center; justify-content:center; border-radius: var(--radius-sm); background: var(--bg-subtle); }
+  .icon svg { stroke: var(--ink-1000); stroke-width: 2; }
+  .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-muted); font-weight: 700; margin: 0 0 12px; }
+</style>
+</head>
+<body>
+  <p class="label">Lucide · 2px stroke · substitution (flag to brand)</p>
+  <div class="grid">
+    <div class="item"><div class="icon"><i data-lucide="signal"></i></div>signal</div>
+    <div class="item"><div class="icon"><i data-lucide="wifi"></i></div>wifi</div>
+    <div class="item"><div class="icon"><i data-lucide="smartphone"></i></div>mobile</div>
+    <div class="item"><div class="icon"><i data-lucide="router"></i></div>router</div>
+    <div class="item"><div class="icon"><i data-lucide="shield-check"></i></div>secure</div>
+    <div class="item"><div class="icon"><i data-lucide="zap"></i></div>fast</div>
+    <div class="item"><div class="icon"><i data-lucide="headphones"></i></div>support</div>
+    <div class="item"><div class="icon"><i data-lucide="building-2"></i></div>business</div>
+  </div>
+  <script>lucide.createIcons();</script>
+</body>
+</html>

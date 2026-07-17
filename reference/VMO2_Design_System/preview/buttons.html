@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Buttons</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { margin: 0; padding: 24px; background: var(--bg); font-family: var(--font-sans); }
+  .row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; align-items: center; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 0 22px; height: 44px; border-radius: var(--radius-pill); font-weight: 700; font-size: 15px; border: 0; cursor: pointer; transition: all var(--dur-base) var(--ease-standard); font-family: inherit; }
+  .btn-primary { background: var(--o2-blue); color: white; }
+  .btn-primary:hover { background: #003ECC; }
+  .btn-secondary { background: var(--vm-red); color: white; }
+  .btn-tertiary { background: transparent; color: var(--ink-1000); border: 2px solid var(--ink-1000); }
+  .btn-ghost { background: transparent; color: var(--o2-blue); }
+  .btn-pink { background: var(--vmo2-pink); color: white; }
+  .btn-sm { height: 32px; padding: 0 14px; font-size: 13px; }
+  .btn-lg { height: 56px; padding: 0 30px; font-size: 17px; }
+</style>
+</head>
+<body>
+  <div class="row">
+    <button class="btn btn-primary">Get a quote</button>
+    <button class="btn btn-secondary">Talk to sales</button>
+    <button class="btn btn-tertiary">Learn more</button>
+    <button class="btn btn-ghost">Skip →</button>
+    <button class="btn btn-pink">What's next?</button>
+  </div>
+  <div class="row">
+    <button class="btn btn-primary btn-sm">Small</button>
+    <button class="btn btn-primary">Default</button>
+    <button class="btn btn-primary btn-lg">Large</button>
+  </div>
+</body>
+</html>

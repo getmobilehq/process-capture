@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Color tints</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { margin: 0; padding: 24px; background: var(--bg); font-family: var(--font-sans); }
+  .row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .row .label { width: 80px; font-size: 13px; font-weight: 700; }
+  .scale { display: flex; flex: 1; gap: 6px; }
+  .chip { flex: 1; height: 48px; border-radius: var(--radius-sm); position: relative; border: 1px solid rgba(0,0,0,0.04); display: flex; align-items: flex-end; padding: 4px 6px; font-size: 10px; font-family: var(--font-mono); color: rgba(255,255,255,0.85); }
+  .light { color: rgba(0,0,0,0.55); }
+</style>
+</head>
+<body>
+  <div class="row">
+    <div class="label">O2 Blue</div>
+    <div class="scale">
+      <div class="chip light" style="background:#E6EEFF">10</div>
+      <div class="chip light" style="background:#CCDCFF">20</div>
+      <div class="chip" style="background:#6694FF">80</div>
+      <div class="chip" style="background:#3373FF">90</div>
+      <div class="chip" style="background:#0050FF">100</div>
+      <div class="chip" style="background:#003ECC">120</div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="label">VM Red</div>
+    <div class="scale">
+      <div class="chip light" style="background:#FDEAEA">10</div>
+      <div class="chip light" style="background:#FACFCF">20</div>
+      <div class="chip" style="background:#F46B6B">80</div>
+      <div class="chip" style="background:#F23838">90</div>
+      <div class="chip" style="background:#E10A0A">100</div>
+      <div class="chip" style="background:#B30808">120</div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="label">Pink</div>
+    <div class="scale">
+      <div class="chip light" style="background:#FFE6F4">10</div>
+      <div class="chip light" style="background:#FFCCE9">20</div>
+      <div class="chip" style="background:#FF33A6">90</div>
+      <div class="chip" style="background:#FF0090">100</div>
+    </div>
+  </div>
+</body>
+</html>

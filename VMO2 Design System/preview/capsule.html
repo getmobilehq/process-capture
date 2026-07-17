@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Capsule + endcap (signature)</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { margin: 0; padding: 28px; background: var(--bg); font-family: var(--font-sans); }
+  .row { display: flex; flex-wrap: wrap; gap: 28px 36px; align-items: center; }
+  .cap { display: inline-flex; align-items: center; height: 48px; padding: 0 28px 0 22px; border-radius: var(--radius-pill); color: white; font-weight: 700; font-size: 18px; position: relative; }
+  .cap::after { content:''; width: 48px; height: 48px; border-radius: 50%; position: absolute; right: -28px; top: 0; }
+  .red  { background: var(--vm-red); }   .red::after  { background: var(--o2-blue); }
+  .blue { background: var(--o2-blue); }  .blue::after { background: var(--vm-red); }
+  .pink { background: var(--vmo2-pink); } .pink::after{ background: var(--vm-red); }
+  .gradient { background: linear-gradient(90deg, var(--vm-red), var(--vmo2-pink)); } .gradient::after { background: var(--vmo2-pink); right: -24px; }
+  .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-muted); font-weight: 700; margin: 0 0 18px; }
+</style>
+</head>
+<body>
+  <p class="label">The signature shape — pill + offset circle</p>
+  <div class="row">
+    <div class="cap red">Benefits to VMO2</div>
+    <div class="cap blue">For our customers</div>
+    <div class="cap pink">What's next?</div>
+    <div class="cap gradient">Instant expert</div>
+  </div>
+</body>
+</html>
