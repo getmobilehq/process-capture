@@ -67,3 +67,37 @@ Phase 7 hardening.
 - [x] build — `✓ Compiled successfully`
 
 **Open concerns** — none.
+
+---
+
+## Phase 2 · Entry flow — complete (2026-07-17)
+
+**Built**
+
+- `lib/entry.ts` — `resolveEntry` (valid / invalid / used-up) and `startSession`
+  (create-or-resume, seeds coverage, sets interviewee in_progress, persists
+  identity edits). Server-owned (P1).
+- `app/i/[token]/page.tsx` — entry screen or polite dead-end (FR-2.1).
+- `app/i/[token]/actions.ts` — `startInterview` server action (FR-2.2).
+- `components/entry/EntryScreen.tsx` — privacy notice (Appendix C copy, RETENTION_DAYS
+  interpolated), editable prefilled identity, optional process picker (FR-2.3).
+- `components/entry/DeadEnd.tsx` — invalid / used-up dead-ends.
+- `app/i/[token]/interview/page.tsx` — Phase 2 interview shell (redirects if no open
+  session) with the live coverage rail.
+- `components/interview/CoverageRail.tsx` — 12-facet rail, gradient progress bar,
+  capsule+endcap motif, demo state colours (FR-3.5).
+- `app/brand-ui.css` — shared VMO2 component language from the approved demo.
+- Playwright global setup seeds `data/e2e.db`; Chromium installed.
+
+**Gate**
+
+- [x] lint — clean
+- [x] typecheck — clean
+- [x] test — 18 unit+integration passing, incl. entry: valid/invalid/reused token,
+      create-vs-resume, identity persistence, used-up/unknown rejection
+- [x] build — `✓ Compiled successfully` (entry + interview routes dynamic)
+- [x] e2e — 3 passing: unknown-token dead-end, entry renders (privacy + start
+      button), starting creates exactly one session row and lands on the interview
+
+**Open concerns** — the interview page is a shell; the conversational engine (FR-3)
+lands in Phase 3.
