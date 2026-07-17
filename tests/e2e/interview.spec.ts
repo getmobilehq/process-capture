@@ -16,17 +16,16 @@ function lastToken(): string {
   }
 }
 
-function sessionStatus(token: string): string | undefined {
+function sessionFor(token: string): { id: string; status: string } | undefined {
   const db = new Database(DB_PATH, { readonly: true });
   try {
-    const row = db
+    return db
       .prepare(
-        `SELECT s.status FROM sessions s
+        `SELECT s.id, s.status FROM sessions s
          JOIN interviewees i ON i.id = s.interviewee_id
          WHERE i.invite_token = ? ORDER BY s.created_at DESC LIMIT 1`,
       )
-      .get(token) as { status: string } | undefined;
-    return row?.status;
+      .get(token) as { id: string; status: string } | undefined;
   } finally {
     db.close();
   }
@@ -75,10 +74,21 @@ test('golden path: mocked interview reaches review with 11 answered + 1 unknown'
   expect(unknown).toBe(1);
   expect(pendingOrPartial).toBe(0);
 
-  // UI reflects completion and full coverage.
-  await expect(page.getByText(/Your interview is complete/i)).toBeVisible();
+  // UI reflects review and full coverage.
   await expect(page.getByText(/12\/12 resolved/)).toBeVisible();
+  expect(sessionFor(token)!.status).toBe('review');
 
-  // Persisted state agrees.
-  expect(sessionStatus(token)).toBe('review');
+  // Confirm the review → interview completes and a spec is generated (FR-4.2, FR-5).
+  await page.getByRole('button', { name: /finish/i }).click();
+  await expect(page.getByText(/Your interview is complete/i)).toBeVisible();
+
+  const session = sessionFor(token)!;
+  expect(session.status).toBe('complete');
+
+  // The generated spec downloads and honours provenance (P4) and email absence (P7).
+  const specRes = await page.request.get(`/api/spec/${session.id}`);
+  expect(specRes.ok()).toBeTruthy();
+  const md = await specRes.text();
+  expect(md).toMatch(/^provenance: stated$/m);
+  expect(md).not.toContain('@example.com');
 });

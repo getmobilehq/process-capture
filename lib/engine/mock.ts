@@ -87,8 +87,12 @@ export function mockRespond(params: CallParams): ModelResponse {
   const lowest = coverage.find((c) => c.state === 'pending' || c.state === 'partial')?.facetId ?? null;
 
   // After end_interview has been accepted, deliver the playback (FR-4.1).
-  if (lastAppliedTool === 'end_interview' || session.status === 'review') {
+  if (lastAppliedTool === 'end_interview') {
     return textResponse(PLAYBACK);
+  }
+  // A correction sent during review — acknowledge (real model would supersede).
+  if (session.status === 'review') {
+    return textResponse(REVIEW_ACK);
   }
 
   // Just applied a resolution tool: either ask the next facet's question, or (if
@@ -103,6 +107,9 @@ export function mockRespond(params: CallParams): ModelResponse {
   if (lowest === null) return toolResponse([{ name: 'end_interview', input: {} }]);
   return toolResponse(resolveFacet(lowest));
 }
+
+const REVIEW_ACK =
+  'Thank you — I have noted that. Is there anything else you would like to change before I close?';
 
 /** Opening message for the mock: warm welcome + one question on the first facet. */
 export const OPENING_MOCK = `Thanks for making the time — this should take about half an hour, and there are no wrong answers. ${questionFor(

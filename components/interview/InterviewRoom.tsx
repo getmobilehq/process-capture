@@ -21,6 +21,7 @@ export interface InterviewRoomProps {
   initialCoverage: CoverageView[];
   initialStatus: 'open' | 'review' | 'complete' | 'abandoned';
   startedAtMs: number;
+  surveyUrl: string;
 }
 
 function fmt(elapsedSec: number): string {
@@ -35,7 +36,9 @@ export function InterviewRoom(props: InterviewRoomProps) {
   const [status, setStatus] = useState(props.initialStatus);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [finishing, setFinishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [survey, setSurvey] = useState(props.surveyUrl);
   const [elapsed, setElapsed] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -52,9 +55,26 @@ export function InterviewRoom(props: InterviewRoomProps) {
 
   const nextSeq = useMemo(() => turns.reduce((m, t) => Math.max(m, t.seq), 0) + 1, [turns]);
 
+  async function finish() {
+    if (finishing || status !== 'review') return;
+    setError(null);
+    setFinishing(true);
+    try {
+      const res = await fetch(`/api/interview/${props.sessionId}/confirm`, { method: 'POST' });
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(result?.error ?? 'We could not finalise your interview.');
+      setStatus('complete');
+      if (result.surveyUrl) setSurvey(result.surveyUrl);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'We could not finalise your interview.');
+    } finally {
+      setFinishing(false);
+    }
+  }
+
   async function send() {
     const content = input.trim();
-    if (!content || sending || status !== 'open') return;
+    if (!content || sending || (status !== 'open' && status !== 'review')) return;
     const seq = nextSeq;
     setError(null);
     setSending(true);
@@ -125,12 +145,43 @@ export function InterviewRoom(props: InterviewRoomProps) {
         </div>
 
         <footer style={{ borderTop: '1px solid var(--ink-100)', padding: 'var(--space-4) var(--space-5)' }}>
-          {status === 'open' ? (
+          {error && (
+            <p className="t-caption" style={{ color: 'var(--vm-red)', marginBottom: 8 }} role="alert">
+              {error}
+            </p>
+          )}
+
+          {status === 'complete' ? (
+            <p className="pc-privacy" style={{ margin: 0 }}>
+              <b>Thank you.</b> Your interview is complete and has been shared with the process
+              architecture team. You can close this window.
+              {survey && (
+                <>
+                  {' '}
+                  If you have a moment,{' '}
+                  <a href={survey} target="_blank" rel="noreferrer">
+                    tell us how it went
+                  </a>
+                  .
+                </>
+              )}
+            </p>
+          ) : (
             <>
-              {error && (
-                <p className="t-caption" style={{ color: 'var(--vm-red)', marginBottom: 8 }} role="alert">
-                  {error} — your message is saved; press send to retry.
-                </p>
+              {status === 'review' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                  <span className="t-body-s" style={{ color: 'var(--fg-muted)' }}>
+                    If that all looks right, you&rsquo;re done. Otherwise, tell me what to change.
+                  </span>
+                  <button
+                    className="pc-btn sm"
+                    onClick={() => void finish()}
+                    disabled={finishing}
+                    style={{ marginLeft: 'auto' }}
+                  >
+                    {finishing ? 'Finishing…' : 'Yes, that’s right — finish'}
+                  </button>
+                </div>
               )}
               <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
                 <textarea
@@ -139,7 +190,7 @@ export function InterviewRoom(props: InterviewRoomProps) {
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={onKeyDown}
                   rows={2}
-                  placeholder="Type your reply…"
+                  placeholder={status === 'review' ? 'Add a correction…' : 'Type your reply…'}
                   disabled={sending}
                   style={{
                     flex: 1,
@@ -150,16 +201,11 @@ export function InterviewRoom(props: InterviewRoomProps) {
                     padding: '12px 14px',
                   }}
                 />
-                <button className="pc-btn" onClick={() => void send()} disabled={sending || !input.trim()}>
+                <button className="pc-btn ghost" onClick={() => void send()} disabled={sending || !input.trim()}>
                   Send
                 </button>
               </div>
             </>
-          ) : (
-            <p className="pc-privacy" style={{ margin: 0 }}>
-              <b>Thank you.</b> Your interview is complete and has been shared with the process
-              architecture team. You can close this window.
-            </p>
           )}
         </footer>
       </section>
