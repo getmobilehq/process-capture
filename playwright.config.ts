@@ -19,7 +19,7 @@ export default defineConfig({
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
     // E2E runs against the mocked-model build; MOCK_MODEL short-circuits Anthropic.
-    command: `MOCK_MODEL=1 DATABASE_URL=file:./data/e2e.db PORT=${PORT} npm run dev`,
+    command: `MOCK_MODEL=1 ADMIN_PASSWORD=test-admin DATABASE_URL=file:./data/e2e.db PORT=${PORT} npm run dev`,
     url: BASE_URL,
     // Always let Playwright own the server lifecycle so it never reuses a server
     // holding a stale handle to the DB that global-setup re-seeds.

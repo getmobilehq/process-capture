@@ -106,3 +106,25 @@ decision, why it is the minimal option (§10).
 - **D4.5 · Playwright owns the server** — `reuseExistingServer: false` so Playwright
   always starts/stops its own dev server; a reused server can hold a stale handle to
   the DB that global-setup re-seeds.
+
+## Phase 5 — Console
+
+- **D5.1 · Auth = bcrypt-at-boot + HMAC cookie** — ADMIN_PASSWORD is bcrypt-hashed
+  on first use; a correct password mints an HMAC(sessionkey) cookie (httpOnly,
+  sameSite lax, 8h). Login is a native form POST to a route handler that rate-limits
+  per IP (10 / 15 min, in-process). Documented as pilot-grade (FR-1.1); SSO is a V1
+  non-goal. Why minimal: no external session store; one env var enables/disables the
+  whole console.
+- **D5.2 · Mutations are server actions, reads are server components** — Create
+  project / add interviewee / update finding / raise conflict are `'use server'`
+  actions guarded by `requireAdmin()`; the register/findings/conflicts views are
+  server components composing `lib/console.ts` read models. Why minimal: no client
+  data-fetching, and the same guard covers every mutation.
+- **D5.3 · Conflicts are surfaced, never adjudicated** — `buildConflicts` lists any
+  facet with rule/metric statements from ≥2 informants, side-by-side and attributed,
+  with a numeric-difference pre-highlight; "Raise as finding" creates a
+  `candidate_conflict` for a human (P2, FR-1.6). The mock records facet 6 as a
+  role-banded `rule` and facet 11 as a `metric` so two informants produce a real
+  cross-informant pair.
+- **D5.4 · Copy-to-clipboard only, no email** — Invite links are shown with a
+  client copy button; nothing is sent (D3 / FR-1.3).

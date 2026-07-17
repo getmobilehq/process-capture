@@ -14,6 +14,6 @@ export default defineConfig({
     globals: true,
     passWithNoTests: true,
     // Tests never call the live model; the deterministic mock drives the engine.
-    env: { MOCK_MODEL: '1' },
+    env: { MOCK_MODEL: '1', ADMIN_PASSWORD: 'test-admin' },
   },
 });

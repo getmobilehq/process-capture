@@ -174,3 +174,37 @@ Review confirm/correct + spec generation are Phase 4.
       `provenance: stated` and no email.
 
 **Open concerns** — none new.
+
+---
+
+## Phase 5 · Console — complete (2026-07-18)
+
+**Built**
+
+- `lib/auth.ts` — bcrypt-at-boot password check, HMAC session cookie, per-IP login
+  rate-limiter; `lib/console-auth.ts` `requireAdmin` guard (FR-1.1).
+- Login page + `POST /api/console/login` (rate-limited) + `/logout`.
+- `/console` — campaign list + new-campaign form (name, department, description,
+  target processes) (FR-1.2).
+- `/console/projects/[id]` with three tabs:
+  - **Register** (FR-1.4) — add interviewee (issues unique link, copy-to-clipboard,
+    no email — FR-1.3), table of role/status/coverage bar/duration/spec download.
+  - **Findings** (FR-1.5) — list with type/facet/detail and status + routedTo edits.
+  - **Candidate conflicts** (FR-1.6) — cross-informant rule/metric statements
+    side-by-side, numeric-difference highlight, "Raise as finding".
+- `lib/console.ts` register + conflict read models; `components/console/CopyLink`.
+- Mock records facet 6 (role-banded rule) + facet 11 (metric) so conflicts surface.
+
+**Gate**
+
+- [x] lint — clean
+- [x] typecheck — clean
+- [x] test — 52 unit+integration (adds auth: password verify, session token,
+      rate-limit).
+- [x] build — `✓ Compiled successfully`
+- [x] e2e — **architect creates campaign → issues links → two mocked interviews
+      complete → register shows coverage + downloadable specs → facet-6 conflict pair
+      surfaces across informants → raised as a candidate_conflict finding.**
+
+**Open concerns** — none new. Phase 6 wires the live model + eval harness (needs the
+API key, now in `.env`).
