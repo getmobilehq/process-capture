@@ -138,3 +138,39 @@ lands in Phase 3.
 
 **Open concerns** — token-level streaming deferred to V1.1 (D3.1, flagged for Paul).
 Review confirm/correct + spec generation are Phase 4.
+
+---
+
+## Phase 4 · Review + spec — complete (2026-07-17)
+
+**Built**
+
+- `lib/spec/validate.ts` — schema validator (FR-5.5): frontmatter key set, `provenance:
+  stated` (P4), email absence (P7), 12 ordered sections, facet-5 ordered-list rule.
+- `lib/spec/draft.ts` — per-facet prose drafting from that facet's live statements
+  only; deterministic under mock, model-drafted live; facet 5 → ordered list.
+- `lib/spec/render.ts` — deterministic frontmatter built in code (P1/P4), body
+  assembly, unknown/not-applicable templates, findings callouts.
+- `lib/spec/generate.ts` — render → validate → save; invalid spec throws and blocks
+  completion (FR-5.5).
+- `lib/engine/engine.ts` `completeInterview` — confirm → generate spec → session +
+  interviewee complete (FR-4.2); review corrections route as ordinary turns (FR-4.1).
+- `POST /api/interview/[sessionId]/confirm`, `GET /api/spec/[sessionId]` (Markdown
+  download, versioned via `?v=`).
+- `InterviewRoom` review state: Finish button + correction box; complete state with
+  closing + optional survey link.
+
+**Gate**
+
+- [x] lint — clean
+- [x] typecheck — clean
+- [x] test — 48 unit+integration: **validator with 12 fixtures incl. every failure
+      case**; **golden-path yields a valid spec** — provenance present, email absent,
+      open_items populated, coverage {11,1,0}, session+interviewee complete;
+      idempotent completion; regeneration increments version; non-review completion
+      refused.
+- [x] build — `✓ Compiled successfully`
+- [x] e2e (mocked) — golden path → Finish → complete; spec downloads with
+      `provenance: stated` and no email.
+
+**Open concerns** — none new.

@@ -8,6 +8,7 @@ import {
 } from '@/lib/db/queries';
 import { openInterview } from '@/lib/engine/engine';
 import { InterviewRoom } from '@/components/interview/InterviewRoom';
+import { config } from '@/lib/config';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -42,6 +43,7 @@ export default async function InterviewPage({ params }: { params: { token: strin
           initialCoverage={coverage}
           initialStatus={session.status}
           startedAtMs={(session.startedAt ?? new Date()).getTime()}
+          surveyUrl={config.surveyUrl}
         />
       </div>
     </main>

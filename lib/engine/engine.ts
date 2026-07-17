@@ -16,13 +16,16 @@ import {
   appendTurn,
   getCoverage,
   getInterviewee,
+  getLatestSpec,
   getSession,
   listTurns,
   raiseFinding,
   recordStatement,
   setCoverage,
+  setIntervieweeStatus,
   updateSession,
 } from '@/lib/db/queries';
+import { generateAndSaveSpec } from '@/lib/spec/generate';
 import { allResolved, IllegalCoverageTransitionError, type CoverageStateValue } from './coverage';
 import { getFacet } from '@/lib/facets/facets';
 import { buildSystemPrompt, OPENING_INSTRUCTION } from './prompt';
@@ -223,10 +226,11 @@ export async function processUserTurn(
     warnings,
   });
 
-  // Only an open session accepts new turns.
-  if (session.status !== 'open') {
+  // Open and review sessions accept turns (review turns are corrections, FR-4.1).
+  // Completed/abandoned sessions do not.
+  if (session.status === 'complete' || session.status === 'abandoned') {
     const lastAgent = [...listTurns(sessionId, db)].reverse().find((t) => t.speaker === 'agent');
-    return result(session.status === 'review', [], lastAgent?.seq ?? 0, lastAgent?.content ?? '');
+    return result(false, [], lastAgent?.seq ?? 0, lastAgent?.content ?? '');
   }
 
   // Idempotency (FR-3.9): dedupe the user turn; if its agent reply already exists,
@@ -239,8 +243,8 @@ export async function processUserTurn(
 
   const userTurnCount = listTurns(sessionId, db).filter((t) => t.speaker === 'user').length;
 
-  // Hard stop before spending a model call.
-  if (userTurnCount >= maxTurns) {
+  // Hard stop before spending a model call (open interviews only).
+  if (session.status === 'open' && userTurnCount >= maxTurns) {
     forceReview(session, db);
     const agentSeq = nextAgentSeq(sessionId, input.seq, db);
     appendTurn({ sessionId, seq: agentSeq, speaker: 'agent', content: TRUNCATION_MESSAGE }, db);
@@ -309,6 +313,38 @@ export async function processUserTurn(
   );
 
   return result(getSession(sessionId, db)!.status === 'review', warnings, agentSeq, agentText);
+}
+
+// ── Completion (FR-4.2, FR-5) ────────────────────────────────────────────────
+/**
+ * Confirm the review and complete the interview: generate + validate + save the
+ * spec, then set session and interviewee to complete. An invalid spec throws and
+ * blocks completion (FR-5.5). Idempotent once complete.
+ */
+export async function completeInterview(
+  sessionId: string,
+  db: DB = getDb(),
+): Promise<{ specVersion: number }> {
+  const session = getSession(sessionId, db);
+  if (!session) throw new Error(`No session ${sessionId}`);
+  if (session.status === 'complete') {
+    return { specVersion: getLatestSpec(sessionId, db)?.version ?? 0 };
+  }
+  if (session.status !== 'review') {
+    throw new Error(`Cannot complete a session in status ${session.status}`);
+  }
+
+  const startedAt = session.startedAt ?? new Date();
+  const durationSec = Math.max(0, Math.round((Date.now() - startedAt.getTime()) / 1000));
+  // Persist timing first so the spec reflects completion, but keep status 'review'
+  // until the spec validates — an invalid spec must block completion.
+  updateSession(sessionId, { completedAt: new Date(), durationSec }, db);
+
+  const spec = await generateAndSaveSpec(sessionId, db); // throws on invalid → completion blocked
+
+  updateSession(sessionId, { status: 'complete' }, db);
+  setIntervieweeStatus(session.intervieweeId, 'complete', db);
+  return { specVersion: spec.version };
 }
 
 /** The agent reply seq: userSeq+1 unless taken, else next free seq. */

@@ -82,3 +82,27 @@ decision, why it is the minimal option (§10).
   responder that reads live coverage and resolves one facet per user turn (facet 9 →
   unknown, rest → answered), then ends. It is the offline arbiter for the Phase 3–5
   gates; the live model is wired and evaluated in Phase 6 (§9).
+
+## Phase 4 — Review + spec
+
+- **D4.1 · Confirm is an explicit action** — Review offers a "Finish" button
+  (`POST /confirm`) to complete, and a text box for corrections (ordinary turns,
+  FR-4.1). Why minimal: distinguishing confirm from correction by parsing free text
+  is fragile; an explicit button is unambiguous and the correction path reuses the
+  engine loop.
+- **D4.2 · Timing persisted before validation** — `completeInterview` writes
+  `completedAt`/`durationSec` (status still `review`), then generates + validates the
+  spec; only a valid spec flips status to `complete` (FR-5.5). An invalid spec leaves
+  the session in review with nothing saved — completion is genuinely blocked.
+- **D4.3 · Frontmatter without a YAML dependency** — The renderer emits the fixed
+  frontmatter shape by hand and the validator checks it with targeted line/regex
+  rules (exact key set, `provenance: stated`, email-absence, coverage counts, date,
+  duration). Why minimal: P6 — the format is owned by our own renderer, so a YAML
+  parser dependency buys nothing.
+- **D4.4 · Mock review corrections are acknowledged, not superseded** — Under
+  `MOCK_MODEL`, a correction sent during review gets a short acknowledgement and
+  records no statement; the live model records a superseding statement. The gate
+  tests the confirm→spec path, not correction fidelity (that is covered by §9 evals).
+- **D4.5 · Playwright owns the server** — `reuseExistingServer: false` so Playwright
+  always starts/stops its own dev server; a reused server can hold a stale handle to
+  the DB that global-setup re-seeds.
