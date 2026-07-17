@@ -58,3 +58,27 @@ decision, why it is the minimal option (§10).
   setup and the app runs against it (`MOCK_MODEL=1`). Tests read tokens/session
   rows directly from that file with better-sqlite3. Why minimal: reproducible,
   offline, no console dependency (console arrives in Phase 5).
+
+## Phase 3 — Interview engine
+
+- **D3.1 · Turn transport is a single JSON exchange, not token streaming** — FR-3.1
+  says the agent turn is "streamed to the client". V1 sends the whole agent turn as
+  one JSON response (`POST /api/interview/{id}/turn`) and the client appends it,
+  with a typing indicator during the request. Why minimal: the engine's tool loop,
+  validation, and persistence are transport-agnostic; token-level SSE streaming adds
+  client/stream plumbing with no gate impact and is deferred to V1.1. **Flag for
+  Paul:** this is the one place a stated FR is simplified — the conversational
+  latency (one model round-trip per turn) is acceptable for a 25–40 min interview.
+- **D3.2 · Intermediate tool calls are not persisted as turns** — Only the final
+  agent question and the user answer are stored as `Turn` rows; the per-turn
+  tool_use/tool_result exchange lives only in the in-flight message array. Resume
+  replays turns + injects live coverage into the system prompt (FR-3.8), so the
+  model needs no tool-call history. Why minimal: keeps the transcript and model
+  context lean; state of record is the DB (statements, coverage), per P1.
+- **D3.3 · `maxTurns` override on `processUserTurn`** — The hard-stop cap is
+  `config.sessionMaxTurns` but overridable per call, purely so the FR-3.7 gate can
+  trigger truncation deterministically without re-importing a cached config.
+- **D3.4 · Deterministic mock model** — `MOCK_MODEL=1` routes to a scripted
+  responder that reads live coverage and resolves one facet per user turn (facet 9 →
+  unknown, rest → answered), then ends. It is the offline arbiter for the Phase 3–5
+  gates; the live model is wired and evaluated in Phase 6 (§9).

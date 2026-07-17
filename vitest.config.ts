@@ -13,5 +13,7 @@ export default defineConfig({
     exclude: ['tests/e2e/**', 'node_modules/**'],
     globals: true,
     passWithNoTests: true,
+    // Tests never call the live model; the deterministic mock drives the engine.
+    env: { MOCK_MODEL: '1' },
   },
 });

@@ -101,3 +101,40 @@ Phase 7 hardening.
 
 **Open concerns** — the interview page is a shell; the conversational engine (FR-3)
 lands in Phase 3.
+
+---
+
+## Phase 3 · Interview engine — complete (2026-07-17)
+
+**Built**
+
+- `lib/engine/tools.ts` — the four model tools with Anthropic schemas + Zod
+  validators (record_statement, set_coverage, raise_finding, end_interview).
+- `lib/engine/prompt.ts` — Appendix B system prompt: conduct rules + facet spec +
+  live coverage injected each turn.
+- `lib/engine/model.ts` — model boundary; live Anthropic call + `MOCK_MODEL` branch.
+- `lib/engine/mock.ts` — deterministic scripted model driving the golden path.
+- `lib/engine/one-question.ts` — one-question heuristic (quotes stripped).
+- `lib/engine/engine.ts` — `openInterview` + `processUserTurn`: tool loop, server
+  validation/apply (P1), one-question reprompt (FR-3.3), resume by replay (FR-3.8),
+  idempotency on (sessionId, seq) (FR-3.9), hard stop → review (FR-3.7).
+- `app/api/interview/[sessionId]/turn/route.ts` — turn endpoint (seq/length caps).
+- `components/interview/InterviewRoom.tsx` — client chat, live coverage rail,
+  session timer (FR-3.6), optimistic send with idempotent retry.
+- Interview page opens the interview server-side and renders the room.
+
+**Gate**
+
+- [x] lint — clean
+- [x] typecheck — clean
+- [x] test — 32 unit+integration: **every illegal tool call rejected** (8: end
+      while pending, illegal transition, bad facetId/kind, disallowed finding type,
+      unknown tool); **mocked-model loop drives coverage to completion**; opening =
+      one question; unknown_retarget finding on the unknown facet; one-question per
+      turn; idempotent resubmit; hard-stop truncation.
+- [x] build — `✓ Compiled successfully`
+- [x] e2e (mocked) — golden path: start → answer → **review with 11 answered + 1
+      unknown**, UI shows "12/12 resolved" and completion, DB status = review.
+
+**Open concerns** — token-level streaming deferred to V1.1 (D3.1, flagged for Paul).
+Review confirm/correct + spec generation are Phase 4.

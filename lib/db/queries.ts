@@ -162,6 +162,16 @@ export function getSession(id: string, db: DB = getDb()) {
   return db.select().from(sessions).where(eq(sessions.id, id)).get();
 }
 
+/** The most recent session for an interviewee, whatever its status. */
+export function getLatestSession(intervieweeId: string, db: DB = getDb()) {
+  return db
+    .select()
+    .from(sessions)
+    .where(eq(sessions.intervieweeId, intervieweeId))
+    .orderBy(desc(sessions.createdAt))
+    .get();
+}
+
 /** The open (resumable) session for an interviewee, if any (FR-3.8). */
 export function getResumableSession(intervieweeId: string, db: DB = getDb()) {
   return db
