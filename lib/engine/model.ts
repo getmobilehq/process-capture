@@ -40,7 +40,11 @@ export interface CallParams {
 
 let client: Anthropic | null = null;
 function getClient(): Anthropic {
-  if (!client) client = new Anthropic({ apiKey: config.anthropicApiKey });
+  // Extra retries + a generous timeout ride out transient connection blips
+  // (EHOSTUNREACH / fetch failed), which otherwise abort a turn or an eval run.
+  if (!client) {
+    client = new Anthropic({ apiKey: config.anthropicApiKey, maxRetries: 4, timeout: 60_000 });
+  }
   return client;
 }
 

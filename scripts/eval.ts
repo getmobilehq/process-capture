@@ -119,6 +119,29 @@ async function runOnce(persona: Persona, runIndex: number, runDir: string) {
   return { allPass, assertions, usage, userTurnCount: data.userTurnCount };
 }
 
+const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
+
+/** Retry a run on transient network/API errors so a blip doesn't abort the batch. */
+async function runWithRetry(persona: Persona, runIndex: number, runDir: string, maxAttempts = 4) {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await runOnce(persona, runIndex, runDir);
+    } catch (err) {
+      const msg = String((err as Error)?.message ?? err);
+      const transient =
+        (err as { name?: string })?.name === 'APIConnectionError' ||
+        /connection error|fetch failed|EHOSTUNREACH|ETIMEDOUT|ECONNRESET|socket hang up|network/i.test(msg);
+      if (transient && attempt < maxAttempts) {
+        const wait = 5000 * attempt;
+        console.log(`  run ${runIndex}: transient error (${msg.slice(0, 60)}) — retrying in ${wait / 1000}s`);
+        await sleep(wait);
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
 async function main() {
   const { runs, persona } = parseArgs();
   if (config.mockModel) {
@@ -150,7 +173,7 @@ async function main() {
     console.log(`── Persona: ${p.id} (${p.style}, ${p.role}) ──────────────────────────`);
     let consecutive = 0;
     for (let r = 1; r <= runs; r += 1) {
-      const { allPass, assertions, usage, userTurnCount } = await runOnce(p, r, runDir);
+      const { allPass, assertions, usage, userTurnCount } = await runWithRetry(p, r, runDir);
       totalInput += usage.inputTokens;
       totalOutput += usage.outputTokens;
       consecutive = allPass ? consecutive + 1 : 0;

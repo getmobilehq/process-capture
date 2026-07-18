@@ -17,7 +17,9 @@ export interface DraftStatement {
 
 let client: Anthropic | null = null;
 function getClient(): Anthropic {
-  if (!client) client = new Anthropic({ apiKey: config.anthropicApiKey });
+  if (!client) {
+    client = new Anthropic({ apiKey: config.anthropicApiKey, maxRetries: 4, timeout: 60_000 });
+  }
   return client;
 }
 
