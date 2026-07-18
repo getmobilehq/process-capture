@@ -327,15 +327,31 @@ export async function processUserTurn(
 
   const nowReview = getSession(sessionId, db)!.status === 'review';
 
-  // One-question rule (FR-3.3) — closing/review turns excepted. Reprompt once.
-  if (!nowReview && agentText && violatesOneQuestion(agentText)) {
-    messages.push({ role: 'assistant', content: [{ type: 'text', text: agentText }] });
-    messages.push({ role: 'user', content: 'Please ask exactly one question in your next message.' });
-    const retry = await callModel({ sessionId, system: buildSystemPrompt({ role: interviewee.role, processName: session.processName, coverage: coverageView(getCoverage(sessionId, db)) }), messages, lastAppliedTool, db });
-    if (retry.stopReason !== 'tool_use' && retry.text) {
+  // One-question rule (FR-3.3) — closing/review turns excepted. Reprompt on
+  // violation (up to two attempts), then accept and log a warning.
+  if (!nowReview && agentText) {
+    for (let attempt = 0; attempt < 2 && violatesOneQuestion(agentText); attempt += 1) {
+      messages.push({ role: 'assistant', content: [{ type: 'text', text: agentText }] });
+      messages.push({
+        role: 'user',
+        content:
+          'Your last message contained more than one question. Re-ask as a single question only — one question mark, no clarifying or rephrased second question. Keep the same warm tone.',
+      });
+      const retry = await callModel({
+        sessionId,
+        system: buildSystemPrompt({
+          role: interviewee.role,
+          processName: session.processName,
+          coverage: coverageView(getCoverage(sessionId, db)),
+        }),
+        messages,
+        lastAppliedTool,
+        db,
+      });
+      if (retry.stopReason === 'tool_use' || !retry.text) break;
       agentText = retry.text;
-      if (violatesOneQuestion(agentText)) warnings.push('one-question rule still violated after reprompt');
     }
+    if (violatesOneQuestion(agentText)) warnings.push('one-question rule still violated after reprompt');
   }
 
   if (!agentText) agentText = 'Thank you.';

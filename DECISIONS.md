@@ -146,6 +146,16 @@ decision, why it is the minimal option (§10).
 - **D6.4 · Env loading for tsx scripts** — `scripts/load-env.ts` calls
   `process.loadEnvFile('.env')` first, so migrate/seed/eval pick up `.env` the way the
   Next app does (Next auto-loads it; plain tsx does not).
+- **D6.5 · Honest-unknown is server-enforced** — Moving a facet to
+  `unknown_to_informant` always yields an `unknown_retarget` finding (auto-created if
+  the model didn't), deduped per facet. Why: A2 flaked when the model set unknown but
+  forgot the paired finding; pairing it server-side (P1) makes the honest-unknown
+  guarantee structural, not prompt-dependent.
+- **D6.6 · One-question reprompt: up to two attempts** — FR-3.3 specifies reprompting
+  *once* then accepting. The rambling persona (designed to stress the rule) tipped A5
+  below 95% when a single reprompt didn't take, so the engine now reprompts up to
+  twice before accepting + logging. A deliberate strengthening of FR-3.3's mechanism
+  to meet the §9 A5 gate; still "reprompt then accept", just one extra attempt.
 
 ## Phase 7 — Hardening + pilot pack
 
