@@ -1,7 +1,7 @@
 /* Brand tokens + Aeonik Pro faces are copied verbatim into /public/brand and
    loaded as-is (do not restyle or approximate — BUILD-REQUIREMENTS §4/FR-6.1).
-   Served statically, so @import by absolute URL. */
-@import url('/brand/colors_and_type.css');
+   The vendor token sheet is loaded via a <link> in app/layout.tsx (keeps its
+   relative font paths intact and loads reliably); brand-ui is bundled here. */
 @import './brand-ui.css';
 
 *,

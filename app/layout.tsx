@@ -10,6 +10,11 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en-GB">
+      <head>
+        {/* Vendor brand tokens + Aeonik Pro @font-face, served statically from
+            /public/brand so its relative font URLs resolve correctly (FR-6.1). */}
+        <link rel="stylesheet" href="/brand/colors_and_type.css" />
+      </head>
       <body>{children}</body>
     </html>
   );
