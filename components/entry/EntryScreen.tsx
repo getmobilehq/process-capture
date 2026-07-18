@@ -9,6 +9,7 @@ export interface EntryScreenProps {
   targetProcesses: string[];
   retentionDays: number;
   resuming: boolean;
+  voiceEnabled: boolean;
 }
 
 /**
@@ -17,8 +18,17 @@ export interface EntryScreenProps {
  * posts to the `startInterview` server action.
  */
 export function EntryScreen(props: EntryScreenProps) {
-  const { token, fullName, email, role, department, targetProcesses, retentionDays, resuming } =
-    props;
+  const {
+    token,
+    fullName,
+    email,
+    role,
+    department,
+    targetProcesses,
+    retentionDays,
+    resuming,
+    voiceEnabled,
+  } = props;
 
   return (
     <div className="pc-narrow">
@@ -43,6 +53,13 @@ export function EntryScreen(props: EntryScreenProps) {
           monitoring &ndash; just this conversation. Your answers are attributed to you and shared
           with the process architecture team. Data is retained for {retentionDays} days and you can
           ask for it to be removed at any time. Please describe colleagues by role rather than name.
+          {voiceEnabled && (
+            <>
+              {' '}
+              If you choose to answer by voice, your recording is sent to a third-party service to
+              convert it to text; we keep the text, not the audio.
+            </>
+          )}
         </p>
 
         <form action={startInterview} style={{ marginTop: 'var(--space-5)' }}>

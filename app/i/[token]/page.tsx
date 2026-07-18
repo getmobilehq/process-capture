@@ -30,6 +30,7 @@ export default function EntryPage({ params }: { params: { token: string } }) {
         targetProcesses={project.targetProcesses}
         retentionDays={config.retentionDays}
         resuming={Boolean(resumable)}
+        voiceEnabled={config.voiceEnabled}
       />
     </main>
   );

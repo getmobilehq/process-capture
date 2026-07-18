@@ -171,3 +171,17 @@ decision, why it is the minimal option (§10).
 - **D7.3 · Rate limiting is per-process in-memory** — Login and the public turn
   endpoint use an in-memory fixed-window limiter; sufficient for a single-instance
   pilot. Swap for a shared store (Redis) only if the deployment scales horizontally.
+
+## V1.1 — Voice input (owner-requested enhancement)
+
+- **DV.1 · Whisper transcription, opt-in and server-side** — Interviewees can answer
+  by voice: the browser records audio (MediaRecorder) and posts it to
+  `/api/transcribe`, which calls OpenAI Whisper **server-side** (the key never
+  reaches the client) and returns text. Enabled only when `OPENAI_API_KEY` is set;
+  otherwise the mic button is not shown. **Deviates from the build's "Anthropic API
+  only" rule (§10) — a deliberate owner decision.** The privacy notice gains a line
+  about third-party transcription (P7); Permissions-Policy allows `microphone=(self)`.
+- **DV.2 · Transcript fills the reply box, never auto-sends** — The informant reviews
+  and edits the transcription before pressing Send, so what becomes a statement is
+  still what they chose to say (P2). `/api/transcribe` is rate-limited (20/min/IP)
+  and size-capped (< 24 MB).

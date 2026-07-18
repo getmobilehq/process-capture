@@ -20,6 +20,10 @@ function int(name: string, fallback: number): number {
 export const config = {
   anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? '',
   model: str('MODEL', 'claude-sonnet-4-6'),
+  // Optional voice input: OpenAI Whisper transcription (V1.1 enhancement).
+  // When unset, the mic button is not offered.
+  openaiApiKey: process.env.OPENAI_API_KEY ?? '',
+  transcribeModel: str('TRANSCRIBE_MODEL', 'whisper-1'),
   modelTemperature: int('MODEL_TEMPERATURE', 1),
   modelMaxTokens: int('MODEL_MAX_TOKENS', 4096),
   databaseUrl: str('DATABASE_URL', 'file:./data/app.db'),
@@ -30,6 +34,10 @@ export const config = {
   surveyUrl: process.env.SURVEY_URL ?? '',
   /** MOCK_MODEL short-circuits the Anthropic client for deterministic E2E/tests. */
   mockModel: process.env.MOCK_MODEL === '1',
+  /** True when optional voice input is configured. */
+  get voiceEnabled(): boolean {
+    return Boolean(process.env.OPENAI_API_KEY);
+  },
 } as const;
 
 /** Bare filesystem path from a file: URL, for better-sqlite3. */
