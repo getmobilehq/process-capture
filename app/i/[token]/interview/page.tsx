@@ -44,6 +44,7 @@ export default async function InterviewPage({ params }: { params: { token: strin
           initialStatus={session.status}
           startedAtMs={(session.startedAt ?? new Date()).getTime()}
           surveyUrl={config.surveyUrl}
+          voiceEnabled={config.voiceEnabled}
         />
       </div>
     </main>

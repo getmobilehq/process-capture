@@ -12,7 +12,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en-GB">
       <head>
         {/* Vendor brand tokens + Aeonik Pro @font-face, served statically from
-            /public/brand so its relative font URLs resolve correctly (FR-6.1). */}
+            /public/brand so its relative font URLs resolve correctly (FR-6.1).
+            Loaded as a plain <link> deliberately — routing it through Next's CSS
+            pipeline would rewrite the relative font URLs and break them. */}
+        {/* eslint-disable-next-line @next/next/no-css-tags */}
         <link rel="stylesheet" href="/brand/colors_and_type.css" />
       </head>
       <body>{children}</body>

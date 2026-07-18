@@ -22,6 +22,7 @@ export interface InterviewRoomProps {
   initialStatus: 'open' | 'review' | 'complete' | 'abandoned';
   startedAtMs: number;
   surveyUrl: string;
+  voiceEnabled: boolean;
 }
 
 function fmt(elapsedSec: number): string {
@@ -40,7 +41,11 @@ export function InterviewRoom(props: InterviewRoomProps) {
   const [error, setError] = useState<string | null>(null);
   const [survey, setSurvey] = useState(props.surveyUrl);
   const [elapsed, setElapsed] = useState(0);
+  const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
 
   useEffect(() => {
     const tick = () => setElapsed(Math.max(0, Math.round((Date.now() - props.startedAtMs) / 1000)));
@@ -69,6 +74,52 @@ export function InterviewRoom(props: InterviewRoomProps) {
       setError(err instanceof Error ? err.message : 'We could not finalise your interview.');
     } finally {
       setFinishing(false);
+    }
+  }
+
+  async function transcribe(blob: Blob) {
+    setTranscribing(true);
+    try {
+      const fd = new FormData();
+      fd.append('audio', blob, 'reply.webm');
+      const res = await fetch('/api/transcribe', { method: 'POST', body: fd });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error ?? 'Could not transcribe that.');
+      const text = String(data.text ?? '').trim();
+      if (text) setInput((prev) => (prev.trim() ? `${prev.trim()} ${text}` : text));
+      else setError('Nothing was picked up — please try again or type your reply.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not transcribe that — please type your reply.');
+    } finally {
+      setTranscribing(false);
+    }
+  }
+
+  async function toggleRecord() {
+    if (recording) {
+      recorderRef.current?.stop();
+      return;
+    }
+    if (transcribing || sending) return;
+    setError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      chunksRef.current = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      recorder.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop());
+        setRecording(false);
+        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+        if (blob.size > 0) void transcribe(blob);
+      };
+      recorder.start();
+      recorderRef.current = recorder;
+      setRecording(true);
+    } catch {
+      setError('Microphone access was blocked. You can still type your reply.');
     }
   }
 
@@ -190,17 +241,47 @@ export function InterviewRoom(props: InterviewRoomProps) {
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={onKeyDown}
                   rows={2}
-                  placeholder={status === 'review' ? 'Add a correction…' : 'Type your reply…'}
+                  placeholder={
+                    recording
+                      ? 'Listening… tap the mic to stop'
+                      : transcribing
+                        ? 'Transcribing…'
+                        : status === 'review'
+                          ? 'Add a correction…'
+                          : 'Type your reply…'
+                  }
                   disabled={sending}
                   style={{
                     flex: 1,
                     resize: 'none',
                     font: '400 15px/1.4 var(--font-sans)',
-                    border: '1.5px solid var(--ink-200)',
+                    border: `1.5px solid ${recording ? 'var(--vm-red)' : 'var(--ink-200)'}`,
                     borderRadius: 'var(--radius-md)',
                     padding: '12px 14px',
                   }}
                 />
+                {props.voiceEnabled && (
+                  <button
+                    type="button"
+                    aria-label={recording ? 'Stop recording' : 'Record your reply'}
+                    title={recording ? 'Stop recording' : 'Record your reply'}
+                    onClick={() => void toggleRecord()}
+                    disabled={sending || transcribing}
+                    style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: '50%',
+                      border: `2px solid ${recording ? 'var(--vm-red)' : 'var(--o2-blue)'}`,
+                      background: recording ? 'var(--vm-red)' : '#fff',
+                      color: recording ? '#fff' : 'var(--o2-blue)',
+                      cursor: sending || transcribing ? 'not-allowed' : 'pointer',
+                      fontSize: 18,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {transcribing ? '…' : recording ? '■' : '🎤'}
+                  </button>
+                )}
                 <button className="pc-btn ghost" onClick={() => void send()} disabled={sending || !input.trim()}>
                   Send
                 </button>
