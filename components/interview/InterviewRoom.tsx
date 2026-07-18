@@ -263,8 +263,8 @@ export function InterviewRoom(props: InterviewRoomProps) {
                 {props.voiceEnabled && (
                   <button
                     type="button"
-                    aria-label={recording ? 'Stop recording' : 'Record your reply'}
-                    title={recording ? 'Stop recording' : 'Record your reply'}
+                    aria-label={recording ? 'Stop recording' : 'Record voice answer'}
+                    title={recording ? 'Stop recording' : 'Record voice answer'}
                     onClick={() => void toggleRecord()}
                     disabled={sending || transcribing}
                     style={{

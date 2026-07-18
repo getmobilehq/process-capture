@@ -36,7 +36,7 @@ async function runMockedInterview(page: Page, token: string) {
   await page.goto(`/i/${token}`);
   await page.getByRole('button', { name: /Start interview/i }).click();
   await expect(page).toHaveURL(new RegExp(`/i/${token}/interview$`));
-  const textarea = page.getByLabel('Your reply');
+  const textarea = page.getByLabel('Your reply', { exact: true });
   const send = page.getByRole('button', { name: 'Send' });
   for (let i = 0; i < 16; i += 1) {
     await textarea.fill(`Answer ${i}`);

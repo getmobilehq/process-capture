@@ -44,7 +44,7 @@ test('golden path: mocked interview reaches review with 11 answered + 1 unknown'
   // The opening question is present before any input.
   await expect(page.locator('.pc-msg.agent').first()).toBeVisible();
 
-  const textarea = page.getByLabel('Your reply');
+  const textarea = page.getByLabel('Your reply', { exact: true });
   const send = page.getByRole('button', { name: 'Send' });
 
   let final: {

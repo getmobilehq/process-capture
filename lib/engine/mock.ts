@@ -95,29 +95,29 @@ const PLAYBACK =
   'or is there anything you would change before I close?';
 
 export function mockRespond(params: CallParams): ModelResponse {
-  const { sessionId, lastAppliedTool, db } = params;
+  const { sessionId, lastAppliedTool, noTools, db } = params;
   const session = getSession(sessionId, db)!;
   const coverage = getCoverage(sessionId, db);
   const lowest = coverage.find((c) => c.state === 'pending' || c.state === 'partial')?.facetId ?? null;
 
-  // After end_interview has been accepted, deliver the playback (FR-4.1).
-  if (lastAppliedTool === 'end_interview') {
-    return textResponse(PLAYBACK);
-  }
-  // A correction sent during review — acknowledge (real model would supersede).
-  if (session.status === 'review') {
-    return textResponse(REVIEW_ACK);
-  }
-
-  // Just applied a resolution tool: either ask the next facet's question, or (if
-  // everything is terminal) call end_interview.
-  if (lastAppliedTool && RESOLUTION_TOOLS.has(lastAppliedTool)) {
-    if (lowest === null) return toolResponse([{ name: 'end_interview', input: {} }]);
+  // ── Question phase (no tools): produce the agent's next message. ───────────
+  if (noTools) {
+    if (session.status === 'review') return textResponse(PLAYBACK); // per-facet playback (FR-4.1)
+    if (lowest === null) return textResponse(PLAYBACK);
     return textResponse(questionFor(lowest));
   }
 
-  // Fresh informant answer (or the very first user turn): resolve the lowest facet,
-  // or end the interview if all are terminal.
+  // ── Extraction phase (tools): record + advance coverage, then stop. ────────
+  // A correction sent during review — acknowledge, record nothing.
+  if (session.status === 'review') {
+    return textResponse(REVIEW_ACK);
+  }
+  // Already resolved a facet this turn → stop extracting (end_turn, no text).
+  if (lastAppliedTool && RESOLUTION_TOOLS.has(lastAppliedTool)) {
+    if (lowest === null) return toolResponse([{ name: 'end_interview', input: {} }]);
+    return textResponse('');
+  }
+  // Fresh answer: resolve the lowest facet, or end if everything is terminal.
   if (lowest === null) return toolResponse([{ name: 'end_interview', input: {} }]);
   const role = getInterviewee(session.intervieweeId, db)?.role ?? 'process user';
   return toolResponse(resolveFacet(lowest, role));
