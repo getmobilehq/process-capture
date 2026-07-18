@@ -42,6 +42,19 @@ import {
 
 const MAX_TOOL_HOPS = 10;
 
+// Per-turn phase directives (the informant never sees these).
+const EXTRACTION_DIRECTIVE =
+  '[Internal bookkeeping step — the informant does not see this and you are not talking to them here.] ' +
+  "Capture the informant's most recent answer now. Call record_statement for every distinct substantive fact they stated, each filed to the correct facet (identity/purpose/boundaries → 1; roles and hand-offs → 2; triggers/timing → 3; inputs/outputs → 4; ordered steps with actor and system → 5; rules/approval thresholds → 6; records → 7; systems/tools → 8; controls/compliance → 9; exceptions → 10; volumes/durations/targets → 11; bottlenecks/queues/workarounds → 12). " +
+  'Then call set_coverage to move each facet that now meets its rubric to answered — or unknown_to_informant / not_applicable where that is the honest state, or partial if only partly covered. If every facet is already terminal, call end_interview. ' +
+  'Make only tool calls in this step — do not write any message to the informant. When there is nothing left to record for this answer, stop.';
+
+const QUESTION_DIRECTIVE =
+  '[Internal step.] Recording is done. Now write your single next message to the informant: exactly one question that makes progress on a facet still pending or partial, anchoring on a concrete last-real-occurrence before general practice. Warm, plain British English, one question mark, and do not call any tools.';
+
+const PLAYBACK_DIRECTIVE =
+  '[Internal step.] Every facet is now covered. Write a short, warm per-facet playback of what you captured, then invite the informant to confirm or correct anything before you close. Do not call any tools.';
+
 export interface TurnResult {
   agentTurn: { seq: number; content: string };
   coverage: { facetId: number; state: CoverageStateValue }[];
@@ -291,25 +304,32 @@ export async function processUserTurn(
   }
 
   const interviewee = getInterviewee(session.intervieweeId, db)!;
-  const messages = buildMessages(sessionId, db);
   const warnings: string[] = [];
-  let lastAppliedTool: string | null = null;
-  let agentText = '';
-
-  for (let hop = 0; hop < MAX_TOOL_HOPS; hop += 1) {
-    const system = buildSystemPrompt({
+  const systemNow = () =>
+    buildSystemPrompt({
       role: interviewee.role,
       processName: session.processName,
       coverage: coverageView(getCoverage(sessionId, db)),
     });
-    const resp = await callModel({ sessionId, system, messages, lastAppliedTool, db });
 
-    if (resp.stopReason !== 'tool_use' || resp.toolCalls.length === 0) {
-      agentText = resp.text;
-      break;
-    }
+  // ── Phase A — extraction (tools only). A dedicated bookkeeping step, so the
+  //    model reliably records statements and advances coverage rather than
+  //    treating it as optional during conversation (P1 — the server drives this).
+  const exMessages = buildMessages(sessionId, db);
+  exMessages.push({ role: 'user', content: EXTRACTION_DIRECTIVE });
+  let lastAppliedTool: string | null = null;
+  for (let hop = 0; hop < MAX_TOOL_HOPS; hop += 1) {
+    const resp = await callModel({
+      sessionId,
+      system: systemNow(),
+      messages: exMessages,
+      lastAppliedTool,
+      toolChoice: hop === 0 ? 'any' : 'auto',
+      db,
+    });
+    if (resp.stopReason !== 'tool_use' || resp.toolCalls.length === 0) break;
 
-    messages.push({ role: 'assistant', content: resp.assistantContent });
+    exMessages.push({ role: 'assistant', content: resp.assistantContent });
     const toolResults: Anthropic.ToolResultBlockParam[] = [];
     for (const call of resp.toolCalls) {
       const applied = applyTool(session, call, db);
@@ -322,39 +342,54 @@ export async function processUserTurn(
       if (!applied.isError) lastAppliedTool = applied.appliedName ?? call.name;
       else warnings.push(`${call.name} rejected: ${applied.content}`);
     }
-    messages.push({ role: 'user', content: toolResults });
+    exMessages.push({ role: 'user', content: toolResults });
   }
 
   const nowReview = getSession(sessionId, db)!.status === 'review';
+
+  // ── Phase B — the agent's message (no tools): one question, or the playback
+  //    once every facet is terminal (FR-3.3, FR-4.1).
+  const qMessages = buildMessages(sessionId, db);
+  qMessages.push({ role: 'user', content: nowReview ? PLAYBACK_DIRECTIVE : QUESTION_DIRECTIVE });
+  const qResp = await callModel({
+    sessionId,
+    system: systemNow(),
+    messages: qMessages,
+    lastAppliedTool,
+    noTools: true,
+    db,
+  });
+  let agentText = qResp.text;
 
   // One-question rule (FR-3.3) — closing/review turns excepted. Reprompt on
   // violation (up to two attempts), then accept and log a warning.
   if (!nowReview && agentText) {
     for (let attempt = 0; attempt < 2 && violatesOneQuestion(agentText); attempt += 1) {
-      messages.push({ role: 'assistant', content: [{ type: 'text', text: agentText }] });
-      messages.push({
+      qMessages.push({ role: 'assistant', content: [{ type: 'text', text: agentText }] });
+      qMessages.push({
         role: 'user',
         content:
           'Your last message contained more than one question. Re-ask as a single question only — one question mark, no clarifying or rephrased second question. Keep the same warm tone.',
       });
       const retry = await callModel({
         sessionId,
-        system: buildSystemPrompt({
-          role: interviewee.role,
-          processName: session.processName,
-          coverage: coverageView(getCoverage(sessionId, db)),
-        }),
-        messages,
+        system: systemNow(),
+        messages: qMessages,
         lastAppliedTool,
+        noTools: true,
         db,
       });
-      if (retry.stopReason === 'tool_use' || !retry.text) break;
+      if (!retry.text) break;
       agentText = retry.text;
     }
     if (violatesOneQuestion(agentText)) warnings.push('one-question rule still violated after reprompt');
   }
 
-  if (!agentText) agentText = 'Thank you.';
+  if (!agentText) {
+    agentText = nowReview
+      ? 'Thank you — that is everything captured. Does the summary look right to you?'
+      : 'Thanks — could you tell me a little more about that?';
+  }
 
   const agentSeq = nextAgentSeq(sessionId, input.seq, db);
   appendTurn({ sessionId, seq: agentSeq, speaker: 'agent', content: agentText }, db);

@@ -31,8 +31,10 @@ export interface CallParams {
   messages: Anthropic.MessageParam[];
   /** Name of the last tool applied in this turn's loop (drives the mock only). */
   lastAppliedTool: string | null;
-  /** Omit tool definitions (used for the opening turn, which takes no tools). */
+  /** Omit tool definitions (used for the opening / question phase, no tools). */
   noTools?: boolean;
+  /** Force the model to call at least one tool this call (extraction phase). */
+  toolChoice?: 'auto' | 'any';
   db: DB;
 }
 
@@ -52,7 +54,12 @@ export async function callModel(params: CallParams): Promise<ModelResponse> {
     max_tokens: config.modelMaxTokens,
     temperature: config.modelTemperature,
     system: params.system,
-    ...(params.noTools ? {} : { tools: TOOL_DEFINITIONS as unknown as Anthropic.Tool[] }),
+    ...(params.noTools
+      ? {}
+      : {
+          tools: TOOL_DEFINITIONS as unknown as Anthropic.Tool[],
+          ...(params.toolChoice === 'any' ? { tool_choice: { type: 'any' as const } } : {}),
+        }),
     messages: params.messages,
   });
   addUsage(resp.usage);
