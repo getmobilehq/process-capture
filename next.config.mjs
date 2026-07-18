@@ -31,6 +31,8 @@ const nextConfig = {
   // better-sqlite3 is a native module; keep it external to the server bundle.
   experimental: {
     serverComponentsExternalPackages: ['better-sqlite3'],
+    // Enable instrumentation.ts (process-level error guards) on Next 14.2.
+    instrumentationHook: true,
   },
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
