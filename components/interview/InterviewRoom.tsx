@@ -143,7 +143,11 @@ export function InterviewRoom(props: InterviewRoomProps) {
       setCoverage(result.coverage);
       setStatus(result.status);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+      // Roll back the optimistic bubble and restore the text so the user can
+      // resend at the same seq (the server dedupes, so a retry is idempotent).
+      setTurns((prev) => prev.filter((t) => !(t.seq === seq && t.speaker === 'user')));
+      setInput(content);
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please send that again.');
     } finally {
       setSending(false);
     }
