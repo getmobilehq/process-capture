@@ -211,8 +211,7 @@ API key, now in `.env`).
 
 ---
 
-## Phase 6 · Live-model eval loop — harness complete; full gate not run to
-## completion in-session (2026-07-18)
+## Phase 6 · Live-model eval loop — GATE PASSED (2026-07-18)
 
 **Built**
 
@@ -230,29 +229,39 @@ API key, now in `.env`).
   genuine unknown (facet 9).
 - `scripts/load-env.ts` — `.env` loading for tsx scripts.
 
-**Result**
+**Result — §9 gate met (`claude-sonnet-4-6`, final batch 2026-07-18T…)**
 
-- **Cooperative persona passes ALL of A1–A9 on three independent live runs**
-  (artefacts persisted under `tests/eval/runs/`). Representative: 34 turns, 165 calls,
-  ~779k input / ~20k output tokens; every assertion PASS.
-- The **full §9 gate** (all 3 personas × 3 consecutive runs) was **not completed in
-  this session**: each run is ~165 live calls (~5–7 min, ~0.8M input tokens), so the
-  9-run batch is multi-hour and real cost. Stopped at the user's request to wrap up.
-  Terse and rambling fixtures are built and typecheck-clean but have not yet been run
-  to three consecutive passes.
+All 3 personas passed A1–A9 on **3 consecutive runs** in a single batch (exit 0):
+
+```
+cooperative  run1 PASS  run2 PASS  run3 PASS   (23/20/19 turns)
+rambling     run1 PASS  run2 PASS  run3 PASS   (20/17/15 turns)
+terse        run1 PASS  run2 PASS  run3 PASS   (28/21/25 turns)
+Gate (§9): PASS — all personas passed A1–A9 on 3 consecutive runs.
+Totals: 3,824,432 input + 123,368 output tokens across the batch.
+```
+
+Two flakes surfaced during iteration and were fixed (both improve the product, not
+just the eval):
+
+- **A2 (honest unknown)** flaked when the informant's facet‑6 approval tiers read as
+  facet‑9 "sign‑offs", or the model set unknown without the paired finding. Fixed by
+  server-auto-pairing the `unknown_retarget` finding on any move to
+  `unknown_to_informant` (P1/P2, deduped per facet) + an agent/informant firewall so
+  approval tiers stay a facet‑6 rule (D6.5).
+- **A5 (one question/turn)** flaked for the rambling persona (a tacked-on clarifying
+  question, just under 95% with few turns). Fixed by an explicit no‑second‑question
+  system rule + reprompting up to twice before accepting (D6.6).
 
 **Gate**
 
 - [x] harness built + persists artefacts + logs token usage (§9)
 - [x] live model wired and exercised
-- [x] cooperative persona: A1–A9 green ×3 independent runs
-- [ ] **full gate: all 3 personas × 3 consecutive runs** — run `npm run eval` to
-      complete (≈ 0.5–1 hr, real API spend). Record final scores here.
+- [x] **all 3 personas × A1–A9 × 3 consecutive runs — PASS**
 
-**Open concerns** — completing the 3×3 is the one remaining acceptance step. High
-input-token count per run is because the facet-spec system prompt is re-sent each
-turn; add prompt caching before scaling (a cost optimisation, not a correctness
-issue).
+**Open concerns** — high input-token count per run (~0.4–0.6M): the facet-spec system
+prompt is re-sent each turn. Add prompt caching before scaling — a cost optimisation,
+not a correctness issue.
 
 ---
 
