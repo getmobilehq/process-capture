@@ -266,10 +266,12 @@ not a correctness issue.
 **Post-pilot fix (2026-07-18): two-phase turn.** Live use surfaced that the single
 tool-loop let the model skip extraction (coverage stayed 0/12). Split each turn into
 an extraction phase (tools only, first call forced) + a question phase (no tools).
-Re-validated live (cooperative): all A1–A9 PASS, and materially better — 9 turns (was
-23–34), A5 100%, ~½ the tokens. Recommend `npm run eval` (full 3×3) to re-confirm all
-three personas before the pilot; the change is strictly an improvement to extraction
-reliability.
+**Full 3×3 re-confirmed with the two-phase engine (2026-07-19):** all 3 personas ×
+A1–A9 × 3 consecutive runs PASS (cooperative/rambling/terse, 9/9 runs, exit 0). And
+materially better than the pre-fix batch — 7–15 turns (was 13–46), ~2.7M tokens (was
+3.8–4.7M). Client resilience added (maxRetries 4 + 60s timeout on all Anthropic
+clients; eval retries a run on transient connection errors) after a run aborted on a
+transient EHOSTUNREACH — the same error class that had been crashing the dev server.
 
 ---
 
