@@ -44,6 +44,17 @@ export async function POST(req: Request, { params }: { params: { sessionId: stri
     return NextResponse.json({ error: 'Message too long' }, { status: 413 });
   }
 
-  const result = await processUserTurn(params.sessionId, { seq: seqNum, content: text });
-  return NextResponse.json(result);
+  try {
+    const result = await processUserTurn(params.sessionId, { seq: seqNum, content: text });
+    return NextResponse.json(result);
+  } catch (err) {
+    // A model call failed (rate limit, overload, timeout, network). The user's
+    // message is preserved server-side (the turn is appended before the model
+    // runs), so retrying the same seq is safe and idempotent.
+    console.error('turn: processUserTurn failed', err);
+    return NextResponse.json(
+      { error: 'The assistant is briefly unavailable — please send that again.' },
+      { status: 502 },
+    );
+  }
 }
