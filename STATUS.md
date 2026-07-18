@@ -265,7 +265,7 @@ not a correctness issue.
 
 ---
 
-## Phase 7 · Hardening + pilot pack — built; container-boot pending daemon (2026-07-18)
+## Phase 7 · Hardening + pilot pack — complete (2026-07-18)
 
 **Built**
 
@@ -285,12 +285,26 @@ not a correctness issue.
 - [x] lint / typecheck / `npm test` (52) / `npm run build` — all green with hardening
 - [x] E2E (5, mocked) — green
 - [x] README complete (setup, ops, backup, pilot checklist)
-- [ ] **container boots** — Dockerfile authored; **the Docker daemon (Docker Desktop)
-      stopped mid-session**, so `docker build && docker run` could not be verified
-      here. Run `docker build -t process-capture . && docker run -p 3000:3000 -v
-      "$(pwd)/data:/app/data" -e ANTHROPIC_API_KEY=… -e ADMIN_PASSWORD=… process-capture`
-      once the daemon is up.
+- [x] **container boots** — `docker build` → 1.17 GB image; `docker run` verified:
+      migrations applied at start (`Migrations applied to file:./data/app.db`), Next
+      `✓ Ready`, `app.db` created on the mounted `/app/data` volume, all faces serve
+      (home 200, console→login 200, invalid token → dead-end 200), and all security
+      headers present (CSP, HSTS, X-Frame-Options, nosniff, Referrer-Policy,
+      Permissions-Policy).
 
-**Open concerns** — two acceptance steps require your environment: the full 3×3 eval
-(API spend) and the container boot (Docker daemon). Everything code-side is complete
-and green.
+**Open concerns** — none. All seven phase gates are met.
+
+---
+
+## Definition of done — met (2026-07-18)
+
+- Phases 0–7 all complete; each gate run and recorded above.
+- Static + tests: `lint`, `typecheck`, **52 unit/integration**, **5 E2E** (mocked),
+  `build` — all green.
+- Live model: **§9 eval gate PASS** — 3 personas × A1–A9 × 3 consecutive runs.
+- Container: builds and boots; migrates + serves both faces on a volume.
+- A fresh clone runs `npm i && npm run setup && npm run dev` to a working product
+  per the README; a human can replay the demo golden path against the live engine.
+
+One deliberate, flagged deviation for review: token-level streaming is deferred to
+V1.1 (D3.1) — turns use a single JSON exchange. Everything else follows the brief.
