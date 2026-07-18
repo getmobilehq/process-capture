@@ -18,6 +18,7 @@ import {
   getInterviewee,
   getLatestSpec,
   getSession,
+  listFindingsForSession,
   listTurns,
   raiseFinding,
   recordStatement,
@@ -123,6 +124,17 @@ export function applyTool(session: Session, call: ModelToolCall, db: DB): ApplyR
         const input = setCoverageSchema.parse(call.input);
         try {
           setCoverage(session.id, input.facetId, input.state, db);
+          // An honest unknown is always surfaced for a human (P2/P3): if the model
+          // moved a facet to unknown_to_informant without raising the paired
+          // retarget finding, the server creates it. No silent gaps.
+          if (input.state === 'unknown_to_informant') {
+            ensureRetargetFinding(
+              session,
+              input.facetId,
+              'Flagged for retargeting — the informant could not answer this facet; route to someone who owns it.',
+              db,
+            );
+          }
           return { content: 'coverage updated', isError: false, appliedName: call.name };
         } catch (err) {
           if (err instanceof IllegalCoverageTransitionError) {
@@ -136,19 +148,25 @@ export function applyTool(session: Session, call: ModelToolCall, db: DB): ApplyR
       }
       case 'raise_finding': {
         const input = raiseFindingSchema.parse(call.input);
-        raiseFinding(
-          {
-            projectId: session.projectId,
-            sessionId: session.id,
-            facetId: input.facetId,
-            type: input.type,
-            title: input.title,
-            detail: input.detail,
-            status: 'open',
-            routedTo: '',
-          },
-          db,
-        );
+        // unknown_retarget is deduped per facet (the server may already have paired
+        // one on set_coverage); other finding types may recur.
+        if (input.type === 'unknown_retarget') {
+          ensureRetargetFinding(session, input.facetId, input.detail || input.title, db);
+        } else {
+          raiseFinding(
+            {
+              projectId: session.projectId,
+              sessionId: session.id,
+              facetId: input.facetId,
+              type: input.type,
+              title: input.title,
+              detail: input.detail,
+              status: 'open',
+              routedTo: '',
+            },
+            db,
+          );
+        }
         return { content: 'finding raised', isError: false, appliedName: call.name };
       }
       case 'end_interview': {
@@ -171,6 +189,27 @@ export function applyTool(session: Session, call: ModelToolCall, db: DB): ApplyR
   } catch {
     return { content: `Invalid arguments for ${call.name}.`, isError: true };
   }
+}
+
+/** Create the unknown_retarget finding for a facet if one does not already exist. */
+function ensureRetargetFinding(session: Session, facetId: number, detail: string, db: DB): void {
+  const already = listFindingsForSession(session.id, db).some(
+    (f) => f.facetId === facetId && f.type === 'unknown_retarget',
+  );
+  if (already) return;
+  raiseFinding(
+    {
+      projectId: session.projectId,
+      sessionId: session.id,
+      facetId,
+      type: 'unknown_retarget',
+      title: `Facet ${facetId} not known to this informant`,
+      detail,
+      status: 'open',
+      routedTo: '',
+    },
+    db,
+  );
 }
 
 function moveToReview(session: Session, db: DB): void {

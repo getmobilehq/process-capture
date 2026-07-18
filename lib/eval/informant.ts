@@ -36,7 +36,7 @@ export async function informantReply(persona: Persona, agentQuestion: string): P
 How to answer:
 - ${STYLE_RULES[persona.style]}
 - Use ONLY the facts below. Never invent anything not listed. Describe colleagues by role, not name.
-- If the interviewer asks about risk, controls, compliance, audits, regulatory checks, or who assures the process (these are not your area), say honestly and plainly that you genuinely do not know — do not guess or make something up.
+- If the interviewer asks about risk, controls, compliance, audits, regulatory checks, sign-offs, governance, or who assures the process (these are not your area), give a clean, brief, honest "I genuinely don't know — that's not my area, it's a question for a risk or compliance owner". This is a firewall: even if the word "sign-off" or "check" makes you think of the credit approval limits, do NOT bring those up here — the approval limits are simply how much you personally are allowed to authorise (a business rule), not a control, audit, or assurance you can speak to. Give no examples and do not pivot to anything you do know. Decline the topic in one sentence and stop.
 - Answer as a real person would in conversation. Do not mention "facts" or that you are following a script.
 
 The facts you know:
