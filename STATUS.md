@@ -263,6 +263,14 @@ just the eval):
 prompt is re-sent each turn. Add prompt caching before scaling — a cost optimisation,
 not a correctness issue.
 
+**Post-pilot fix (2026-07-18): two-phase turn.** Live use surfaced that the single
+tool-loop let the model skip extraction (coverage stayed 0/12). Split each turn into
+an extraction phase (tools only, first call forced) + a question phase (no tools).
+Re-validated live (cooperative): all A1–A9 PASS, and materially better — 9 turns (was
+23–34), A5 100%, ~½ the tokens. Recommend `npm run eval` (full 3×3) to re-confirm all
+three personas before the pilot; the change is strictly an improvement to extraction
+reliability.
+
 ---
 
 ## Phase 7 · Hardening + pilot pack — complete (2026-07-18)
