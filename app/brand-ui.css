@@ -3,6 +3,38 @@
    /public/brand/colors_and_type.css. Used by the interview and console faces so a
    reviewer recognises them as the same product (FR-6.2). */
 
+/* ── Topbar — the VMO2 lockup, on every page (matches the demo header) ──── */
+.pc-topbar {
+  border-bottom: 1px solid var(--ink-100);
+  background: var(--paper);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.pc-topbar-in {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 var(--space-6);
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  height: 64px;
+}
+.pc-topbar img {
+  height: 34px;
+  width: auto;
+  display: block;
+}
+.pc-topbar .pc-tname {
+  font-weight: 700;
+  font-size: 17px;
+}
+.pc-topbar .pc-tsub {
+  color: var(--ink-500);
+  font-size: 13px;
+  font-weight: 500;
+}
+
 /* ── Layout ─────────────────────────────────────────────────────────────── */
 .pc-wrap {
   max-width: 1120px;
