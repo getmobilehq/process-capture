@@ -185,3 +185,11 @@ decision, why it is the minimal option (§10).
   and edits the transcription before pressing Send, so what becomes a statement is
   still what they chose to say (P2). `/api/transcribe` is rate-limited (20/min/IP)
   and size-capped (< 24 MB).
+- **DV.3 · Voice transcription retries transient connection blips** — `/api/transcribe`
+  called `fetch` bare, so undici's default 10s connect budget turned a cold
+  connection to `api.openai.com` into a 502 and lost the informant's first voice
+  reply (observed: `UND_ERR_CONNECT_TIMEOUT`, then success 2s later). The route now
+  mirrors the Anthropic client's posture from `lib/engine/model.ts` — three
+  attempts, 400 ms/1200 ms backoff, 60s timeout, retrying network failures plus 429
+  and 5xx, but never a 4xx. No new dependency (P6); covered by
+  `tests/unit/transcribe-retry.test.ts`.
