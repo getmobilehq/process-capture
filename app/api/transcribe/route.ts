@@ -38,6 +38,15 @@ function whisperExt(audio: Blob & { name?: string }): string {
   return MIME_EXT[base] ?? 'webm';
 }
 
+// Transient-blip posture, mirroring the Anthropic client in lib/engine/model.ts
+// (maxRetries 4, 60s). A cold connection to api.openai.com can exceed undici's
+// default 10s connect budget and fail the informant's first voice reply.
+const TRANSCRIBE_ATTEMPTS = 3;
+const TRANSCRIBE_TIMEOUT_MS = 60_000;
+const RETRY_BACKOFF_MS = [400, 1200];
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 /**
  * Transcribe an audio blob via OpenAI Whisper (optional voice input, V1.1). The
  * OpenAI key is read server-side and never exposed to the browser. Returns the
@@ -81,20 +90,47 @@ export async function POST(req: Request) {
   // recorded MIME type (Chrome/Firefox → webm, Safari → mp4, etc.).
   const fresh = new Blob([buffer], { type: audio.type || 'audio/webm' });
 
-  const outbound = new FormData();
-  outbound.append('file', fresh, `reply.${whisperExt(audio)}`);
-  outbound.append('model', config.transcribeModel);
-  outbound.append('response_format', 'json');
+  const filename = `reply.${whisperExt(audio)}`;
 
-  let resp: Response;
-  try {
-    resp = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${config.openaiApiKey}` },
-      body: outbound,
-    });
-  } catch (err) {
-    console.error('transcribe: fetch failed', err);
+  // A FormData body is consumed on send, so rebuild it per attempt.
+  function outbound(): FormData {
+    const fd = new FormData();
+    fd.append('file', fresh, filename);
+    fd.append('model', config.transcribeModel);
+    fd.append('response_format', 'json');
+    return fd;
+  }
+
+  let resp: Response | null = null;
+  let lastErr: unknown = null;
+
+  for (let attempt = 1; attempt <= TRANSCRIBE_ATTEMPTS; attempt++) {
+    try {
+      resp = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${config.openaiApiKey}` },
+        body: outbound(),
+        signal: AbortSignal.timeout(TRANSCRIBE_TIMEOUT_MS),
+      });
+    } catch (err) {
+      // Connect timeouts and resets are worth another go; anything else is not.
+      lastErr = err;
+      resp = null;
+    }
+
+    // 429 and 5xx are transient on OpenAI's side — retry those too.
+    if (resp && !(resp.status === 429 || resp.status >= 500)) break;
+
+    if (attempt < TRANSCRIBE_ATTEMPTS) {
+      console.warn(
+        `transcribe: attempt ${attempt} failed (${resp ? `HTTP ${resp.status}` : String(lastErr)}) — retrying`,
+      );
+      await sleep(RETRY_BACKOFF_MS[attempt - 1] ?? 1200);
+    }
+  }
+
+  if (!resp) {
+    console.error('transcribe: fetch failed after retries', lastErr);
     return NextResponse.json({ error: 'Transcription service unreachable.' }, { status: 502 });
   }
 
