@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CoverageRail, type ElementRow } from './CoverageRail';
 import { PickList, type PickOption } from './PickList';
 import type { CoverageStateValue } from '@/lib/engine/coverage';
@@ -22,6 +22,8 @@ export interface InterviewRoomProps {
   initialCoverage: CoverageView[];
   initialElements: ElementRow[];
   initialOptions: Record<number, PickOption[]>;
+  /** Unsubmitted draft recovered from the server, if the tab went away (R10.3). */
+  initialDraft: { content: string; seq: number; take: number } | null;
   initialStatus: 'open' | 'review' | 'complete' | 'abandoned';
   startedAtMs: number;
   surveyUrl: string;
@@ -49,14 +51,24 @@ export function InterviewRoom(props: InterviewRoomProps) {
   const [options, setOptions] = useState<Record<number, PickOption[]>>(props.initialOptions);
   const [picking, setPicking] = useState(false);
   const [status, setStatus] = useState(props.initialStatus);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState(props.initialDraft?.content ?? '');
   const [sending, setSending] = useState(false);
   const [finishing, setFinishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [survey, setSurvey] = useState(props.surveyUrl);
   const [elapsed, setElapsed] = useState(0);
   const [recording, setRecording] = useState(false);
+  const [paused, setPaused] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
+  const [recordSec, setRecordSec] = useState(0);
+  // R10.3 — draft protection.
+  const [recovered, setRecovered] = useState(Boolean(props.initialDraft?.content));
+  const [canUndo, setCanUndo] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [confirmRerecord, setConfirmRerecord] = useState(false);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const originRef = useRef<'typed' | 'voice' | 'mixed'>('typed');
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -133,6 +145,77 @@ export function InterviewRoom(props: InterviewRoomProps) {
     }
   }
 
+  // ── R10.3 — continuous autosave, recovery, and reversible destruction ──────
+
+  /** Persist the draft. Debounced on keystrokes, immediate on state changes. */
+  const persistDraft = useCallback(
+    async (content: string, origin: 'typed' | 'voice' | 'mixed') => {
+      try {
+        const res = await fetch(`/api/interview/${props.sessionId}/draft`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'save', seq: nextSeq, content, origin }),
+        });
+        if (res.ok) {
+          const data = await res.json().catch(() => ({}));
+          setCanUndo(Boolean(data.canUndo));
+          setSavedAt(Date.now());
+        }
+      } catch {
+        // Autosave is best-effort per keystroke; the beforeunload guard and the
+        // next successful save cover a transient failure.
+      }
+    },
+    [props.sessionId, nextSeq],
+  );
+
+  // Every few keystrokes, and at most ~1.2s behind the typing (R10.3).
+  useEffect(() => {
+    if (status !== 'open' && status !== 'review') return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => void persistDraft(input, originRef.current), 1200);
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
+  }, [input, persistDraft, status]);
+
+  // Leaving with an unsubmitted draft warns, and the draft is saved either way.
+  useEffect(() => {
+    function onBeforeUnload(e: BeforeUnloadEvent) {
+      if (input.trim() === '') return;
+      void persistDraft(input, originRef.current);
+      e.preventDefault();
+      e.returnValue = '';
+    }
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [input, persistDraft]);
+
+  /** Elapsed recording time — the informant always knows they are being captured. */
+  useEffect(() => {
+    if (!recording || paused) return;
+    const id = setInterval(() => setRecordSec((n) => n + 1), 1000);
+    return () => clearInterval(id);
+  }, [recording, paused]);
+
+  async function draftAction(action: 'discard' | 'undo' | 'rerecord') {
+    setError(null);
+    try {
+      const res = await fetch(`/api/interview/${props.sessionId}/draft`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, seq: nextSeq }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error ?? 'That did not work.');
+      setInput(data.draft?.content ?? '');
+      setCanUndo(Boolean(data.canUndo));
+      setRecovered(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'That did not work.');
+    }
+  }
+
   /**
    * Tick a pick-list option, or describe one that is not on the list (R2.1).
    * Selections write canonical entity ids, never free text (R2.3).
@@ -165,12 +248,31 @@ export function InterviewRoom(props: InterviewRoomProps) {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error ?? 'Could not transcribe that.');
       const text = String(data.text ?? '').trim();
-      if (text) setInput((prev) => (prev.trim() ? `${prev.trim()} ${text}` : text));
+      if (text) {
+        originRef.current = originRef.current === 'typed' ? 'voice' : 'mixed';
+        setInput((prev) => {
+          const next = prev.trim() ? `${prev.trim()} ${text}` : text;
+          void persistDraft(next, originRef.current);
+          return next;
+        });
+      }
       else setError('Nothing was picked up — please try again or type your reply.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not transcribe that — please type your reply.');
     } finally {
       setTranscribing(false);
+    }
+  }
+
+  function togglePause() {
+    const rec = recorderRef.current;
+    if (!rec || !recording) return;
+    if (paused) {
+      rec.resume();
+      setPaused(false);
+    } else {
+      rec.pause();
+      setPaused(true);
     }
   }
 
@@ -180,6 +282,8 @@ export function InterviewRoom(props: InterviewRoomProps) {
       return;
     }
     if (transcribing || sending) return;
+    setRecordSec(0);
+    setPaused(false);
     setError(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -191,6 +295,7 @@ export function InterviewRoom(props: InterviewRoomProps) {
       recorder.onstop = () => {
         stream.getTracks().forEach((t) => t.stop());
         setRecording(false);
+        setPaused(false);
         const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/webm' });
         if (blob.size > 0) void transcribe(blob);
       };
@@ -221,6 +326,8 @@ export function InterviewRoom(props: InterviewRoomProps) {
       setTurns((prev) => [...prev, { seq: result.agentTurn.seq, speaker: 'agent', content: result.agentTurn.content }]);
       setCoverage(result.coverage);
       if (result.elements) setElements(result.elements);
+      originRef.current = 'typed';
+      setSavedAt(null);
       setStatus(result.status);
     } catch (err) {
       // Roll back the optimistic bubble and restore the text so the user can
@@ -318,6 +425,24 @@ export function InterviewRoom(props: InterviewRoomProps) {
                   </button>
                 </div>
               )}
+              {recovered && (
+                <div className="pc-recovery" role="status">
+                  <b>You have an unsubmitted answer.</b> We saved what you had written
+                  when this page last closed — carry on where you left off, or clear it.
+                  <button type="button" className="pc-check-na" onClick={() => setRecovered(false)}>
+                    Got it
+                  </button>
+                </div>
+              )}
+
+              {recording && (
+                <div className={`pc-reclive ${paused ? 'paused' : ''}`} role="status">
+                  <span className="pc-recdot" aria-hidden="true" />
+                  <span className="pc-recstate">{paused ? 'Paused' : 'Recording'}</span>
+                  <span className="pc-rectime">{fmt(recordSec)}</span>
+                </div>
+              )}
+
               {activePick && (
                 <PickList
                   title={activePick.title}
@@ -354,31 +479,112 @@ export function InterviewRoom(props: InterviewRoomProps) {
                   }}
                 />
                 {props.voiceEnabled && (
-                  <button
-                    type="button"
-                    aria-label={recording ? 'Stop recording' : 'Record voice answer'}
-                    title={recording ? 'Stop recording' : 'Record voice answer'}
-                    onClick={() => void toggleRecord()}
-                    disabled={sending || transcribing}
-                    style={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: '50%',
-                      border: `2px solid ${recording ? 'var(--vm-red)' : 'var(--o2-blue)'}`,
-                      background: recording ? 'var(--vm-red)' : '#fff',
-                      color: recording ? '#fff' : 'var(--o2-blue)',
-                      cursor: sending || transcribing ? 'not-allowed' : 'pointer',
-                      fontSize: 18,
-                      flexShrink: 0,
-                    }}
-                  >
-                    {transcribing ? '…' : recording ? '■' : '🎤'}
-                  </button>
+                  <>
+                    {/* R10.1 — icon plus word, never icon-only, and unmistakable. */}
+                    <button
+                      type="button"
+                      className={`pc-rec ${recording ? 'stop' : ''}`}
+                      onClick={() => void toggleRecord()}
+                      disabled={sending || transcribing}
+                    >
+                      <span className="pc-rec-ico" aria-hidden="true">
+                        {transcribing ? '…' : recording ? '■' : '●'}
+                      </span>
+                      {transcribing ? 'Transcribing' : recording ? 'Stop' : 'Record'}
+                    </button>
+                    {recording && (
+                      <button type="button" className="pc-btn ghost sm" onClick={togglePause}>
+                        {paused ? 'Resume' : 'Pause'}
+                      </button>
+                    )}
+                  </>
                 )}
-                <button className="pc-btn ghost" onClick={() => void send()} disabled={sending || !input.trim()}>
-                  Send
+                <button className="pc-btn" onClick={() => void send()} disabled={sending || !input.trim()}>
+                  {sending ? 'Sending…' : 'Submit answer'}
                 </button>
               </div>
+
+              {/* Destructive actions live here — never adjacent to Submit (R10.3). */}
+              <div className="pc-draftbar">
+                <span className="pc-savedstate">
+                  {savedAt ? 'Saved' : input.trim() ? 'Saving…' : ''}
+                </span>
+                {canUndo && (
+                  <button type="button" className="pc-check-na" onClick={() => void draftAction('undo')}>
+                    Undo discard
+                  </button>
+                )}
+                {props.voiceEnabled && input.trim() !== '' && !recording && (
+                  <button
+                    type="button"
+                    className="pc-check-na"
+                    onClick={() => setConfirmRerecord(true)}
+                  >
+                    Re-record
+                  </button>
+                )}
+                {input.trim() !== '' && (
+                  <button
+                    type="button"
+                    className="pc-check-na danger"
+                    onClick={() => setConfirmDiscard(true)}
+                  >
+                    Discard
+                  </button>
+                )}
+              </div>
+
+              {confirmDiscard && (
+                <div className="pc-confirm" role="alertdialog">
+                  <b>Discard {input.trim().split(/\s+/).length} words?</b> You can bring
+                  it back with Undo for the rest of this interview.
+                  <span className="pc-confirm-acts">
+                    <button
+                      type="button"
+                      className="pc-btn ghost sm"
+                      onClick={() => setConfirmDiscard(false)}
+                    >
+                      Keep it
+                    </button>
+                    <button
+                      type="button"
+                      className="pc-btn sm danger"
+                      onClick={() => {
+                        setConfirmDiscard(false);
+                        void draftAction('discard');
+                      }}
+                    >
+                      Discard
+                    </button>
+                  </span>
+                </div>
+              )}
+
+              {confirmRerecord && (
+                <div className="pc-confirm" role="alertdialog">
+                  <b>Start again?</b> We keep this take until you submit the new one,
+                  so nothing is lost.
+                  <span className="pc-confirm-acts">
+                    <button
+                      type="button"
+                      className="pc-btn ghost sm"
+                      onClick={() => setConfirmRerecord(false)}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      className="pc-btn sm"
+                      onClick={() => {
+                        setConfirmRerecord(false);
+                        void draftAction('rerecord');
+                      }}
+                    >
+                      Re-record
+                    </button>
+                  </span>
+                </div>
+              )}
             </>
           )}
         </footer>

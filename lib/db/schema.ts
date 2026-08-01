@@ -194,6 +194,46 @@ export const elementStates = sqliteTable(
   }),
 );
 
+// ── AnswerDraft (delta v1.1 R10.3 — data-loss protection) ────────────────────
+// An unsubmitted answer, persisted continuously as it is typed or transcribed. A
+// crash, tab close or dropped connection loses seconds, not the session.
+//
+// Rows are never hard-deleted here: discarding sets `discarded`, which Undo can
+// reverse for the rest of the session, and a re-record archives the prior take
+// rather than overwriting it. Hard deletion happens only at engagement
+// decommission, under the existing destruction terms.
+export const answerDrafts = sqliteTable(
+  'answer_drafts',
+  {
+    id: id(),
+    sessionId: text('session_id')
+      .notNull()
+      .references(() => sessions.id),
+    /** The turn seq this draft will be submitted as — one live draft per seq. */
+    seq: integer('seq').notNull(),
+    /** Successive attempts at the same answer; a re-record increments this. */
+    take: integer('take').notNull().default(1),
+    content: text('content').notNull().default(''),
+    status: text('status', { enum: ['active', 'discarded', 'archived', 'submitted'] })
+      .notNull()
+      .default('active'),
+    /** Where the text came from, so a re-record knows what it is replacing. */
+    origin: text('origin', { enum: ['typed', 'voice', 'mixed'] })
+      .notNull()
+      .default('typed'),
+    updatedAt: updatedAt(),
+    createdAt: createdAt(),
+  },
+  (t) => ({
+    bySession: index('answer_drafts_session_idx').on(t.sessionId),
+    sessionSeqTakeUnique: uniqueIndex('answer_drafts_session_seq_take_unique').on(
+      t.sessionId,
+      t.seq,
+      t.take,
+    ),
+  }),
+);
+
 // ── Entity (canonical taxonomy — delta v1.1 R2.2/R2.3) ───────────────────────
 // Pick-list facets write canonical entity ids, not free text, so cross-interview
 // contribution analysis lines entities up reliably. Free-text "other" answers
@@ -326,6 +366,7 @@ export type Statement = typeof statements.$inferSelect;
 export type NewStatement = typeof statements.$inferInsert;
 export type CoverageState = typeof coverageStates.$inferSelect;
 export type ElementState = typeof elementStates.$inferSelect;
+export type AnswerDraft = typeof answerDrafts.$inferSelect;
 export type Entity = typeof entities.$inferSelect;
 export type NewEntity = typeof entities.$inferInsert;
 export type EntityMention = typeof entityMentions.$inferSelect;

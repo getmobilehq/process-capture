@@ -12,6 +12,7 @@ import { and, asc, desc, eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { getDb, type DB } from './index';
 import {
+  answerDrafts,
   coverageStates,
   elementStates,
   entities,
@@ -501,6 +502,159 @@ export function outstandingElements(sessionId: string, db: DB = getDb()) {
       elementId: r.elementId,
       label: getElement(r.elementId)?.label ?? r.elementId,
     }));
+}
+
+// ── Answer drafts (delta v1.1 R10.3 — data-loss protection) ──────────────────
+// Nothing here hard-deletes. Discard is reversible for the rest of the session and
+// a re-record archives the prior take, so no sequence of two taps can destroy a
+// transcription.
+
+/** The live (active) draft for a session, if any. */
+export function getActiveDraft(sessionId: string, db: DB = getDb()) {
+  return db
+    .select()
+    .from(answerDrafts)
+    .where(and(eq(answerDrafts.sessionId, sessionId), eq(answerDrafts.status, 'active')))
+    .orderBy(desc(answerDrafts.updatedAt))
+    .get();
+}
+
+/** The most recently discarded draft — what Undo restores (R10.3). */
+export function getUndoableDraft(sessionId: string, db: DB = getDb()) {
+  return db
+    .select()
+    .from(answerDrafts)
+    .where(and(eq(answerDrafts.sessionId, sessionId), eq(answerDrafts.status, 'discarded')))
+    .orderBy(desc(answerDrafts.updatedAt))
+    .get();
+}
+
+/**
+ * Continuous autosave (R10.3). Upserts the live draft for a seq, so a crash, tab
+ * close or dropped connection loses seconds rather than the answer.
+ */
+export function saveDraft(
+  input: {
+    sessionId: string;
+    seq: number;
+    content: string;
+    origin?: 'typed' | 'voice' | 'mixed';
+  },
+  db: DB = getDb(),
+) {
+  const active = getActiveDraft(input.sessionId, db);
+  if (active && active.seq === input.seq) {
+    return db
+      .update(answerDrafts)
+      .set({ content: input.content, origin: input.origin ?? active.origin })
+      .where(eq(answerDrafts.id, active.id))
+      .returning().get();
+  }
+
+  // A draft for a different seq means the previous answer was submitted; retire it.
+  if (active) {
+    db.update(answerDrafts).set({ status: 'submitted' }).where(eq(answerDrafts.id, active.id)).run();
+  }
+
+  const lastTake = db
+    .select()
+    .from(answerDrafts)
+    .where(and(eq(answerDrafts.sessionId, input.sessionId), eq(answerDrafts.seq, input.seq)))
+    .orderBy(desc(answerDrafts.take))
+    .get();
+
+  return db
+    .insert(answerDrafts)
+    .values({
+      sessionId: input.sessionId,
+      seq: input.seq,
+      take: (lastTake?.take ?? 0) + 1,
+      content: input.content,
+      origin: input.origin ?? 'typed',
+      status: 'active',
+    })
+    .returning().get();
+}
+
+/** Soft-delete: recoverable by Undo for the rest of the session (R10.3). */
+export function discardDraft(sessionId: string, db: DB = getDb()) {
+  const active = getActiveDraft(sessionId, db);
+  if (!active) return undefined;
+  return db
+    .update(answerDrafts)
+    .set({ status: 'discarded' })
+    .where(eq(answerDrafts.id, active.id))
+    .returning().get();
+}
+
+/** Restore the most recently discarded draft byte-identically (R10.3). */
+export function undoDiscard(sessionId: string, db: DB = getDb()) {
+  const discarded = getUndoableDraft(sessionId, db);
+  if (!discarded) return undefined;
+  // Retire anything currently live so there is exactly one active draft.
+  const active = getActiveDraft(sessionId, db);
+  if (active) {
+    db.update(answerDrafts).set({ status: 'archived' }).where(eq(answerDrafts.id, active.id)).run();
+  }
+  return db
+    .update(answerDrafts)
+    .set({ status: 'active' })
+    .where(eq(answerDrafts.id, discarded.id))
+    .returning().get();
+}
+
+/**
+ * Start a fresh take, archiving the prior one rather than overwriting it (R10.3).
+ * The prior take stays recoverable until the replacement is submitted.
+ */
+export function startNewTake(sessionId: string, seq: number, db: DB = getDb()) {
+  const active = getActiveDraft(sessionId, db);
+  if (active) {
+    db.update(answerDrafts).set({ status: 'archived' }).where(eq(answerDrafts.id, active.id)).run();
+  }
+  const lastTake = db
+    .select()
+    .from(answerDrafts)
+    .where(and(eq(answerDrafts.sessionId, sessionId), eq(answerDrafts.seq, seq)))
+    .orderBy(desc(answerDrafts.take))
+    .get();
+
+  return db
+    .insert(answerDrafts)
+    .values({
+      sessionId,
+      seq,
+      take: (lastTake?.take ?? 0) + 1,
+      content: '',
+      status: 'active',
+      origin: 'voice',
+    })
+    .returning().get();
+}
+
+/** The archived take a re-record replaced — recoverable until submission (R10.3). */
+export function getArchivedTakes(sessionId: string, seq: number, db: DB = getDb()) {
+  return db
+    .select()
+    .from(answerDrafts)
+    .where(
+      and(
+        eq(answerDrafts.sessionId, sessionId),
+        eq(answerDrafts.seq, seq),
+        eq(answerDrafts.status, 'archived'),
+      ),
+    )
+    .orderBy(desc(answerDrafts.take))
+    .all();
+}
+
+/** Mark the live draft submitted once its turn is safely persisted. */
+export function markDraftSubmitted(sessionId: string, seq: number, db: DB = getDb()) {
+  return db
+    .update(answerDrafts)
+    .set({ status: 'submitted' })
+    .where(and(eq(answerDrafts.sessionId, sessionId), eq(answerDrafts.seq, seq)))
+    .run();
 }
 
 // ── Entities and pick-list options (delta v1.1 R2) ───────────────────────────

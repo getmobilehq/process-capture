@@ -249,3 +249,25 @@ decision, why it is the minimal option (§10).
   informant said something, and evidence is not walked backwards (P2). A correction
   is a matter for the conversation, not a checkbox. "Something else — let me describe
   it" is always present and styled co-equal, so the list never becomes a cage.
+- **DL.11 · Drafts are append-and-archive; nothing is hard-deleted (R10.3)** — New
+  `answer_drafts` table with `active | discarded | archived | submitted`. Autosave
+  upserts the live row (~1.2 s behind typing, plus on every state change and on
+  `beforeunload`). Discard soft-deletes and Undo restores byte-identically for the
+  rest of the session; a re-record archives the prior take rather than overwriting
+  it. Hard deletion only at engagement decommission. Tested as a guarantee: the
+  suite asserts what *cannot* happen, not just what can.
+- **DL.12 · Destructive controls are separated from Submit (R10.3)** — Discard and
+  Re-record live on their own row below the composer, never adjacent to the primary
+  action, and both require an explicit confirmation that states what is at stake
+  ("Discard 43 words?"). Submit is the only primary button.
+- **DL.13 · Recording state is stated in words, not just colour (R10.1)** — Three
+  visually distinct states (idle Record / red Stop / amber Paused), each with icon
+  *and* word, a pulsing indicator and an elapsed timer. Never icon-only: a mic glyph
+  alone does not tell someone whether they are being captured.
+- **DL.14 · Voice transcription is chunked, not truly live (R10.2 — deviation)** —
+  R10.2 asks for transcription streaming into view as the user speaks. Whisper is a
+  batch endpoint with no streaming interface, so text lands when the informant
+  stops, not while they talk. Pause/Resume and the elapsed timer give feedback
+  during capture, and the result is presented as an editable draft as specified.
+  **True live transcription needs a streaming ASR** (e.g. a realtime speech API) —
+  a provider decision, so flagged rather than assumed.

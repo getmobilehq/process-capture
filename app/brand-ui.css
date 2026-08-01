@@ -538,3 +538,120 @@
   align-items: center;
   gap: 8px;
 }
+
+/* ── Recording states + draft protection (R10.1 / R10.3) ────────────────── */
+.pc-recovery {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: var(--space-4);
+  padding: 12px 14px;
+  background: var(--o2-blue-10);
+  border-radius: var(--radius-md);
+  font: 400 13px / 1.5 var(--font-sans);
+  color: var(--ink-700);
+}
+.pc-recovery b {
+  color: var(--o2-blue);
+}
+
+.pc-reclive {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: var(--space-3);
+  padding: 9px 16px;
+  background: var(--vm-red);
+  color: #fff;
+  border-radius: var(--radius-pill);
+  font: 700 13px / 1 var(--font-sans);
+  width: fit-content;
+}
+.pc-reclive.paused {
+  background: var(--vmo2-yellow);
+  color: var(--ink-900);
+}
+.pc-recdot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pc-pulse 1.2s var(--ease-standard) infinite;
+}
+.pc-reclive.paused .pc-recdot {
+  animation: none;
+}
+.pc-rectime {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.9;
+}
+@keyframes pc-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.82); }
+}
+
+/* Record/Stop carries a word as well as an icon — never icon-only (R10.1). */
+.pc-rec {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 13px 22px;
+  background: #fff;
+  color: var(--o2-blue);
+  border: 2px solid var(--o2-blue);
+  border-radius: var(--radius-pill);
+  font: 700 14px / 1 var(--font-sans);
+  cursor: pointer;
+}
+.pc-rec.stop {
+  background: var(--vm-red);
+  border-color: var(--vm-red);
+  color: #fff;
+}
+.pc-rec:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.pc-draftbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 10px;
+  min-height: 20px;
+}
+.pc-savedstate {
+  flex: 1;
+  font: 400 11.5px / 1.4 var(--font-sans);
+  color: var(--ink-500);
+}
+.pc-check-na.danger {
+  color: var(--vm-red);
+}
+.pc-btn.danger {
+  background: var(--vm-red);
+}
+.pc-btn.danger:hover {
+  background: #b40808;
+}
+
+.pc-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 12px 14px;
+  background: var(--ink-25);
+  border: 1px solid var(--ink-200);
+  border-radius: var(--radius-md);
+  font: 400 13px / 1.5 var(--font-sans);
+  color: var(--ink-700);
+}
+.pc-confirm-acts {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}

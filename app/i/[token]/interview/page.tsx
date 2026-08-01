@@ -3,6 +3,7 @@ import {
   getIntervieweeByToken,
   getLatestSession,
   getCoverage,
+  getActiveDraft,
   getElements,
   picklistOptions,
   getSession,
@@ -44,6 +45,10 @@ export default async function InterviewPage({ params }: { params: { token: strin
     PICKLIST_FACETS.map((f) => [f.id, picklistOptions(session.id, f.id)]),
   );
 
+  // R10.3 — anything unsubmitted when the tab went away comes back with them.
+  const active = getActiveDraft(session.id);
+  const draft = active ? { content: active.content, seq: active.seq, take: active.take } : null;
+
   return (
     <main className="pc-wrap">
       <span className="pc-secpill blue">
@@ -58,6 +63,7 @@ export default async function InterviewPage({ params }: { params: { token: strin
           initialCoverage={coverage}
           initialElements={elements}
           initialOptions={options}
+          initialDraft={draft}
           initialStatus={session.status}
           startedAtMs={(session.startedAt ?? new Date()).getTime()}
           surveyUrl={config.surveyUrl}
