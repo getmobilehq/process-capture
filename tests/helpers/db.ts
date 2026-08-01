@@ -19,9 +19,15 @@ export function makeTestDb(): { db: TestDb; sqlite: Database.Database } {
   return { db, sqlite };
 }
 
-/** Convenience: a seeded project + one interviewee + an open session. */
-export function makeSessionFixture(db: TestDb) {
-  const project = q.createProject({ name: 'Test campaign', department: 'Ops' }, db);
+/**
+ * Convenience: a seeded project + one interviewee + an open session. Pass an
+ * existing `projectId` to put a second informant in the same engagement, which is
+ * what cross-interview behaviour (R2.2) needs to be tested against.
+ */
+export function makeSessionFixture(db: TestDb, opts: { projectId?: string } = {}) {
+  const project = opts.projectId
+    ? q.getProject(opts.projectId, db)!
+    : q.createProject({ name: 'Test campaign', department: 'Ops' }, db);
   const interviewee = q.addInterviewee(
     { projectId: project.id, fullName: 'Test User', email: 'test@example.com', role: 'Advisor' },
     db,

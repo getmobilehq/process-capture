@@ -107,6 +107,52 @@ export function coverageBlock(
   }).join('\n');
 }
 
+export interface OptionView {
+  facetId: number;
+  name: string;
+  source: 'taxonomy' | 'this_interview' | 'prior_interview';
+  selected: boolean;
+}
+
+const SOURCE_GLOSS: Record<OptionView['source'], string> = {
+  taxonomy: 'known at VMO2',
+  this_interview: 'they already mentioned it',
+  prior_interview: 'a colleague mentioned it',
+};
+
+/**
+ * Pick-list option sets (delta v1.1 R2). Several facets are closed sets in
+ * practice; offering the known options turns a tiring recall exercise into a quick
+ * confirmation, and keeps vocabulary consistent across informants.
+ */
+export function picklistBlock(options: readonly OptionView[]): string {
+  if (options.length === 0) return '';
+  const byFacet = new Map<number, OptionView[]>();
+  for (const o of options) {
+    const list = byFacet.get(o.facetId) ?? [];
+    list.push(o);
+    byFacet.set(o.facetId, list);
+  }
+
+  const blocks = [...byFacet.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([facetId, opts]) => {
+      const facet = FACETS.find((f) => f.id === facetId)!;
+      const lines = opts.map(
+        (o) => `    ${o.selected ? '[x]' : '[ ]'} ${o.name} (${SOURCE_GLOSS[o.source]})`,
+      );
+      return `  Facet ${facetId} — ${facet.name}:\n${lines.join('\n')}`;
+    });
+
+  return [
+    'PICK-LIST FACETS (these are closed sets — offer, do not interrogate):',
+    'For these facets, read out the options that plausibly apply and ask them to confirm which ones are theirs, always leaving room for something not on the list. A [x] means this informant has already named it — treat that as settled and do not ask again. Never read the source labels aloud, and never present a colleague\'s answer as though it were fact: "some of your colleagues mentioned X — does that apply to you?"',
+    'Whenever they name something, call record_entity so it joins the engagement vocabulary — including things that are not on the list.',
+    '',
+    ...blocks,
+  ].join('\n');
+}
+
 export interface ElementView {
   facetId: number;
   elementId: string;
@@ -120,6 +166,7 @@ export function buildSystemPrompt(input: {
   processName: string | null;
   coverage: { facetId: number; state: CoverageStateValue }[];
   elements?: readonly ElementView[];
+  options?: readonly OptionView[];
 }): string {
   const processLine = input.processName
     ? `The process under discussion is: "${input.processName}".`
@@ -135,6 +182,8 @@ export function buildSystemPrompt(input: {
     facetSpecBlock(),
     '',
     processLine,
+    '',
+    picklistBlock(input.options ?? []),
     '',
     'LIVE COVERAGE (updated every turn — steer toward what is still outstanding, and never re-ask for a ✓):',
     coverageBlock(input.coverage, input.elements ?? []),

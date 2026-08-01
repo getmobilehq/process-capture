@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CoverageRail, type ElementRow } from './CoverageRail';
+import { PickList, type PickOption } from './PickList';
 import type { CoverageStateValue } from '@/lib/engine/coverage';
 
 interface TurnView {
@@ -20,11 +21,20 @@ export interface InterviewRoomProps {
   initialTurns: TurnView[];
   initialCoverage: CoverageView[];
   initialElements: ElementRow[];
+  initialOptions: Record<number, PickOption[]>;
   initialStatus: 'open' | 'review' | 'complete' | 'abandoned';
   startedAtMs: number;
   surveyUrl: string;
   voiceEnabled: boolean;
 }
+
+/** Plain-language headings for the pick-list facets — never the facet name. */
+const PICKLIST_TITLES = [
+  { facetId: 2, title: 'Who else is involved? Tap any that apply.' },
+  { facetId: 3, title: 'What sets this off? Tap any that apply.' },
+  { facetId: 4, title: 'What goes in and comes out? Tap any that apply.' },
+  { facetId: 8, title: 'Which of these do you use? Tap any that apply.' },
+] as const;
 
 function fmt(elapsedSec: number): string {
   const m = Math.floor(elapsedSec / 60);
@@ -36,6 +46,8 @@ export function InterviewRoom(props: InterviewRoomProps) {
   const [turns, setTurns] = useState<TurnView[]>(props.initialTurns);
   const [coverage, setCoverage] = useState<CoverageView[]>(props.initialCoverage);
   const [elements, setElements] = useState<ElementRow[]>(props.initialElements);
+  const [options, setOptions] = useState<Record<number, PickOption[]>>(props.initialOptions);
+  const [picking, setPicking] = useState(false);
   const [status, setStatus] = useState(props.initialStatus);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -61,6 +73,25 @@ export function InterviewRoom(props: InterviewRoomProps) {
   }, [turns]);
 
   const nextSeq = useMemo(() => turns.reduce((m, t) => Math.max(m, t.seq), 0) + 1, [turns]);
+
+  /**
+   * The pick-list to offer alongside the composer: the pick-list facet the
+   * interview is currently working on. Only one at a time — the tick-list assists
+   * the conversation, it does not become a form to fill in (R2.1).
+   */
+  const activePick = useMemo(() => {
+    if (status !== 'open') return null;
+    const inProgress = PICKLIST_TITLES.find(
+      (p) => coverage.find((c) => c.facetId === p.facetId)?.state === 'partial',
+    );
+    const next =
+      inProgress ??
+      PICKLIST_TITLES.find(
+        (p) => coverage.find((c) => c.facetId === p.facetId)?.state === 'pending',
+      );
+    if (!next) return null;
+    return (options[next.facetId] ?? []).length > 0 ? next : null;
+  }, [coverage, options, status]);
 
   async function finish() {
     if (finishing || status !== 'review') return;
@@ -99,6 +130,29 @@ export function InterviewRoom(props: InterviewRoomProps) {
       if (data.elements) setElements(data.elements);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not update that.');
+    }
+  }
+
+  /**
+   * Tick a pick-list option, or describe one that is not on the list (R2.1).
+   * Selections write canonical entity ids, never free text (R2.3).
+   */
+  async function recordEntity(facetId: number, payload: { entityId?: string; name?: string }) {
+    setPicking(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/interview/${props.sessionId}/entity`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ facetId, ...payload }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error ?? 'Could not record that.');
+      if (data.options) setOptions((prev) => ({ ...prev, [facetId]: data.options }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not record that.');
+    } finally {
+      setPicking(false);
     }
   }
 
@@ -263,6 +317,15 @@ export function InterviewRoom(props: InterviewRoomProps) {
                     {finishing ? 'Finishing…' : 'Yes, that’s right — finish'}
                   </button>
                 </div>
+              )}
+              {activePick && (
+                <PickList
+                  title={activePick.title}
+                  options={options[activePick.facetId] ?? []}
+                  busy={picking || sending}
+                  onSelect={(entityId) => void recordEntity(activePick.facetId, { entityId })}
+                  onDescribe={(name) => void recordEntity(activePick.facetId, { name })}
+                />
               )}
               <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
                 <textarea

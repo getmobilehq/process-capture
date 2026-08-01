@@ -194,6 +194,72 @@ export const elementStates = sqliteTable(
   }),
 );
 
+// ── Entity (canonical taxonomy — delta v1.1 R2.2/R2.3) ───────────────────────
+// Pick-list facets write canonical entity ids, not free text, so cross-interview
+// contribution analysis lines entities up reliably. Free-text "other" answers
+// create a `pending` entity awaiting admin confirmation.
+export const entities = sqliteTable(
+  'entities',
+  {
+    id: id(),
+    projectId: text('project_id')
+      .notNull()
+      .references(() => projects.id),
+    kind: text('kind', { enum: ['trigger', 'role', 'io', 'system'] }).notNull(),
+    /** As displayed — the informant's or the taxonomy's wording. */
+    name: text('name').notNull(),
+    /** Slug used for matching across informants and interviews. */
+    canonicalKey: text('canonical_key').notNull(),
+    status: text('status', { enum: ['confirmed', 'pending'] })
+      .notNull()
+      .default('pending'),
+    /** Where the entity came into being: the seeded taxonomy, or an interview. */
+    origin: text('origin', { enum: ['taxonomy', 'interview'] })
+      .notNull()
+      .default('interview'),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => ({
+    projectKindKeyUnique: uniqueIndex('entities_project_kind_key_unique').on(
+      t.projectId,
+      t.kind,
+      t.canonicalKey,
+    ),
+    byProjectKind: index('entities_project_kind_idx').on(t.projectId, t.kind),
+  }),
+);
+
+// ── EntityMention (this session selected/named this entity on this facet) ─────
+export const entityMentions = sqliteTable(
+  'entity_mentions',
+  {
+    id: id(),
+    sessionId: text('session_id')
+      .notNull()
+      .references(() => sessions.id),
+    entityId: text('entity_id')
+      .notNull()
+      .references(() => entities.id),
+    facetId: integer('facet_id').notNull(),
+    /** How it reached this session — every seeded option carries its source (R2.2). */
+    source: text('source', {
+      enum: ['taxonomy', 'this_interview', 'prior_interview', 'other'],
+    })
+      .notNull()
+      .default('other'),
+    createdAt: createdAt(),
+  },
+  (t) => ({
+    sessionEntityFacetUnique: uniqueIndex('entity_mentions_session_entity_facet_unique').on(
+      t.sessionId,
+      t.entityId,
+      t.facetId,
+    ),
+    bySession: index('entity_mentions_session_idx').on(t.sessionId),
+  }),
+);
+
 // ── Finding ──────────────────────────────────────────────────────────────────
 export const findings = sqliteTable(
   'findings',
@@ -260,6 +326,9 @@ export type Statement = typeof statements.$inferSelect;
 export type NewStatement = typeof statements.$inferInsert;
 export type CoverageState = typeof coverageStates.$inferSelect;
 export type ElementState = typeof elementStates.$inferSelect;
+export type Entity = typeof entities.$inferSelect;
+export type NewEntity = typeof entities.$inferInsert;
+export type EntityMention = typeof entityMentions.$inferSelect;
 export type NewElementState = typeof elementStates.$inferInsert;
 export type Finding = typeof findings.$inferSelect;
 export type NewFinding = typeof findings.$inferInsert;
