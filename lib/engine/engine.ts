@@ -33,6 +33,7 @@ import {
 } from '@/lib/db/queries';
 import { generateAndSaveSpec } from '@/lib/spec/generate';
 import { allResolved, IllegalCoverageTransitionError, type CoverageStateValue } from './coverage';
+import { budgetState, highestValueCandidate } from './priority';
 import {
   PICKLIST_FACETS,
   elementBelongsToFacet,
@@ -70,6 +71,11 @@ const EXTRACTION_DIRECTIVE =
 const QUESTION_DIRECTIVE =
   '[Internal step.] Recording is done. Now write your single next message to the informant: exactly one question that makes progress on a facet still pending or partial, anchoring on a concrete last-real-occurrence before general practice. Warm, plain British English, one question mark, and do not call any tools.';
 
+// R9.1 — framed as a natural end, never as a failure to finish.
+const BUDGET_MESSAGE =
+  'That is everything I wanted to ask — thank you, that was really useful. ' +
+  'Have a look at what I captured on the right, and tell me if anything is wrong or missing before we close.';
+
 const PLAYBACK_DIRECTIVE =
   '[Internal step.] Every facet is now covered. Write a short, warm per-facet playback of what you captured, then invite the informant to confirm or correct anything before you close. Do not call any tools.';
 
@@ -78,6 +84,8 @@ export interface TurnResult {
   coverage: { facetId: number; state: CoverageStateValue }[];
   /** Live checklist, so the rail can show what is still wanted (R1.1). */
   elements: ElementView[];
+  /** The felt horizon — shown to the informant as "question N of ~M" (R9.1). */
+  budget: { asked: number; globalCap: number; remaining: number; exhausted: boolean };
   status: Session['status'];
   /** True when this turn produced the end-of-interview playback (FR-4.1). */
   review: boolean;
@@ -109,6 +117,11 @@ function elementView(rows: ElementState[]): ElementView[] {
     summary: r.summary,
     naReason: r.naReason,
   }));
+}
+
+/** How many questions the agent has actually put to the informant (R9.1). */
+function agentQuestionsAsked(sessionId: string, db: DB): number {
+  return listTurns(sessionId, db).filter((t) => t.speaker === 'agent').length;
 }
 
 function turnAt(sessionId: string, seq: number, db: DB) {
@@ -375,6 +388,7 @@ export async function processUserTurn(
     agentTurn: { seq: agentSeq, content: agentText },
     coverage: coverageView(getCoverage(sessionId, db)),
     elements: elementView(getElements(sessionId, db)),
+    budget: budgetState(agentQuestionsAsked(sessionId, db), config.questionBudget),
     status: getSession(sessionId, db)!.status,
     review,
     warnings,
@@ -396,6 +410,16 @@ export async function processUserTurn(
   }
 
   const userTurnCount = listTurns(sessionId, db).filter((t) => t.speaker === 'user').length;
+
+  // Delta v1.1 R9.1 — the question budget is spent. Move to the playback rather
+  // than grinding on: budget exhaustion truncates from the least important end,
+  // because R9.2's ranking asked the highest-value questions first.
+  if (session.status === 'open' && agentQuestionsAsked(sessionId, db) >= config.questionBudget) {
+    forceReview(session, db);
+    const agentSeq = nextAgentSeq(sessionId, input.seq, db);
+    appendTurn({ sessionId, seq: agentSeq, speaker: 'agent', content: BUDGET_MESSAGE }, db);
+    return result(true, ['budget: reached QUESTION_BUDGET'], agentSeq, BUDGET_MESSAGE);
+  }
 
   // Hard stop before spending a model call (open interviews only).
   if (session.status === 'open' && userTurnCount >= maxTurns) {
@@ -524,7 +548,10 @@ export async function completeInterview(
   if (session.status === 'complete') {
     return { specVersion: getLatestSpec(sessionId, db)?.version ?? 0 };
   }
-  if (session.status !== 'review') {
+  // Delta v1.1 R9.3: an open session may be finished early. The informant is
+  // never trapped by their own coverage — the spec is generated regardless of
+  // state, and what is missing is written down rather than papered over (R9.4).
+  if (session.status !== 'review' && session.status !== 'open') {
     throw new Error(`Cannot complete a session in status ${session.status}`);
   }
 

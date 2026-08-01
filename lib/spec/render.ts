@@ -18,6 +18,7 @@ import {
   listLiveStatements,
 } from '@/lib/db/queries';
 import { FACETS, getElement } from '@/lib/facets/facets';
+import { openItemsFromElements } from '@/lib/engine/priority';
 import type { CoverageStateValue } from '@/lib/engine/coverage';
 import type { Finding } from '@/lib/db/schema';
 import { draftFacet, type DraftStatement } from './draft';
@@ -84,9 +85,13 @@ export async function renderSpec(sessionId: string, db: DB = getDb()): Promise<R
     not_applicable: summary.not_applicable,
   };
 
-  const openItems = findings
-    .filter((f) => f.type === 'unknown_retarget')
-    .map((f) => f.detail || f.title);
+  // Delta v1.1 R9.3: open_items is the seed list for follow-up sessions, so a
+  // truncated interview must list every element it did not reach — not just the
+  // facets the informant explicitly could not answer.
+  const openItems = [
+    ...findings.filter((f) => f.type === 'unknown_retarget').map((f) => f.detail || f.title),
+    ...openItemsFromElements(getElements(sessionId, db)),
+  ];
 
   // Delta v1.1 R1: element-level coverage, so a reader can see what the checklist
   // actually closed rather than inferring it from twelve facet verdicts. Every N/A
@@ -146,6 +151,9 @@ export async function renderSpec(sessionId: string, db: DB = getDb()): Promise<R
       const heading = `## ${facet.id}. ${facet.name} — ${STATE_HEADING[state]}`;
       const facetFindings = findingsByFacet.get(facet.id) ?? [];
 
+      const facetElements = elementRows.filter((e) => e.facetId === facet.id);
+      const stillOpen = facetElements.filter((e) => e.state === 'outstanding');
+
       let body: string;
       if (state === 'unknown_to_informant') {
         body = '_Not known to this informant._';
@@ -153,6 +161,9 @@ export async function renderSpec(sessionId: string, db: DB = getDb()): Promise<R
         body = '_Not applicable to this process._';
       } else if (state === 'pending') {
         body = '_Not covered in this interview._';
+      } else if (state === 'partial' && (statementsByFacet.get(facet.id) ?? []).length === 0) {
+        // Partial with nothing recorded: say so rather than drafting from nothing.
+        body = '_Only partly covered in this interview; nothing was recorded here._';
       } else {
         body = await draftFacet({
           facet,
@@ -161,10 +172,20 @@ export async function renderSpec(sessionId: string, db: DB = getDb()): Promise<R
         });
       }
 
+      // R9.4 — quality through honesty, not padding. A section with outstanding
+      // elements says so, in the section itself, so a reader of the prose alone
+      // cannot mistake a partial account for a complete one.
+      const gapsBlock =
+        stillOpen.length > 0 && state !== 'unknown_to_informant' && state !== 'not_applicable'
+          ? `\n\n_Not covered in this interview: ${stillOpen
+              .map((e) => (getElement(e.elementId)?.label ?? e.elementId).toLowerCase())
+              .join('; ')}._`
+          : '';
+
       const calloutBlock = facetFindings.length
         ? '\n\n' + facetFindings.map(findingCallout).join('\n\n')
         : '';
-      return `${heading}\n\n${body}${calloutBlock}`;
+      return `${heading}\n\n${body}${gapsBlock}${calloutBlock}`;
     }),
   );
 

@@ -7,6 +7,12 @@ import { config } from '@/lib/config';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+/**
+ * Finalise the interview. Reachable from `review` (the normal path) and from
+ * `open` (delta v1.1 R9.3 — "Finish recording", available at all times). An
+ * early finish still produces a valid spec; what was not reached is written to
+ * open_items rather than papered over (R9.4).
+ */
 export async function POST(_req: Request, { params }: { params: { sessionId: string } }) {
   const session = getSession(params.sessionId);
   if (!session) return NextResponse.json({ error: 'Unknown session' }, { status: 404 });

@@ -31,6 +31,9 @@ export const config = {
   adminPassword: process.env.ADMIN_PASSWORD ?? '',
   retentionDays: int('RETENTION_DAYS', 365),
   sessionMaxTurns: int('SESSION_MAX_TURNS', 60),
+  // Delta v1.1 R9.1 — the interview has a felt horizon. Configurable per pilot.
+  questionBudget: int('QUESTION_BUDGET', 25),
+  facetFollowUpCap: int('FACET_FOLLOWUP_CAP', 3),
   surveyUrl: process.env.SURVEY_URL ?? '',
   /** MOCK_MODEL short-circuits the Anthropic client for deterministic E2E/tests. */
   mockModel: process.env.MOCK_MODEL === '1',

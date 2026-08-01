@@ -271,3 +271,21 @@ decision, why it is the minimal option (§10).
   during capture, and the result is presented as an editable draft as specified.
   **True live transcription needs a streaming ASR** (e.g. a realtime speech API) —
   a provider decision, so flagged rather than assumed.
+- **DL.15 · One ranking module, shared by R9.2 and R4.2** — `lib/engine/priority.ts`
+  is the single ranking authority, as the delta requires. Tiers: conflicting →
+  mandatory-core (facets 1, 3, 5, 6 — identity, triggers, workflow, rules) →
+  nearly-complete (one element from closing) → everything else. Budget exhaustion
+  therefore truncates from the least important end. The `conflicting` tier is wired
+  but empty until R3 lands artefact provenance.
+- **DL.16 · Finishing early is a first-class path, not an error (R9.3)** —
+  `completeInterview` now accepts an `open` session, so "Finish recording" works at
+  any point. Every element not reached is written to `open_items` naming its facet,
+  which is the seed list for follow-up sessions.
+- **DL.17 · Truncated specs state their gaps in the prose, not only the
+  front-matter (R9.4)** — Each facet section with outstanding elements ends with an
+  explicit "Not covered in this interview: …" line, and a partial facet with no
+  statements says so rather than having prose drafted from nothing. A reader of the
+  body alone cannot mistake a partial account for a complete one.
+- **DL.18 · The budget is counted in questions asked, not answers captured (R9.5)** —
+  So a chip-accepted answer (R8) costs less of the informant's time without gaming
+  the counter; suggestions stretch what a budget captures rather than inflating it.
