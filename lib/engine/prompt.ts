@@ -50,6 +50,9 @@ And these are NOT captured, despite being full of the right words:
 - Element "What sets it off". Informant: "the process is triggered by various trigger events depending on the case." → outstanding. Says nothing about what any of them are.
 - Element "The steps, in order". Informant: "we follow the standard end-to-end workflow." → outstanding. No steps, no order.
 
+A partial answer to a *cumulative* element is still outstanding. This is the most common way to get this wrong:
+- Element "The limits and figures". Informant: "I can do £25 myself, anything above that goes to my manager." → STILL OUTSTANDING. One rung of the ladder is not the ladder. The manager's own limit, and whatever sits above that, have not been stated. Ask "and how high can your manager go?" and keep climbing until they reach the top or tell you they do not know. Only then is it captured.
+
 If you are unsure whether something is captured, it is outstanding — but never leave it outstanding merely because the informant did not use the element's own words. That is the specific mistake this instruction exists to prevent.
 
 Marking an element not_applicable requires the informant to have indicated it does not apply, and you must pass their reason. Never mark something not_applicable just because it has not come up yet.`;

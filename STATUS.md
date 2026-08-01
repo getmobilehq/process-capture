@@ -374,33 +374,42 @@ Each requirement is one commit, gates run before every commit.
 
 ### Gates
 
-`lint` ✓, `typecheck` ✓, **129 unit/integration tests** ✓ (52 at V1 → 129).
-Migrations 0001–0003 generated and applied. Not re-run this session: Playwright E2E
-and the live-model eval harness (`npm run eval`) — both predate the delta and their
-fixtures assume the V1 coverage contract, so **they will need updating for R1's
-derived meter before they are meaningful again.**
+`lint` ✓, `typecheck` ✓, **129 unit/integration** ✓, **10 E2E** ✓ (was 5).
+Migrations 0001–0003 generated and applied.
+
+**§9 eval gate: NOT MET.** Full 3×3 run attempted (`tests/eval/runs/2026-08-01T07-11-27-673Z`):
+cooperative 3/3 PASS; rambling FAIL, PASS, PASS; terse FAIL then the run aborted on
+`credit balance is too low`. 7 of 9 runs completed. Needs credits topped up and a
+clean re-run.
 
 ### Known gaps and deviations
 
-1. **E2E and eval fixtures are stale.** They assume the model can set a facet
-   `answered` directly, which R1 removed by design. They need rewriting against the
-   checklist contract before Phase 6's three-consecutive-run gate means anything.
+1. **A3 regression, diagnosed and fixed — needs re-running to confirm.** Both eval
+   failures were A3 (facet 6 numeric thresholds): `missing: 500`, then
+   `missing: 100,500`. Cause was mine: V1's facet rubric said "probe to £ bands and
+   governance tiers", but the R1 element rubric said thresholds are captured when
+   "concrete thresholds are given" — which one figure satisfies, so the model closed
+   the element after the first number and stopped climbing the ladder.
+   `rules.thresholds` and `rules.approvals` now require every band up to the top of
+   the ladder, and the scoring section carries a worked contrastive example of the
+   partial-ladder mistake. **Unverified against the live model** — the credit
+   exhaustion stopped the re-run.
 2. **Live transcription is chunked, not streaming (DL.14).** R10.2 asks for text
    appearing as the informant speaks; Whisper has no streaming interface. Needs a
    realtime ASR — a provider decision, so flagged rather than assumed.
-3. **The interview page could not be verified in a browser.** Its markup is
-   confirmed server-side (topbar, checklist, pick-list with source labels and
-   escape hatch, recording controls, draft bar, budget counter, Finish recording),
-   but Chrome automation would not reach `document_idle` on that route all session,
-   so the interactive states — expanded checklist, recording, discard/undo — have
-   not been seen working. **This is the first thing worth a human eye.**
+3. **Interview UI now verified — closed.** `tests/e2e/delta.spec.ts` drives the
+   interactive states in a real browser: expanding a facet to its plain-language
+   checklist, the inline not-applicable path with its reason, pick-list options with
+   source labels and the escape hatch, a draft surviving a reload behind the
+   recovery banner, discard behind a confirmation naming the cost then undone, and
+   the visible question budget.
 4. **The delta's fixtures are still absent.** `spec-fault-management-process-v1.md`
    and `r5-reference/*.svg` are not in the repo. Per your call they were treated as
    guidance, so R5.7's eval assertions have not been written against ground truth.
 
 ### Suggested next session
 
-R5.2–R5.6 is the largest remaining block and now has a validated artefact under it.
-Before that, though, the stale E2E and eval fixtures are worth an hour: they are the
-only gates that currently prove the engine behaves end to end, and they are red by
-construction rather than by accident.
+1. Top up API credits and re-run `npm run eval -- --runs 3`. The A3 fix is in but
+   unproven against the live model; the §9 gate cannot be claimed until it passes.
+2. Then R5.2–R5.6 — the largest remaining block, now with a validated artefact
+   under it.

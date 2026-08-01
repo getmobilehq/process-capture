@@ -319,3 +319,13 @@ decision, why it is the minimal option (§10).
   (`automatable` / `assistable` / `human-required`) with an empty evidence array is
   rejected; `unclassified` is the honest outcome when evidence is thin and must
   still explain itself.
+- **DL.24 · Cumulative elements need every rung, not the first (R1.2 correction)** —
+  The first live-model eval after R1 failed A3 twice (`missing: 500`, then
+  `missing: 100,500`). V1's facet rubric said "probe to £ bands and governance
+  tiers"; the R1 element rubric said thresholds are captured when "concrete
+  thresholds are given", which one figure satisfies — so the model closed
+  `rules.thresholds` after the first number and stopped climbing. The rubric now
+  requires every band up to the top of the ladder, and the scoring section carries a
+  worked example of the partial-ladder mistake. **Generalisable lesson: an element
+  whose answer is a list needs a rubric that says so, or the checklist trades
+  vocabulary-sensitivity for premature closure.**
