@@ -301,3 +301,21 @@ decision, why it is the minimal option (§10).
   raw transcript, which is what makes "never ask twice" structural rather than a
   prompt instruction. The `documented` / `corroborated` / `conflicting` provenance
   classes are declared now so the ledger's shape does not change when R3 lands.
+- **DL.21 · The process graph is the canonical artefact, and lineage is mandatory
+  (R5.1)** — `lib/graph/schema.ts` types the graph in Zod; `lib/graph/validate.ts`
+  enforces the structural rules (exactly one start, ≥1 end, no orphans, resolvable
+  flows and lanes, every gateway forks at least twice, boundary events attached).
+  `sourceFacet` is required on every node and annotation: a diagram element with no
+  facet lineage is invalid, because a diagram that cannot say where a box came from
+  is decoration, not evidence. A corrupted graph fails loudly with named errors
+  rather than rendering something plausible (R5.7).
+- **DL.22 · A to-be change must resolve an evidenced bottleneck (R5.4)** — Enforced
+  in two places: the Zod shape requires at least one `resolvesAnnotationId`, and
+  validation requires each id to name an annotation that actually exists on the base
+  graph. A to-be diagram is a set of answers to evidenced problems, not a wishlist.
+  `verified` defaults to false and is never set by the generator — approval is a
+  human act.
+- **DL.23 · No opportunity label without cited evidence (R5.5)** — A confident label
+  (`automatable` / `assistable` / `human-required`) with an empty evidence array is
+  rejected; `unclassified` is the honest outcome when evidence is thin and must
+  still explain itself.
