@@ -24,6 +24,8 @@ export interface InterviewRoomProps {
   initialOptions: Record<number, PickOption[]>;
   /** Unsubmitted draft recovered from the server, if the tab went away (R10.3). */
   initialDraft: { content: string; seq: number; take: number } | null;
+  /** The felt horizon (R9.1) — the interview has an end the informant can see. */
+  initialBudget: { asked: number; globalCap: number; remaining: number; exhausted: boolean };
   initialStatus: 'open' | 'review' | 'complete' | 'abandoned';
   startedAtMs: number;
   surveyUrl: string;
@@ -64,6 +66,8 @@ export function InterviewRoom(props: InterviewRoomProps) {
   // R10.3 — draft protection.
   const [recovered, setRecovered] = useState(Boolean(props.initialDraft?.content));
   const [canUndo, setCanUndo] = useState(false);
+  const [budget, setBudget] = useState(props.initialBudget);
+  const [confirmFinish, setConfirmFinish] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [confirmRerecord, setConfirmRerecord] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
@@ -106,7 +110,7 @@ export function InterviewRoom(props: InterviewRoomProps) {
   }, [coverage, options, status]);
 
   async function finish() {
-    if (finishing || status !== 'review') return;
+    if (finishing || (status !== 'review' && status !== 'open')) return;
     setError(null);
     setFinishing(true);
     try {
@@ -328,6 +332,7 @@ export function InterviewRoom(props: InterviewRoomProps) {
       if (result.elements) setElements(result.elements);
       originRef.current = 'typed';
       setSavedAt(null);
+      if (result.budget) setBudget(result.budget);
       setStatus(result.status);
     } catch (err) {
       // Roll back the optimistic bubble and restore the text so the user can
@@ -507,8 +512,22 @@ export function InterviewRoom(props: InterviewRoomProps) {
               {/* Destructive actions live here — never adjacent to Submit (R10.3). */}
               <div className="pc-draftbar">
                 <span className="pc-savedstate">
-                  {savedAt ? 'Saved' : input.trim() ? 'Saving…' : ''}
+                  {status === 'open' && (
+                    <span className="pc-budget">
+                      Question {Math.min(budget.asked, budget.globalCap)} of ~{budget.globalCap}
+                    </span>
+                  )}
+                  {savedAt ? ' · Saved' : input.trim() ? ' · Saving…' : ''}
                 </span>
+                {status === 'open' && (
+                  <button
+                    type="button"
+                    className="pc-check-na"
+                    onClick={() => setConfirmFinish(true)}
+                  >
+                    Finish recording
+                  </button>
+                )}
                 {canUndo && (
                   <button type="button" className="pc-check-na" onClick={() => void draftAction('undo')}>
                     Undo discard
@@ -533,6 +552,34 @@ export function InterviewRoom(props: InterviewRoomProps) {
                   </button>
                 )}
               </div>
+
+              {confirmFinish && (
+                <div className="pc-confirm" role="alertdialog">
+                  <b>Finish here?</b> We will write up everything you have told us. Anything
+                  we did not get to is noted as still open — that is normal, and someone can
+                  pick it up later.
+                  <span className="pc-confirm-acts">
+                    <button
+                      type="button"
+                      className="pc-btn ghost sm"
+                      onClick={() => setConfirmFinish(false)}
+                    >
+                      Keep going
+                    </button>
+                    <button
+                      type="button"
+                      className="pc-btn sm"
+                      disabled={finishing}
+                      onClick={() => {
+                        setConfirmFinish(false);
+                        void finish();
+                      }}
+                    >
+                      {finishing ? 'Finishing…' : 'Finish and write it up'}
+                    </button>
+                  </span>
+                </div>
+              )}
 
               {confirmDiscard && (
                 <div className="pc-confirm" role="alertdialog">

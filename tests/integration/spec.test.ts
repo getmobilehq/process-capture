@@ -3,7 +3,14 @@ import { makeTestDb, makeSessionFixture, type TestDb } from '../helpers/db';
 import { completeInterview, openInterview, processUserTurn } from '@/lib/engine/engine';
 import { generateAndSaveSpec } from '@/lib/spec/generate';
 import { validateSpec } from '@/lib/spec/validate';
-import { getInterviewee, getLatestSpec, getSession, nextTurnSeq } from '@/lib/db/queries';
+import {
+  getInterviewee,
+  getLatestSpec,
+  getSession,
+  nextTurnSeq,
+  setElement,
+  updateSession,
+} from '@/lib/db/queries';
 
 async function runToReview(db: TestDb, sessionId: string) {
   await openInterview(sessionId, db);
@@ -60,10 +67,45 @@ describe('specification generation (FR-5) — golden path yields a valid spec', 
     expect(regenerated.version).toBe(2);
   });
 
-  it('refuses to complete a session that is not in review', async () => {
+  // Delta v1.1 R9.3 — an open session may be finished early; the informant is
+  // never trapped by their own coverage. R9.4 requires the result to be honest.
+  it('finishes an open interview early and writes an honest, valid spec (R9.3)', async () => {
     const { db } = makeTestDb();
     const { session } = makeSessionFixture(db);
-    await openInterview(session.id, db); // still open, no review reached
-    await expect(completeInterview(session.id, db)).rejects.toThrow(/status open/);
+    await openInterview(session.id, db);
+
+    // A couple of elements captured; everything else untouched.
+    setElement(
+      {
+        sessionId: session.id,
+        facetId: 1,
+        elementId: 'identity.purpose',
+        state: 'captured',
+        summary: 'Sorting out wrong charges.',
+      },
+      db,
+    );
+
+    const { specVersion } = await completeInterview(session.id, db);
+    expect(specVersion).toBe(1);
+
+    const spec = getLatestSpec(session.id, db)!;
+    expect(validateSpec(spec.markdown).ok).toBe(true);
+
+    // Every element not reached is listed for follow-up, with its facet.
+    expect(spec.openItems.length).toBeGreaterThan(30);
+    expect(spec.openItems.some((i) => /Facet 12 .*not covered/.test(i))).toBe(true);
+
+    // R9.4 — no section claims content it does not have.
+    expect(spec.markdown).toMatch(/Not covered in this interview/);
+    expect(spec.markdown).not.toMatch(/— answered/);
+  });
+
+  it('still refuses to complete an abandoned session', async () => {
+    const { db } = makeTestDb();
+    const { session } = makeSessionFixture(db);
+    await openInterview(session.id, db);
+    updateSession(session.id, { status: 'abandoned' }, db);
+    await expect(completeInterview(session.id, db)).rejects.toThrow(/status abandoned/);
   });
 });

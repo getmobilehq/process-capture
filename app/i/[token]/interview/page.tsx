@@ -46,6 +46,14 @@ export default async function InterviewPage({ params }: { params: { token: strin
   );
 
   // R10.3 — anything unsubmitted when the tab went away comes back with them.
+  const asked = turns.filter((t) => t.speaker === 'agent').length;
+  const budget = {
+    asked,
+    globalCap: config.questionBudget,
+    remaining: Math.max(0, config.questionBudget - asked),
+    exhausted: asked >= config.questionBudget,
+  };
+
   const active = getActiveDraft(session.id);
   const draft = active ? { content: active.content, seq: active.seq, take: active.take } : null;
 
@@ -64,6 +72,7 @@ export default async function InterviewPage({ params }: { params: { token: strin
           initialElements={elements}
           initialOptions={options}
           initialDraft={draft}
+          initialBudget={budget}
           initialStatus={session.status}
           startedAtMs={(session.startedAt ?? new Date()).getTime()}
           surveyUrl={config.surveyUrl}
