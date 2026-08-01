@@ -45,7 +45,7 @@ test('golden path: mocked interview reaches review with 11 answered + 1 unknown'
   await expect(page.locator('.pc-msg.agent').first()).toBeVisible();
 
   const textarea = page.getByLabel('Your reply', { exact: true });
-  const send = page.getByRole('button', { name: 'Send' });
+  const send = page.getByRole('button', { name: /Submit answer/i });
 
   let final: {
     review: boolean;
@@ -76,8 +76,10 @@ test('golden path: mocked interview reaches review with 11 answered + 1 unknown'
   expect(unknown).toBe(1);
   expect(pendingOrPartial).toBe(0);
 
-  // UI reflects review and full coverage.
-  await expect(page.getByText(/12\/12 resolved/)).toBeVisible();
+  // UI reflects review and the checklist-derived count (delta R1.1). The mock
+  // captures every element except facet 9's three, which the informant honestly
+  // cannot answer — so 37 of 40, not a bare percentage.
+  await expect(page.getByText(/37 of 40 things captured/)).toBeVisible();
   expect(sessionFor(token)!.status).toBe('review');
 
   // Confirm the review → interview completes and a spec is generated (FR-4.2, FR-5).
