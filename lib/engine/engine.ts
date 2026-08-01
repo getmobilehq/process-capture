@@ -20,24 +20,38 @@ import {
   getSession,
   listFindingsForSession,
   listTurns,
+  picklistOptions,
   raiseFinding,
   getElements,
+  recordEntityMention,
   recordStatement,
   setCoverage,
   setElement,
   setIntervieweeStatus,
+  upsertEntity,
   updateSession,
 } from '@/lib/db/queries';
 import { generateAndSaveSpec } from '@/lib/spec/generate';
 import { allResolved, IllegalCoverageTransitionError, type CoverageStateValue } from './coverage';
-import { elementBelongsToFacet, elementsFor, getFacet } from '@/lib/facets/facets';
-import { buildSystemPrompt, OPENING_INSTRUCTION, type ElementView } from './prompt';
+import {
+  PICKLIST_FACETS,
+  elementBelongsToFacet,
+  elementsFor,
+  getFacet,
+} from '@/lib/facets/facets';
+import {
+  buildSystemPrompt,
+  OPENING_INSTRUCTION,
+  type ElementView,
+  type OptionView,
+} from './prompt';
 import { callModel, type ModelToolCall } from './model';
 import { OPENING_MOCK } from './mock';
 import { violatesOneQuestion } from './one-question';
 import {
   endInterviewSchema,
   raiseFindingSchema,
+  recordEntitySchema,
   recordStatementSchema,
   setCoverageSchema,
   setElementSchema,
@@ -72,6 +86,18 @@ export interface TurnResult {
 
 function coverageView(rows: CoverageState[]): { facetId: number; state: CoverageStateValue }[] {
   return rows.map((r) => ({ facetId: r.facetId, state: r.state }));
+}
+
+/** Pick-list options for the prompt, across every pick-list facet (R2). */
+function optionView(sessionId: string, db: DB): OptionView[] {
+  return PICKLIST_FACETS.flatMap((f) =>
+    picklistOptions(sessionId, f.id, db).map((o) => ({
+      facetId: f.id,
+      name: o.name,
+      source: o.source,
+      selected: o.selected,
+    })),
+  );
 }
 
 /** Checklist state for the prompt's live coverage block (R1.1). */
@@ -117,6 +143,7 @@ export async function openInterview(sessionId: string, db: DB = getDb()): Promis
       processName: session.processName,
       coverage: coverageView(getCoverage(sessionId, db)),
       elements: elementView(getElements(sessionId, db)),
+      options: optionView(sessionId, db),
     });
     const resp = await callModel({
       sessionId,
@@ -209,6 +236,29 @@ export function applyTool(session: Session, call: ModelToolCall, db: DB): ApplyR
           db,
         );
         return { content: `element ${input.elementId} ${input.state}`, isError: false, appliedName: call.name };
+      }
+      case 'record_entity': {
+        const input = recordEntitySchema.parse(call.input);
+        // The server canonicalises and de-duplicates (P1, R2.3). A name first heard
+        // in an interview is pending — a candidate for the taxonomy, not yet in it.
+        const entity = upsertEntity(
+          { projectId: session.projectId, kind: input.kind, name: input.name },
+          db,
+        );
+        recordEntityMention(
+          {
+            sessionId: session.id,
+            entityId: entity.id,
+            facetId: input.facetId,
+            source: entity.origin === 'taxonomy' ? 'taxonomy' : 'this_interview',
+          },
+          db,
+        );
+        return {
+          content: `entity ${entity.canonicalKey} (${entity.status})`,
+          isError: false,
+          appliedName: call.name,
+        };
       }
       case 'raise_finding': {
         const input = raiseFindingSchema.parse(call.input);
@@ -363,6 +413,7 @@ export async function processUserTurn(
       processName: session.processName,
       coverage: coverageView(getCoverage(sessionId, db)),
       elements: elementView(getElements(sessionId, db)),
+      options: optionView(sessionId, db),
     });
 
   // ── Phase A — extraction (tools only). A dedicated bookkeeping step, so the

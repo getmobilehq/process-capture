@@ -229,3 +229,23 @@ decision, why it is the minimal option (§10).
   a new `not_applicable_items` key registers each ruled-out element with its facet,
   label and reason. `lib/spec/validate.ts` requires all of them, so a spec cannot
   report a meter without the checklist it was derived from.
+- **DL.7 · Four facets are pick-lists, eight stay open (R2.1)** — Closed sets in
+  practice: stakeholders (2), triggers (3), inputs/outputs (4), systems (8). The
+  open facets are where tacit knowledge lives — workflow, rules, exceptions,
+  bottlenecks — and are never reduced to a tick-list. `elicitation` and `entityKind`
+  live on the facet spec, so the classification has one home.
+- **DL.8 · Entities are canonical, project-scoped and status-tracked (R2.2/R2.3)** —
+  New `entities` + `entity_mentions` tables. `canonicalKey` folds case, spacing and
+  punctuation ("Remedy/Helix" = "remedy helix"), so cross-interview analysis matches
+  on identity rather than prose. Taxonomy entities are seeded `confirmed` per
+  project from the VMO2 estate; anything an informant names arrives `pending`,
+  awaiting admin confirmation before it joins the house vocabulary.
+- **DL.9 · Every option carries its source, and a colleague's answer is labelled as
+  one (R2.2)** — Options are seeded taxonomy → this interview → prior interviews,
+  and the UI and prompt both show which. The model is instructed never to present a
+  colleague's answer as fact ("some of your colleagues mentioned X — does that apply
+  to you?"), because attributing is the whole point (P2).
+- **DL.10 · Ticking is additive; there is no untick** — A mention records that the
+  informant said something, and evidence is not walked backwards (P2). A correction
+  is a matter for the conversation, not a checkbox. "Something else — let me describe
+  it" is always present and styled co-equal, so the list never becomes a cage.

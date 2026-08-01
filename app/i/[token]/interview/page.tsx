@@ -4,10 +4,12 @@ import {
   getLatestSession,
   getCoverage,
   getElements,
+  picklistOptions,
   getSession,
   listTurns,
 } from '@/lib/db/queries';
 import { openInterview } from '@/lib/engine/engine';
+import { PICKLIST_FACETS } from '@/lib/facets/facets';
 import { InterviewRoom } from '@/components/interview/InterviewRoom';
 import { config } from '@/lib/config';
 
@@ -37,6 +39,11 @@ export default async function InterviewPage({ params }: { params: { token: strin
     naReason: e.naReason,
   }));
 
+  // Pick-list option sets for the four closed-set facets (R2.1/R2.2).
+  const options = Object.fromEntries(
+    PICKLIST_FACETS.map((f) => [f.id, picklistOptions(session.id, f.id)]),
+  );
+
   return (
     <main className="pc-wrap">
       <span className="pc-secpill blue">
@@ -50,6 +57,7 @@ export default async function InterviewPage({ params }: { params: { token: strin
           initialTurns={turns}
           initialCoverage={coverage}
           initialElements={elements}
+          initialOptions={options}
           initialStatus={session.status}
           startedAtMs={(session.startedAt ?? new Date()).getTime()}
           surveyUrl={config.surveyUrl}

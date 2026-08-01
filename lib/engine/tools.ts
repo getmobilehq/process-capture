@@ -47,6 +47,17 @@ export const setElementSchema = z.object({
   reason: z.string().optional().default(''),
 });
 
+// Delta v1.1 R2.3: the model names an entity it heard; the server canonicalises
+// and de-duplicates it. Free text still lands on a canonical id, so cross-interview
+// analysis lines entities up instead of comparing prose.
+export const ENTITY_KINDS = ['trigger', 'role', 'io', 'system'] as const;
+
+export const recordEntitySchema = z.object({
+  facetId,
+  kind: z.enum(ENTITY_KINDS),
+  name: z.string().min(1).max(120),
+});
+
 export const raiseFindingSchema = z.object({
   facetId,
   type: z.enum(IN_SESSION_FINDING_TYPES),
@@ -59,12 +70,14 @@ export const endInterviewSchema = z.object({});
 export type RecordStatementInput = z.infer<typeof recordStatementSchema>;
 export type SetCoverageInput = z.infer<typeof setCoverageSchema>;
 export type SetElementInput = z.infer<typeof setElementSchema>;
+export type RecordEntityInput = z.infer<typeof recordEntitySchema>;
 export type RaiseFindingInput = z.infer<typeof raiseFindingSchema>;
 
 export const TOOL_NAMES = [
   'record_statement',
   'set_coverage',
   'set_element',
+  'record_entity',
   'raise_finding',
   'end_interview',
 ] as const;
@@ -125,6 +138,20 @@ export const TOOL_DEFINITIONS = [
         },
       },
       required: ['facetId', 'elementId', 'state'],
+    },
+  },
+  {
+    name: 'record_entity',
+    description:
+      'Record a system, role, trigger, or input/output the informant named, so it joins the engagement vocabulary. The server canonicalises the name and de-duplicates it against what is already known — record what they said, in their words; do not translate it into house terminology yourself.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        facetId: { type: 'integer', minimum: 1, maximum: 12 },
+        kind: { type: 'string', enum: [...ENTITY_KINDS] },
+        name: { type: 'string', description: 'The entity as the informant named it.' },
+      },
+      required: ['facetId', 'kind', 'name'],
     },
   },
   {

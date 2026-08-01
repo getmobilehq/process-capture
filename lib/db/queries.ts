@@ -14,6 +14,8 @@ import { getDb, type DB } from './index';
 import {
   coverageStates,
   elementStates,
+  entities,
+  entityMentions,
   findings,
   interviewees,
   projects,
@@ -24,15 +26,20 @@ import {
   type Finding,
   type NewFinding,
   type NewProject,
+  type Entity,
   type Session,
   type Statement,
 } from './schema';
 import {
   ALL_ELEMENTS,
   FACET_IDS,
+  canonicalKey,
   elementBelongsToFacet,
+  entityKindFor,
   getElement,
+  type EntityKind,
 } from '@/lib/facets/facets';
+import { TAXONOMY_SEED } from '@/lib/facets/taxonomy';
 import {
   assertTransition,
   deriveFacetState,
@@ -61,6 +68,8 @@ export function createProject(
       targetProcesses: input.targetProcesses ?? [],
     })
     .returning().get();
+  // Every engagement starts with the house vocabulary (R2.2).
+  seedTaxonomy(row.id, db);
   return row;
 }
 
@@ -492,6 +501,191 @@ export function outstandingElements(sessionId: string, db: DB = getDb()) {
       elementId: r.elementId,
       label: getElement(r.elementId)?.label ?? r.elementId,
     }));
+}
+
+// ── Entities and pick-list options (delta v1.1 R2) ───────────────────────────
+
+/**
+ * Find or create a canonical entity for a project (R2.3). Matching is on the
+ * canonical key, so "Remedy/Helix", "remedy helix" and "Remedy / Helix" all land
+ * on one entity rather than three. A name first seen in an interview is created
+ * `pending` — it is a candidate for the taxonomy, not yet part of it.
+ */
+export function upsertEntity(
+  input: {
+    projectId: string;
+    kind: EntityKind;
+    name: string;
+    status?: 'confirmed' | 'pending';
+    origin?: 'taxonomy' | 'interview';
+  },
+  db: DB = getDb(),
+): Entity {
+  const key = canonicalKey(input.name);
+  if (key === '') throw new Error(`Entity name has no canonical form: "${input.name}"`);
+
+  const existing = db
+    .select()
+    .from(entities)
+    .where(
+      and(
+        eq(entities.projectId, input.projectId),
+        eq(entities.kind, input.kind),
+        eq(entities.canonicalKey, key),
+      ),
+    )
+    .get();
+  if (existing) return existing;
+
+  return db
+    .insert(entities)
+    .values({
+      projectId: input.projectId,
+      kind: input.kind,
+      name: input.name.trim(),
+      canonicalKey: key,
+      status: input.status ?? 'pending',
+      origin: input.origin ?? 'interview',
+    })
+    .returning().get();
+}
+
+/**
+ * Seed a project's taxonomy with the house vocabulary (R2.2). Idempotent — safe on
+ * every project creation and re-runnable after the seed list grows.
+ */
+export function seedTaxonomy(projectId: string, db: DB = getDb()): number {
+  let created = 0;
+  for (const group of TAXONOMY_SEED) {
+    for (const name of group.names) {
+      const before = listEntities(projectId, group.kind, db).length;
+      upsertEntity(
+        { projectId, kind: group.kind, name, status: 'confirmed', origin: 'taxonomy' },
+        db,
+      );
+      if (listEntities(projectId, group.kind, db).length > before) created += 1;
+    }
+  }
+  return created;
+}
+
+export function listEntities(
+  projectId: string,
+  kind: EntityKind | null = null,
+  db: DB = getDb(),
+): Entity[] {
+  const where = kind
+    ? and(eq(entities.projectId, projectId), eq(entities.kind, kind))
+    : eq(entities.projectId, projectId);
+  return db.select().from(entities).where(where).orderBy(asc(entities.name)).all();
+}
+
+/** Record that a session named or ticked an entity on a facet. Idempotent. */
+export function recordEntityMention(
+  input: {
+    sessionId: string;
+    entityId: string;
+    facetId: number;
+    source?: 'taxonomy' | 'this_interview' | 'prior_interview' | 'other';
+  },
+  db: DB = getDb(),
+) {
+  const existing = db
+    .select()
+    .from(entityMentions)
+    .where(
+      and(
+        eq(entityMentions.sessionId, input.sessionId),
+        eq(entityMentions.entityId, input.entityId),
+        eq(entityMentions.facetId, input.facetId),
+      ),
+    )
+    .get();
+  if (existing) return existing;
+
+  return db
+    .insert(entityMentions)
+    .values({
+      sessionId: input.sessionId,
+      entityId: input.entityId,
+      facetId: input.facetId,
+      source: input.source ?? 'other',
+    })
+    .returning().get();
+}
+
+export function listEntityMentions(sessionId: string, db: DB = getDb()) {
+  return db
+    .select()
+    .from(entityMentions)
+    .where(eq(entityMentions.sessionId, sessionId))
+    .all();
+}
+
+export interface PicklistOption {
+  entityId: string;
+  name: string;
+  /** Where this option came from — every seeded option carries its source (R2.2). */
+  source: 'taxonomy' | 'this_interview' | 'prior_interview';
+  /** True when this session has already named it — shown pre-ticked (R2 acceptance). */
+  selected: boolean;
+  status: 'confirmed' | 'pending';
+}
+
+/**
+ * The option set for a pick-list facet (R2.2), seeded in priority order:
+ *   (a) the org-level taxonomy, (b) entities already named earlier in *this*
+ *   interview, (c) entities from prior interviews in the same engagement.
+ *
+ * Anything this session has already mentioned comes back pre-ticked, so reaching
+ * facet 8 after systems were named at facet 4 is a confirmation, not a re-list.
+ */
+export function picklistOptions(
+  sessionId: string,
+  facetId: number,
+  db: DB = getDb(),
+): PicklistOption[] {
+  const kind = entityKindFor(facetId);
+  if (!kind) return [];
+  const session = getSession(sessionId, db);
+  if (!session) return [];
+
+  const all = listEntities(session.projectId, kind, db);
+  const mentions = db
+    .select()
+    .from(entityMentions)
+    .innerJoin(sessions, eq(entityMentions.sessionId, sessions.id))
+    .where(eq(sessions.projectId, session.projectId))
+    .all();
+
+  const thisSession = new Set(
+    mentions.filter((m) => m.entity_mentions.sessionId === sessionId).map((m) => m.entity_mentions.entityId),
+  );
+  const priorSessions = new Set(
+    mentions.filter((m) => m.entity_mentions.sessionId !== sessionId).map((m) => m.entity_mentions.entityId),
+  );
+
+  return all
+    .map((e): PicklistOption => {
+      // Priority order matters: the taxonomy is the strongest provenance, then
+      // what this informant already said, then what colleagues said.
+      const source: PicklistOption['source'] =
+        e.origin === 'taxonomy'
+          ? 'taxonomy'
+          : thisSession.has(e.id)
+            ? 'this_interview'
+            : priorSessions.has(e.id)
+              ? 'prior_interview'
+              : 'prior_interview';
+      return {
+        entityId: e.id,
+        name: e.name,
+        source,
+        selected: thisSession.has(e.id),
+        status: e.status,
+      };
+    })
+    .sort((a, b) => Number(b.selected) - Number(a.selected) || a.name.localeCompare(b.name));
 }
 
 export function coverageSummary(sessionId: string, db: DB = getDb()) {

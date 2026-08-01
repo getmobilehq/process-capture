@@ -24,6 +24,16 @@ export interface FacetElement {
   capturedWhen: string;
 }
 
+/**
+ * How a facet is elicited (delta v1.1 R2.1). Several facets are closed sets in
+ * practice: asking open questions for them wastes the informant's patience and
+ * produces inconsistent vocabulary across interviews.
+ */
+export type Elicitation = 'open' | 'picklist';
+
+/** The kind of canonical entity a pick-list facet collects (R2.3). */
+export type EntityKind = 'trigger' | 'role' | 'io' | 'system';
+
 export interface Facet {
   id: FacetId;
   /** Human name shown on the rail and in the spec heading. */
@@ -38,6 +48,10 @@ export interface Facet {
   example: string;
   /** The checklist this facet is scored against (R1.1). */
   elements: readonly FacetElement[];
+  /** Open (probabilistic) or pick-list (deterministic) elicitation (R2.1). */
+  elicitation: Elicitation;
+  /** Present on pick-list facets only — what kind of entity they collect. */
+  entityKind?: EntityKind;
 }
 
 export const FACETS: readonly Facet[] = [
@@ -70,6 +84,7 @@ export const FACETS: readonly Facet[] = [
         capturedWhen: 'The last thing that happens, or the condition that closes the process.',
       },
     ],
+    elicitation: 'open',
   },
   {
     id: 2,
@@ -101,6 +116,8 @@ export const FACETS: readonly Facet[] = [
           'Hand-off partners upstream or downstream are identified, or it is established there are none.',
       },
     ],
+    elicitation: 'picklist',
+    entityKind: 'role',
   },
   {
     id: 3,
@@ -138,6 +155,8 @@ export const FACETS: readonly Facet[] = [
           'Secondary or escalation triggers are given, or it is established the primary trigger is the only one.',
       },
     ],
+    elicitation: 'picklist',
+    entityKind: 'trigger',
   },
   {
     id: 4,
@@ -173,6 +192,8 @@ export const FACETS: readonly Facet[] = [
         capturedWhen: 'The destination or consumer of the primary outputs is stated.',
       },
     ],
+    elicitation: 'picklist',
+    entityKind: 'io',
   },
   {
     id: 5,
@@ -211,6 +232,7 @@ export const FACETS: readonly Facet[] = [
           'At least one hand-off is described, or it is established the work stays with one role.',
       },
     ],
+    elicitation: 'open',
   },
   {
     id: 6,
@@ -244,6 +266,7 @@ export const FACETS: readonly Facet[] = [
           'Approval tiers are tied to the roles that hold them, or established that no approval is required.',
       },
     ],
+    elicitation: 'open',
   },
   {
     id: 7,
@@ -275,6 +298,7 @@ export const FACETS: readonly Facet[] = [
           'Spreadsheets, shared inboxes or local records outside the main systems are identified, or established that there are none.',
       },
     ],
+    elicitation: 'open',
   },
   {
     id: 8,
@@ -307,6 +331,8 @@ export const FACETS: readonly Facet[] = [
           'Email, phone, paper or other manual channels in the mix are identified, or established that there are none.',
       },
     ],
+    elicitation: 'picklist',
+    entityKind: 'system',
   },
   {
     id: 9,
@@ -339,6 +365,7 @@ export const FACETS: readonly Facet[] = [
         capturedWhen: 'What counts as an error, and how it would be caught, is described.',
       },
     ],
+    elicitation: 'open',
   },
   {
     id: 10,
@@ -370,6 +397,7 @@ export const FACETS: readonly Facet[] = [
         capturedWhen: 'The hardest case type is described, and how it differs from the usual path.',
       },
     ],
+    elicitation: 'open',
   },
   {
     id: 11,
@@ -400,6 +428,7 @@ export const FACETS: readonly Facet[] = [
         capturedWhen: 'A target or SLA is stated, or established that there is none.',
       },
     ],
+    elicitation: 'open',
   },
   {
     id: 12,
@@ -438,6 +467,7 @@ export const FACETS: readonly Facet[] = [
         capturedWhen: 'A read is taken on how consistently the work is done across people.',
       },
     ],
+    elicitation: 'open',
   },
 ] as const;
 
@@ -476,4 +506,37 @@ export function elementBelongsToFacet(elementId: string, facetId: number): boole
 
 export function elementsFor(facetId: number): readonly FacetElement[] {
   return getFacet(facetId).elements;
+}
+
+// ── Elicitation mode (delta v1.1 R2) ────────────────────────────────────────
+
+/** Facets elicited as a tick-list rather than an open question (R2.1). */
+export const PICKLIST_FACETS: readonly Facet[] = FACETS.filter(
+  (f) => f.elicitation === 'picklist',
+);
+
+export function isPicklistFacet(facetId: number): boolean {
+  return getFacet(facetId).elicitation === 'picklist';
+}
+
+export function entityKindFor(facetId: number): EntityKind | undefined {
+  return getFacet(facetId).entityKind;
+}
+
+/** The facet that collects a given entity kind — the inverse of entityKindFor. */
+export function facetForEntityKind(kind: EntityKind): FacetId | undefined {
+  return FACETS.find((f) => f.entityKind === kind)?.id;
+}
+
+/**
+ * Canonical key for an entity name (R2.3). Case, punctuation and spacing vary
+ * wildly between informants ("Remedy/Helix", "remedy helix", "Remedy / Helix");
+ * matching on this key is what lets cross-interview analysis line entities up.
+ */
+export function canonicalKey(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
