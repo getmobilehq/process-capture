@@ -161,6 +161,39 @@ export const coverageStates = sqliteTable(
   }),
 );
 
+// ── ElementState (one row per session × checklist element, seeded at start) ───
+// Delta v1.1 R1.1: elements are the unit of coverage. The facet meter in
+// coverage_states is *derived* from these rows by lib/engine/coverage.ts — never
+// set independently, so the meter can never disagree with the checklist.
+export const elementStates = sqliteTable(
+  'element_states',
+  {
+    id: id(),
+    sessionId: text('session_id')
+      .notNull()
+      .references(() => sessions.id),
+    facetId: integer('facet_id').notNull(),
+    /** Stable key from lib/facets/facets.ts — validated server-side before write. */
+    elementId: text('element_id').notNull(),
+    state: text('state', { enum: ['outstanding', 'captured', 'not_applicable'] })
+      .notNull()
+      .default('outstanding'),
+    /** One-line account of what was captured, shown on the rail (R1.1). */
+    summary: text('summary').notNull().default(''),
+    /** Why the interviewee marked this N/A (R1.3); empty otherwise. */
+    naReason: text('na_reason').notNull().default(''),
+    updatedAt: updatedAt(),
+    createdAt: createdAt(),
+  },
+  (t) => ({
+    sessionElementUnique: uniqueIndex('element_states_session_element_unique').on(
+      t.sessionId,
+      t.elementId,
+    ),
+    bySessionFacet: index('element_states_session_facet_idx').on(t.sessionId, t.facetId),
+  }),
+);
+
 // ── Finding ──────────────────────────────────────────────────────────────────
 export const findings = sqliteTable(
   'findings',
@@ -226,6 +259,8 @@ export type NewTurn = typeof turns.$inferInsert;
 export type Statement = typeof statements.$inferSelect;
 export type NewStatement = typeof statements.$inferInsert;
 export type CoverageState = typeof coverageStates.$inferSelect;
+export type ElementState = typeof elementStates.$inferSelect;
+export type NewElementState = typeof elementStates.$inferInsert;
 export type Finding = typeof findings.$inferSelect;
 export type NewFinding = typeof findings.$inferInsert;
 export type Spec = typeof specs.$inferSelect;

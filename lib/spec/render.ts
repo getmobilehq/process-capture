@@ -9,6 +9,7 @@ import type { DB } from '@/lib/db';
 import { getDb } from '@/lib/db';
 import {
   coverageSummary as coverageSummaryQuery,
+  getElements,
   getCoverage,
   getInterviewee,
   getProject,
@@ -16,7 +17,7 @@ import {
   listFindingsForSession,
   listLiveStatements,
 } from '@/lib/db/queries';
-import { FACETS } from '@/lib/facets/facets';
+import { FACETS, getElement } from '@/lib/facets/facets';
 import type { CoverageStateValue } from '@/lib/engine/coverage';
 import type { Finding } from '@/lib/db/schema';
 import { draftFacet, type DraftStatement } from './draft';
@@ -87,6 +88,24 @@ export async function renderSpec(sessionId: string, db: DB = getDb()): Promise<R
     .filter((f) => f.type === 'unknown_retarget')
     .map((f) => f.detail || f.title);
 
+  // Delta v1.1 R1: element-level coverage, so a reader can see what the checklist
+  // actually closed rather than inferring it from twelve facet verdicts. Every N/A
+  // carries the reason it was ruled out — an unexplained N/A is a silent gap.
+  const elementRows = getElements(sessionId, db);
+  const elementCoverage = {
+    captured: elementRows.filter((e) => e.state === 'captured').length,
+    outstanding: elementRows.filter((e) => e.state === 'outstanding').length,
+    not_applicable: elementRows.filter((e) => e.state === 'not_applicable').length,
+  };
+  const notApplicableItems = elementRows
+    .filter((e) => e.state === 'not_applicable')
+    .map((e) => ({
+      element: e.elementId,
+      facet: e.facetId,
+      label: getElement(e.elementId)?.label ?? e.elementId,
+      reason: e.naReason,
+    }));
+
   const processName = session.processName ?? 'Unnamed process';
   const durationMin = Math.round(session.durationSec / 60);
 
@@ -100,8 +119,18 @@ export async function renderSpec(sessionId: string, db: DB = getDb()): Promise<R
     `interviewed: ${toDate(session.completedAt)}`,
     `duration_min: ${durationMin}`,
     'provenance: stated',
-    `coverage: {answered: ${coverageSummary.answered}, unknown: ${coverageSummary.unknown}, not_applicable: ${coverageSummary.not_applicable}}`,
+    `coverage: {answered: ${coverageSummary.answered}, unknown: ${coverageSummary.unknown}, not_applicable: ${coverageSummary.not_applicable}, elements_captured: ${elementCoverage.captured}, elements_outstanding: ${elementCoverage.outstanding}, elements_not_applicable: ${elementCoverage.not_applicable}}`,
   ];
+  if (notApplicableItems.length === 0) {
+    frontLines.push('not_applicable_items: []');
+  } else {
+    frontLines.push('not_applicable_items:');
+    for (const item of notApplicableItems) {
+      frontLines.push(
+        `  - {facet: ${item.facet}, element: ${yamlString(item.element)}, label: ${yamlString(item.label)}, reason: ${yamlString(item.reason)}}`,
+      );
+    }
+  }
   if (openItems.length === 0) {
     frontLines.push('open_items: []');
   } else {

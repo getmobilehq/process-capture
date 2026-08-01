@@ -2,11 +2,12 @@
  * Deterministic scripted model, used when MOCK_MODEL=1. It reads live coverage
  * from the database and drives the golden path: resolve the lowest unresolved
  * facet each user turn (facet 9 → unknown_to_informant + unknown_retarget, the
- * rest → answered), then end the interview. This lets the Phase 3–5 gates run
+ * rest → every checklist element captured, which derives to answered), then end
+ * the interview. This lets the Phase 3–5 gates run
  * offline and reproducibly (11 answered + 1 unknown at review).
  */
 import { getCoverage, getInterviewee, getSession } from '@/lib/db/queries';
-import { FACETS, getFacet } from '@/lib/facets/facets';
+import { FACETS, elementsFor, getFacet } from '@/lib/facets/facets';
 import type { CallParams, ModelResponse, ModelToolCall } from './model';
 
 let mockToolSeq = 0;
@@ -34,7 +35,7 @@ function toolResponse(calls: { name: string; input: unknown }[]): ModelResponse 
   };
 }
 
-const RESOLUTION_TOOLS = new Set(['record_statement', 'set_coverage', 'raise_finding']);
+const RESOLUTION_TOOLS = new Set(['record_statement', 'set_coverage', 'set_element', 'raise_finding']);
 
 function questionFor(facetId: number): string {
   const facet = getFacet(facetId);
@@ -82,9 +83,20 @@ function resolveFacet(facetId: number, role: string): { name: string; input: unk
     content = 'Volume is roughly forty cases a day, with a five-working-day SLA.';
   }
 
+  // Delta v1.1 R1: a facet is closed by closing its checklist, not by declaring it
+  // answered. The mock must do the same work the real model does, so the golden
+  // path exercises the derivation rather than side-stepping it.
   return [
     { name: 'record_statement', input: { facetId, kind, content } },
-    { name: 'set_coverage', input: { facetId, state: 'answered', rationale: 'Rubric met.' } },
+    ...elementsFor(facetId).map((e) => ({
+      name: 'set_element',
+      input: {
+        facetId,
+        elementId: e.id,
+        state: 'captured',
+        summary: `${e.label} — captured from the informant.`,
+      },
+    })),
   ];
 }
 

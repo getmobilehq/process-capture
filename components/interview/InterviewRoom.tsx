@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CoverageRail } from './CoverageRail';
+import { CoverageRail, type ElementRow } from './CoverageRail';
 import type { CoverageStateValue } from '@/lib/engine/coverage';
 
 interface TurnView {
@@ -19,6 +19,7 @@ export interface InterviewRoomProps {
   processName: string | null;
   initialTurns: TurnView[];
   initialCoverage: CoverageView[];
+  initialElements: ElementRow[];
   initialStatus: 'open' | 'review' | 'complete' | 'abandoned';
   startedAtMs: number;
   surveyUrl: string;
@@ -34,6 +35,7 @@ function fmt(elapsedSec: number): string {
 export function InterviewRoom(props: InterviewRoomProps) {
   const [turns, setTurns] = useState<TurnView[]>(props.initialTurns);
   const [coverage, setCoverage] = useState<CoverageView[]>(props.initialCoverage);
+  const [elements, setElements] = useState<ElementRow[]>(props.initialElements);
   const [status, setStatus] = useState(props.initialStatus);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -74,6 +76,29 @@ export function InterviewRoom(props: InterviewRoomProps) {
       setError(err instanceof Error ? err.message : 'We could not finalise your interview.');
     } finally {
       setFinishing(false);
+    }
+  }
+
+  /**
+   * The interviewee rules an element out themselves (R1.3). The reason is part of
+   * the record — an unexplained N/A is a silent gap by another name — so an empty
+   * reason cancels rather than closing the element.
+   */
+  async function markNotApplicable(elementId: string, reason: string) {
+    if (reason.trim() === '') return;
+
+    setError(null);
+    try {
+      const res = await fetch(`/api/interview/${props.sessionId}/element`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ elementId, reason: reason.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error ?? 'Could not update that.');
+      if (data.elements) setElements(data.elements);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not update that.');
     }
   }
 
@@ -141,6 +166,7 @@ export function InterviewRoom(props: InterviewRoomProps) {
       const result = await res.json();
       setTurns((prev) => [...prev, { seq: result.agentTurn.seq, speaker: 'agent', content: result.agentTurn.content }]);
       setCoverage(result.coverage);
+      if (result.elements) setElements(result.elements);
       setStatus(result.status);
     } catch (err) {
       // Roll back the optimistic bubble and restore the text so the user can
@@ -296,7 +322,11 @@ export function InterviewRoom(props: InterviewRoomProps) {
       </section>
 
       <aside>
-        <CoverageRail coverage={coverage} />
+        <CoverageRail
+          coverage={coverage}
+          elements={elements}
+          onMarkNotApplicable={markNotApplicable}
+        />
       </aside>
     </div>
   );

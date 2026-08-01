@@ -3,6 +3,7 @@ import {
   getIntervieweeByToken,
   getLatestSession,
   getCoverage,
+  getElements,
   getSession,
   listTurns,
 } from '@/lib/db/queries';
@@ -28,6 +29,13 @@ export default async function InterviewPage({ params }: { params: { token: strin
   const session = getSession(latest.id)!;
   const turns = listTurns(session.id).map((t) => ({ seq: t.seq, speaker: t.speaker, content: t.content }));
   const coverage = getCoverage(session.id).map((c) => ({ facetId: c.facetId, state: c.state }));
+  const elements = getElements(session.id).map((e) => ({
+    facetId: e.facetId,
+    elementId: e.elementId,
+    state: e.state,
+    summary: e.summary,
+    naReason: e.naReason,
+  }));
 
   return (
     <main className="pc-wrap">
@@ -41,6 +49,7 @@ export default async function InterviewPage({ params }: { params: { token: strin
           processName={session.processName}
           initialTurns={turns}
           initialCoverage={coverage}
+          initialElements={elements}
           initialStatus={session.status}
           startedAtMs={(session.startedAt ?? new Date()).getTime()}
           surveyUrl={config.surveyUrl}

@@ -8,12 +8,11 @@
 import { z } from 'zod';
 
 export const STATEMENT_KINDS = ['fact', 'step', 'rule', 'metric', 'issue', 'quote'] as const;
-export const COVERAGE_TARGET_STATES = [
-  'partial',
-  'answered',
-  'unknown_to_informant',
-  'not_applicable',
-] as const;
+// Delta v1.1 R1.1: `answered` and `partial` are *derived* from the checklist and
+// can no longer be proposed. What remains are the two honest human judgements the
+// checklist cannot reach on its own (P3) — the informant does not know, or the
+// facet does not apply to them at all.
+export const COVERAGE_TARGET_STATES = ['unknown_to_informant', 'not_applicable'] as const;
 // Only these finding types may be raised mid-interview (FR-3.2). candidate_conflict
 // is a console-side action across informants (FR-1.6).
 export const IN_SESSION_FINDING_TYPES = ['unknown_retarget', 'informant_flag'] as const;
@@ -33,6 +32,21 @@ export const setCoverageSchema = z.object({
   rationale: z.string().optional().default(''),
 });
 
+// Delta v1.1 R1: elements are closed one at a time, with a one-line summary of
+// what was actually captured. The facet meter is derived from these — the model
+// never sets it directly.
+export const ELEMENT_TARGET_STATES = ['captured', 'not_applicable'] as const;
+
+export const setElementSchema = z.object({
+  facetId,
+  elementId: z.string().min(1),
+  state: z.enum(ELEMENT_TARGET_STATES),
+  // Required for captured — the rail shows this back to the interviewee, so an
+  // empty summary would leave them unable to check what the system heard.
+  summary: z.string().optional().default(''),
+  reason: z.string().optional().default(''),
+});
+
 export const raiseFindingSchema = z.object({
   facetId,
   type: z.enum(IN_SESSION_FINDING_TYPES),
@@ -44,11 +58,13 @@ export const endInterviewSchema = z.object({});
 
 export type RecordStatementInput = z.infer<typeof recordStatementSchema>;
 export type SetCoverageInput = z.infer<typeof setCoverageSchema>;
+export type SetElementInput = z.infer<typeof setElementSchema>;
 export type RaiseFindingInput = z.infer<typeof raiseFindingSchema>;
 
 export const TOOL_NAMES = [
   'record_statement',
   'set_coverage',
+  'set_element',
   'raise_finding',
   'end_interview',
 ] as const;
@@ -74,7 +90,7 @@ export const TOOL_DEFINITIONS = [
   {
     name: 'set_coverage',
     description:
-      'Propose a coverage transition for a facet. The server enforces legal transitions. Use unknown_to_informant when the informant genuinely does not know; never guess.',
+      'Close a whole facet on an honest judgement the checklist cannot reach: unknown_to_informant when the informant genuinely does not know or it is not theirs to answer, not_applicable when the facet does not apply to their process at all. Never guess. You cannot mark a facet answered — that is derived from its checklist, so close elements with set_element instead.',
     input_schema: {
       type: 'object',
       properties: {
@@ -83,6 +99,32 @@ export const TOOL_DEFINITIONS = [
         rationale: { type: 'string', description: 'Why this transition — logged, not stored.' },
       },
       required: ['facetId', 'state'],
+    },
+  },
+  {
+    name: 'set_element',
+    description:
+      "Close one checklist element of a facet. Use captured when the informant has substantively answered it in any words — judge the content, never the vocabulary. Use not_applicable only when the informant has said it does not apply, with their reason. The server derives the facet meter from these; you cannot set it directly.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        facetId: { type: 'integer', minimum: 1, maximum: 12 },
+        elementId: {
+          type: 'string',
+          description: 'The element id exactly as given in the facet blueprint, e.g. triggers.initiating.',
+        },
+        state: { type: 'string', enum: [...ELEMENT_TARGET_STATES] },
+        summary: {
+          type: 'string',
+          description:
+            'One line, in the informant’s own terms, of what was captured. Shown back to them on screen — make it recognisable, not a restatement of the element name.',
+        },
+        reason: {
+          type: 'string',
+          description: 'For not_applicable only: the informant’s reason it does not apply.',
+        },
+      },
+      required: ['facetId', 'elementId', 'state'],
     },
   },
   {

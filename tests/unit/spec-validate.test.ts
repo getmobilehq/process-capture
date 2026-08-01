@@ -12,7 +12,8 @@ function validSpec(): string {
     'interviewed: 2026-07-17',
     'duration_min: 32',
     'provenance: stated',
-    'coverage: {answered: 11, unknown: 1, not_applicable: 0}',
+    'coverage: {answered: 11, unknown: 1, not_applicable: 0, elements_captured: 37, elements_outstanding: 0, elements_not_applicable: 3}',
+    'not_applicable_items: []',
     'open_items: []',
     '---',
   ].join('\n');
@@ -95,7 +96,7 @@ describe('spec validator — failure cases (FR-5.5)', () => {
 
   it('rejects coverage missing a count', () => {
     const bad = validSpec().replace(
-      'coverage: {answered: 11, unknown: 1, not_applicable: 0}',
+      'coverage: {answered: 11, unknown: 1, not_applicable: 0, elements_captured: 37, elements_outstanding: 0, elements_not_applicable: 3}',
       'coverage: {answered: 11, unknown: 1}',
     );
     const r = validateSpec(bad);
