@@ -1,0 +1,75 @@
+/* Magpie brand system — the product's own identity layer.
+   Loaded after colors_and_type.css and overriding only what the rebrand touches:
+   the purple ramp, the surface colours, and the mark. Spacing, radii, the type
+   scale and motion are deliberately untouched — the layout's white space is the
+   part of the VMO2 system that already worked, and the rebrand does not compress it.
+
+   The derivation: O2 Blue #0050FF + Virgin Media Red #E10A0A → Magpie purple #712D85.
+
+   The load-bearing rule: purple is identity, blue is interaction. Magpie purple
+   carries the mark, the lockup and brand fields; every interactive control —
+   button, link, toggle, tab — stays O2 Blue. Colour therefore never tells the user
+   something is clickable when it is not. */
+
+:root {
+  /* ── Magpie purple ramp ─────────────────────────────────────────────────
+     600 is the anchor and is locked; every other stop is derived from it. */
+  --magpie-50: #f7f1f9; /* page wash for brand moments, empty states */
+  --magpie-100: #eee0f2; /* selected rows, brand callout fills */
+  --magpie-200: #dcc2e3; /* hairlines and dividers inside brand areas */
+  --magpie-300: #c69ecf; /* dark-mode brand text and mark */
+  --magpie-400: #a972b8; /* dark-mode secondary brand, large text */
+  --magpie-500: #8b4aa0; /* light-mode brand text on white — 5.9:1 */
+  --magpie-600: #712d85; /* anchor — mark, lockup, brand fields */
+  --magpie-700: #5c2569; /* pressed and hover on brand fields */
+  --magpie-800: #451b4f; /* document cover fields, deep brand */
+  --magpie-900: #2e1235; /* brand-tinted ink for headings */
+
+  /* Hot Pink is a fill colour. As text it fails contrast, so it deepens. */
+  --magpie-pink-text: #c4006f;
+
+  /* ── Surfaces ──────────────────────────────────────────────────────────
+     Neutral, faintly purple — not white. Body text on it reads 16.7:1. */
+  --paper: #ffffff;
+  --bg: #faf8fb;
+  --bg-subtle: var(--magpie-50);
+  --fg: #1c1620;
+  --fg-strong: #15121a;
+
+  /* ── Brand roles ───────────────────────────────────────────────────────
+     brand-primary stays O2 Blue: it is the interactive colour, not the
+     identity colour. The mark gets its own token so the two never blur. */
+  --brand-mark: var(--magpie-600);
+  --brand-mark-hover: var(--magpie-700);
+  --brand-mark-text: var(--magpie-500); /* brand text on white */
+  --brand-surface: var(--magpie-50); /* brand callout surface */
+  --brand-border: var(--magpie-200);
+
+  --brand-secondary: var(--magpie-600);
+  --brand-secondary-hover: var(--magpie-700);
+}
+
+/* ── Dark mode — documented, deliberately not auto-enabled ───────────────
+   The brand system specifies a dark map and these are its values. It is NOT
+   bound to prefers-color-scheme, because the rest of the component layer still
+   uses fixed ink tokens (--ink-900 on inputs, white pill text) that do not flip
+   with it — switching on the surfaces alone produces dark text on dark fields.
+   Enabling this properly means flipping the ink ramp through brand-ui.css, which
+   is a separate piece of work. Opt in with <html data-theme="dark"> to preview. */
+:root[data-theme='dark'] {
+  --paper: #1e1a26; /* raised surface — cards, panels, sheets */
+  --bg: #15121a; /* page background, purple-tinted ink */
+  --bg-subtle: #1e1a26;
+  --fg: #f4f0f7; /* 16.7:1 on the page background */
+  --fg-strong: #ffffff;
+
+  --brand-mark: var(--magpie-300); /* 8.2:1 */
+  --brand-mark-hover: var(--magpie-200);
+  --brand-mark-text: var(--magpie-400);
+  --brand-surface: #241d2b;
+  --brand-border: #3a2f43;
+
+  --brand-primary: #4d85ff; /* blue lifted for dark surfaces */
+  --brand-primary-hover: #7ba3ff;
+  --fg-link: #4d85ff;
+}

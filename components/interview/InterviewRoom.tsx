@@ -370,7 +370,7 @@ export function InterviewRoom(props: InterviewRoomProps) {
               <div className="t-body" style={{ fontWeight: 700 }}>
                 {props.processName ?? 'A process you run'}
               </div>
-              <div className="t-caption">Process capture assistant</div>
+              <div className="t-caption">Magpie assistant</div>
             </div>
           </div>
           <div className="pc-pillst prog" aria-label="Elapsed time" title="Time elapsed">

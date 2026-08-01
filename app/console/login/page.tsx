@@ -7,7 +7,7 @@ export default function LoginPage({ searchParams }: { searchParams: { error?: st
 
   return (
     <main className="pc-narrow">
-      <span className="pc-secpill red">
+      <span className="pc-secpill purple">
         Process architect
         <i className="pc-cap" aria-hidden="true" />
       </span>

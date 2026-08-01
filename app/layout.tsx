@@ -3,7 +3,7 @@ import { TopBar } from '@/components/brand/TopBar';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Process capture — Virgin Media O2',
+  title: 'Magpie — process capture for Virgin Media O2',
   description:
     'A structured conversational interview that captures how a process really works, in your own words.',
 };
@@ -18,6 +18,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             pipeline would rewrite the relative font URLs and break them. */}
         {/* eslint-disable-next-line @next/next/no-css-tags */}
         <link rel="stylesheet" href="/brand/colors_and_type.css" />
+        {/* Magpie identity layer — overrides brand and surface tokens only; the
+            spacing scale, radii and type scale below it are left untouched. */}
+        {/* eslint-disable-next-line @next/next/no-css-tags */}
+        <link rel="stylesheet" href="/brand/magpie.css" />
       </head>
       <body>
         <TopBar />

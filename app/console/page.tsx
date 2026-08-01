@@ -13,7 +13,7 @@ export default function ConsoleHome() {
   return (
     <main className="pc-wrap">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span className="pc-secpill red">
+        <span className="pc-secpill purple">
           Process architect
           <i className="pc-cap" aria-hidden="true" />
         </span>

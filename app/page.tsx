@@ -5,7 +5,7 @@ export default function HomePage() {
         Virgin Media O2
       </p>
       <h1 className="t-h1" style={{ marginTop: 'var(--space-3)' }}>
-        Process capture.
+        Magpie.
       </h1>
       <p className="t-body-l" style={{ color: 'var(--fg-muted)', marginTop: 'var(--space-4)' }}>
         This tool captures how a process really works, in the words of the people who run it. If
