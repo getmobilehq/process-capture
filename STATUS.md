@@ -318,3 +318,31 @@ transient EHOSTUNREACH — the same error class that had been crashing the dev s
 
 One deliberate, flagged deviation for review: token-level streaming is deferred to
 V1.1 (D3.1) — turns use a single JSON exchange. Everything else follows the brief.
+
+---
+
+## Delta v1.1 — R1 complete (2026-08-01)
+
+**R1 — Completeness scoring: transparency and tolerance (P0).**
+
+- R1.1 — 40 checklist elements across the 12 facets in the facets spec; new
+  `element_states` table seeded per session; the facet meter is derived by
+  `deriveFacetState`, and `set_coverage` can no longer propose `answered`/`partial`.
+  Rail rewritten: expandable per-facet checklist showing captured (with readback),
+  ruled-out (with reason) and outstanding, and an element count in place of a bare
+  percentage.
+- R1.2 — Scoring rubric rewritten with contrastive pairs (natural-language answers
+  that must capture; keyword-stuffed answers that must not).
+- R1.3 — Interviewee-driven not-applicable with a mandatory reason, via a
+  mark-only endpoint; recorded in spec front-matter.
+
+Gates: `lint` ✓, `typecheck` ✓, **72 unit/integration** ✓ (was 52 at V1; +11 element
+coverage, +5 tool validation, +4 transcribe retry). Migration `0001` generated and
+applied.
+
+**Not yet verified:** the expanded checklist has not been confirmed in a browser —
+the collapsed rail renders correctly (element counts, derived states), but the
+browser tooling stopped reaching `document_idle` on the interview page before the
+expanded state could be captured. Needs a manual look, or an E2E test.
+
+**Not started:** R2, R10, R9, R5, R8, R4, R3, R6.

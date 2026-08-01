@@ -193,3 +193,39 @@ decision, why it is the minimal option (§10).
   attempts, 400 ms/1200 ms backoff, 60s timeout, retrying network failures plus 429
   and 5xx, but never a 4xx. No new dependency (P6); covered by
   `tests/unit/transcribe-retry.test.ts`.
+
+## Delta v1.1
+
+- **DL.1 · Checklist elements are the unit of coverage (R1.1)** — Each of the 12
+  facets gains a typed `elements` checklist in `lib/facets/facets.ts` (40 elements
+  total, 3–4 per facet), persisted per session in a new `element_states` table.
+  Element ids are stable keys, globally unique (guarded at module load) and
+  validated server-side against the facet they claim to belong to.
+- **DL.2 · The facet meter is derived, never authored (R1.1)** — `deriveFacetState`
+  computes a facet's coverage from its elements: all closed with ≥1 captured →
+  `answered`; some closed → `partial`; all ruled out → `not_applicable`. Consequently
+  **`set_coverage` no longer accepts `answered` or `partial`** — the model can only
+  propose the two honest whole-facet judgements it cannot reach elementwise
+  (`unknown_to_informant`, `not_applicable`). This is the direct fix for the pilot
+  defect: a facet can no longer be declared complete without the checklist showing it.
+  The mock model was updated to close elements rather than declare facets, so the
+  golden path exercises the derivation instead of side-stepping it.
+- **DL.3 · Captured elements must carry a readback** — `set_element(captured)` is
+  rejected without a one-line summary in the informant's own terms. R1.1 requires the
+  interviewee to be able to check what the system heard; an empty summary defeats that.
+- **DL.4 · Content-based scoring by contrastive calibration (R1.2)** — The system
+  prompt gains a scoring section with four natural-language answers that must score
+  captured and three keyword-rich but vacuous answers that must stay outstanding,
+  plus an explicit instruction that unfamiliar vocabulary is never grounds for
+  withholding capture. Prompt-side only; no code branch on wording.
+- **DL.5 · Not-applicable is interviewee-driven and always reasoned (R1.3)** — A
+  narrow `POST /api/interview/{id}/element` endpoint can *only* mark
+  `not_applicable`, so a public caller can never assert something was answered. An
+  empty reason cancels rather than closing the element — an unexplained N/A is a
+  silent gap by another name (P3). Surfaced inline in the rail, not via
+  `window.prompt`: a native dialog blocks the page and cannot carry the VMO2 treatment.
+- **DL.6 · Spec front-matter carries element-level coverage (R1.3)** — `coverage`
+  gains `elements_captured` / `elements_outstanding` / `elements_not_applicable`, and
+  a new `not_applicable_items` key registers each ruled-out element with its facet,
+  label and reason. `lib/spec/validate.ts` requires all of them, so a spec cannot
+  report a meter without the checklist it was derived from.

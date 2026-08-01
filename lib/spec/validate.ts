@@ -21,6 +21,9 @@ const REQUIRED_FRONTMATTER_KEYS = [
   'provenance',
   'coverage',
   'open_items',
+  // Delta v1.1 R1.3 — the register of checklist elements the informant ruled out,
+  // each with the reason. An unexplained N/A is a silent gap by another name.
+  'not_applicable_items',
 ] as const;
 
 const EMAIL_RE = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
@@ -78,7 +81,16 @@ export function validateSpec(markdown: string): ValidationResult {
 
   // coverage inline has all three counts.
   const coverageLine = frontmatter.match(/^coverage:\s*(.+)$/m)?.[1] ?? '';
-  for (const field of ['answered', 'unknown', 'not_applicable']) {
+  for (const field of [
+    'answered',
+    'unknown',
+    'not_applicable',
+    // R1: the meter is derived from the checklist, so the spec must carry the
+    // element counts it was derived from.
+    'elements_captured',
+    'elements_outstanding',
+    'elements_not_applicable',
+  ]) {
     if (!new RegExp(`${field}:\\s*\\d+`).test(coverageLine)) {
       errors.push(`coverage is missing a numeric \`${field}\`.`);
     }

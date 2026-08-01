@@ -13,6 +13,7 @@ import { nanoid } from 'nanoid';
 import { getDb, type DB } from './index';
 import {
   coverageStates,
+  elementStates,
   findings,
   interviewees,
   projects,
@@ -26,10 +27,18 @@ import {
   type Session,
   type Statement,
 } from './schema';
-import { FACET_IDS } from '@/lib/facets/facets';
+import {
+  ALL_ELEMENTS,
+  FACET_IDS,
+  elementBelongsToFacet,
+  getElement,
+} from '@/lib/facets/facets';
 import {
   assertTransition,
+  deriveFacetState,
+  isTerminal,
   type CoverageStateValue,
+  type ElementStateValue,
 } from '@/lib/engine/coverage';
 
 // Invite tokens: unguessable, ≥ 24 chars (§5). nanoid(32) → 32-char url-safe.
@@ -152,6 +161,19 @@ export function createSession(
 
     tx.insert(coverageStates)
       .values(FACET_IDS.map((facetId) => ({ sessionId: session.id, facetId, state: 'pending' as const })))
+      .run();
+
+    // Seed the checklist too (R1.1) — every element starts outstanding, so the
+    // interviewee can see the full shape of what is wanted from turn one.
+    tx.insert(elementStates)
+      .values(
+        ALL_ELEMENTS.map((e) => ({
+          sessionId: session.id,
+          facetId: e.facetId,
+          elementId: e.id,
+          state: 'outstanding' as const,
+        })),
+      )
       .run();
 
     return session;
@@ -356,6 +378,120 @@ export function setCoverage(
     .where(and(eq(coverageStates.sessionId, sessionId), eq(coverageStates.facetId, facetId)))
     .returning().get();
   return row;
+}
+
+// ── Checklist elements (delta v1.1 R1) ───────────────────────────────────────
+export function getElements(sessionId: string, db: DB = getDb()) {
+  return db
+    .select()
+    .from(elementStates)
+    .where(eq(elementStates.sessionId, sessionId))
+    .orderBy(asc(elementStates.facetId))
+    .all();
+}
+
+export function getElementsForFacet(sessionId: string, facetId: number, db: DB = getDb()) {
+  return db
+    .select()
+    .from(elementStates)
+    .where(and(eq(elementStates.sessionId, sessionId), eq(elementStates.facetId, facetId)))
+    .all();
+}
+
+/**
+ * Recompute a facet's coverage row from its checklist (R1.1). The meter is
+ * derived, never authored — so it can never claim more than the elements show.
+ *
+ * A facet already in a terminal state is left alone: `unknown_to_informant` and a
+ * facet-level `not_applicable` are honest human judgements (P3) that outrank the
+ * checklist, and `answered` is immutable by the state machine.
+ */
+export function reconcileFacetCoverage(sessionId: string, facetId: number, db: DB = getDb()) {
+  const current = getCoverageState(sessionId, facetId, db);
+  if (!current) throw new Error(`No coverage row for session ${sessionId} facet ${facetId}`);
+  if (isTerminal(current.state)) return current;
+
+  const derived = deriveFacetState(
+    getElementsForFacet(sessionId, facetId, db).map((r) => ({
+      elementId: r.elementId,
+      state: r.state,
+    })),
+  );
+  if (derived === current.state) return current;
+
+  return db
+    .update(coverageStates)
+    .set({ state: derived })
+    .where(and(eq(coverageStates.sessionId, sessionId), eq(coverageStates.facetId, facetId)))
+    .returning().get();
+}
+
+/**
+ * Close a checklist element and re-derive its facet's meter, atomically. This is
+ * the server disposing of a model proposal (P1): the element id is validated
+ * against the facets spec, and evidence is never walked backwards — a closed
+ * element may be refined but never returned to outstanding.
+ */
+export function setElement(
+  input: {
+    sessionId: string;
+    facetId: number;
+    elementId: string;
+    state: Exclude<ElementStateValue, 'outstanding'>;
+    summary?: string;
+    naReason?: string;
+  },
+  db: DB = getDb(),
+) {
+  if (!elementBelongsToFacet(input.elementId, input.facetId)) {
+    throw new Error(`Element ${input.elementId} does not belong to facet ${input.facetId}`);
+  }
+
+  return db.transaction((tx) => {
+    const current = tx
+      .select()
+      .from(elementStates)
+      .where(
+        and(
+          eq(elementStates.sessionId, input.sessionId),
+          eq(elementStates.elementId, input.elementId),
+        ),
+      )
+      .get();
+    if (!current) {
+      throw new Error(`No element row for session ${input.sessionId} element ${input.elementId}`);
+    }
+
+    const row = tx
+      .update(elementStates)
+      .set({
+        state: input.state,
+        // Keep the prior summary if a refinement arrives without one.
+        summary: input.summary ?? current.summary,
+        naReason: input.state === 'not_applicable' ? (input.naReason ?? current.naReason) : '',
+      })
+      .where(
+        and(
+          eq(elementStates.sessionId, input.sessionId),
+          eq(elementStates.elementId, input.elementId),
+        ),
+      )
+      .returning().get();
+
+    reconcileFacetCoverage(input.sessionId, input.facetId, tx as DB);
+    return row;
+  });
+}
+
+/** Outstanding elements, in plain language — what the interview still wants (R1.1). */
+export function outstandingElements(sessionId: string, db: DB = getDb()) {
+  return getElements(sessionId, db)
+    .filter((r) => r.state === 'outstanding')
+    .map((r) => ({
+      facetId: r.facetId,
+      elementId: r.elementId,
+      label: getElement(r.elementId)?.label ?? r.elementId,
+    }));
 }
 
 export function coverageSummary(sessionId: string, db: DB = getDb()) {

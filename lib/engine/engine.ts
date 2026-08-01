@@ -11,7 +11,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { config } from '@/lib/config';
 import { getDb, type DB } from '@/lib/db';
-import type { CoverageState, Session } from '@/lib/db/schema';
+import type { CoverageState, ElementState, Session } from '@/lib/db/schema';
 import {
   appendTurn,
   getCoverage,
@@ -21,15 +21,17 @@ import {
   listFindingsForSession,
   listTurns,
   raiseFinding,
+  getElements,
   recordStatement,
   setCoverage,
+  setElement,
   setIntervieweeStatus,
   updateSession,
 } from '@/lib/db/queries';
 import { generateAndSaveSpec } from '@/lib/spec/generate';
 import { allResolved, IllegalCoverageTransitionError, type CoverageStateValue } from './coverage';
-import { getFacet } from '@/lib/facets/facets';
-import { buildSystemPrompt, OPENING_INSTRUCTION } from './prompt';
+import { elementBelongsToFacet, elementsFor, getFacet } from '@/lib/facets/facets';
+import { buildSystemPrompt, OPENING_INSTRUCTION, type ElementView } from './prompt';
 import { callModel, type ModelToolCall } from './model';
 import { OPENING_MOCK } from './mock';
 import { violatesOneQuestion } from './one-question';
@@ -38,6 +40,7 @@ import {
   raiseFindingSchema,
   recordStatementSchema,
   setCoverageSchema,
+  setElementSchema,
 } from './tools';
 
 const MAX_TOOL_HOPS = 10;
@@ -46,7 +49,8 @@ const MAX_TOOL_HOPS = 10;
 const EXTRACTION_DIRECTIVE =
   '[Internal bookkeeping step — the informant does not see this and you are not talking to them here.] ' +
   "Capture the informant's most recent answer now. Call record_statement for every distinct substantive fact they stated, each filed to the correct facet (identity/purpose/boundaries → 1; roles and hand-offs → 2; triggers/timing → 3; inputs/outputs → 4; ordered steps with actor and system → 5; rules/approval thresholds → 6; records → 7; systems/tools → 8; controls/compliance → 9; exceptions → 10; volumes/durations/targets → 11; bottlenecks/queues/workarounds → 12). " +
-  'Then call set_coverage to move each facet that now meets its rubric to answered — or unknown_to_informant / not_applicable where that is the honest state, or partial if only partly covered. If every facet is already terminal, call end_interview. ' +
+  'Then call set_element for every checklist element this answer substantively closes, across any facet — one answer often closes elements in several. Judge the content, not the words used: if the informant conveyed the substance in their own plain language, it is captured. Give each a one-line summary in their terms. ' +
+  'Use set_coverage only for an honest whole-facet judgement the checklist cannot reach: unknown_to_informant, or not_applicable. You cannot mark a facet answered — that is derived from its elements. If every facet is already terminal, call end_interview. ' +
   'Make only tool calls in this step — do not write any message to the informant. When there is nothing left to record for this answer, stop.';
 
 const QUESTION_DIRECTIVE =
@@ -58,6 +62,8 @@ const PLAYBACK_DIRECTIVE =
 export interface TurnResult {
   agentTurn: { seq: number; content: string };
   coverage: { facetId: number; state: CoverageStateValue }[];
+  /** Live checklist, so the rail can show what is still wanted (R1.1). */
+  elements: ElementView[];
   status: Session['status'];
   /** True when this turn produced the end-of-interview playback (FR-4.1). */
   review: boolean;
@@ -66,6 +72,17 @@ export interface TurnResult {
 
 function coverageView(rows: CoverageState[]): { facetId: number; state: CoverageStateValue }[] {
   return rows.map((r) => ({ facetId: r.facetId, state: r.state }));
+}
+
+/** Checklist state for the prompt's live coverage block (R1.1). */
+function elementView(rows: ElementState[]): ElementView[] {
+  return rows.map((r) => ({
+    facetId: r.facetId,
+    elementId: r.elementId,
+    state: r.state,
+    summary: r.summary,
+    naReason: r.naReason,
+  }));
 }
 
 function turnAt(sessionId: string, seq: number, db: DB) {
@@ -99,6 +116,7 @@ export async function openInterview(sessionId: string, db: DB = getDb()): Promis
       role: interviewee.role,
       processName: session.processName,
       coverage: coverageView(getCoverage(sessionId, db)),
+      elements: elementView(getElements(sessionId, db)),
     });
     const resp = await callModel({
       sessionId,
@@ -152,12 +170,45 @@ export function applyTool(session: Session, call: ModelToolCall, db: DB): ApplyR
         } catch (err) {
           if (err instanceof IllegalCoverageTransitionError) {
             return {
-              content: `Illegal transition ${err.from} → ${err.to} for facet ${input.facetId}. Terminal states are immutable; from pending you may go to partial/answered/unknown_to_informant/not_applicable, from partial only to answered/unknown_to_informant.`,
+              content: `Illegal transition ${err.from} → ${err.to} for facet ${input.facetId}. Terminal states are immutable. answered and partial are derived from the checklist — close elements with set_element instead of setting coverage directly.`,
               isError: true,
             };
           }
           throw err;
         }
+      }
+      case 'set_element': {
+        const input = setElementSchema.parse(call.input);
+        if (!elementBelongsToFacet(input.elementId, input.facetId)) {
+          const valid = elementsFor(input.facetId)
+            .map((e) => e.id)
+            .join(', ');
+          return {
+            content: `Unknown element "${input.elementId}" for facet ${input.facetId}. Valid ids: ${valid}.`,
+            isError: true,
+          };
+        }
+        // A captured element with no summary would leave the interviewee unable to
+        // check what the system heard — R1.1 requires the readback.
+        if (input.state === 'captured' && input.summary.trim() === '') {
+          return {
+            content:
+              'A captured element needs a one-line summary of what the informant actually said. Call again with summary set.',
+            isError: true,
+          };
+        }
+        setElement(
+          {
+            sessionId: session.id,
+            facetId: input.facetId,
+            elementId: input.elementId,
+            state: input.state,
+            summary: input.summary.trim(),
+            naReason: input.reason.trim(),
+          },
+          db,
+        );
+        return { content: `element ${input.elementId} ${input.state}`, isError: false, appliedName: call.name };
       }
       case 'raise_finding': {
         const input = raiseFindingSchema.parse(call.input);
@@ -273,6 +324,7 @@ export async function processUserTurn(
   const result = (review: boolean, warnings: string[], agentSeq: number, agentText: string): TurnResult => ({
     agentTurn: { seq: agentSeq, content: agentText },
     coverage: coverageView(getCoverage(sessionId, db)),
+    elements: elementView(getElements(sessionId, db)),
     status: getSession(sessionId, db)!.status,
     review,
     warnings,
@@ -310,6 +362,7 @@ export async function processUserTurn(
       role: interviewee.role,
       processName: session.processName,
       coverage: coverageView(getCoverage(sessionId, db)),
+      elements: elementView(getElements(sessionId, db)),
     });
 
   // ── Phase A — extraction (tools only). A dedicated bookkeeping step, so the

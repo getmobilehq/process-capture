@@ -24,16 +24,46 @@ Conduct rules — these are strict:
 
 Tool discipline (the server validates everything you propose):
 - record_statement whenever the informant states a substantive fact.
-- set_coverage to move a facet toward a terminal state as evidence accrues. The server rejects illegal transitions; terminal states are immutable.
+- set_element to close each checklist element the answer substantively covers, with a one-line summary in the informant's own terms. One answer often closes elements across several facets — close all of them, not just the one you asked about.
+- set_coverage only for unknown_to_informant or not_applicable. You cannot mark a facet answered or partial: those are derived from the checklist by the server.
 - raise_finding(unknown_retarget) alongside set_coverage(unknown_to_informant) when a facet is genuinely not theirs to answer.
-- One question per message. Ask about the facet that most needs progress next.`;
+- One question per message, aimed at what is still outstanding. Never ask for something already shown as captured.`;
+
+/**
+ * Content-based scoring rubric (delta v1.1 R1.2). The pilot showed facets stalling
+ * on amber until the informant happened to use the facet's own vocabulary, which
+ * penalises natural speech and rewards keyword-shaped answers. These contrastive
+ * pairs calibrate the model against that failure directly.
+ */
+const SCORING = `HOW TO SCORE A CHECKLIST ELEMENT (this is the most important instruction here):
+
+Score the *substance* of what the informant conveyed, never the words they chose. They are describing their own job in their own language; they have never heard of these facets and never will. An answer that carries the meaning is captured, however plainly it is phrased.
+
+Contrastive calibration — these first four are ALL captured:
+- Element "How often it happens". Informant: "it's mostly after the bills land, we get slammed for about a week." → captured. A timing pattern is stated; "frequency" is your word, not theirs.
+- Element "The limits and figures". Informant: "I can do a tenner myself, anything more and my manager has to okay it." → captured. A concrete threshold and an escalation are both there.
+- Element "Where work waits". Informant: "it just sits with the approvals lot for a day, sometimes two." → captured. A specific queue point with a duration.
+- Element "Whether they talk to each other". Informant: "no, I copy the reference over by hand every time." → captured. That is a clear statement of non-integration.
+
+And these are NOT captured, despite being full of the right words:
+- Element "The limits and figures". Informant: "there are approval thresholds and governance tiers in place." → outstanding. Facet vocabulary, zero content: no figure, no level, no role. Ask for the actual number.
+- Element "What sets it off". Informant: "the process is triggered by various trigger events depending on the case." → outstanding. Says nothing about what any of them are.
+- Element "The steps, in order". Informant: "we follow the standard end-to-end workflow." → outstanding. No steps, no order.
+
+If you are unsure whether something is captured, it is outstanding — but never leave it outstanding merely because the informant did not use the element's own words. That is the specific mistake this instruction exists to prevent.
+
+Marking an element not_applicable requires the informant to have indicated it does not apply, and you must pass their reason. Never mark something not_applicable just because it has not come up yet.`;
 
 function facetSpecBlock(): string {
   return FACETS.map((f) => {
     const probes = f.probes.map((p) => `    · ${p}`).join('\n');
+    const elements = f.elements
+      .map((e) => `    · ${e.id} — "${e.label}": ${e.capturedWhen}`)
+      .join('\n');
     return `Facet ${f.id} — ${f.name}
   Objective: ${f.objective}
-  Answered when: ${f.answeredWhen}
+  Checklist (close these individually with set_element):
+${elements}
   Probes you can draw on:
 ${probes}
   Calibration: ${f.example}`;
@@ -48,18 +78,48 @@ const STATE_GLOSS: Record<CoverageStateValue, string> = {
   not_applicable: 'terminal — does not apply',
 };
 
-export function coverageBlock(coverage: { facetId: number; state: CoverageStateValue }[]): string {
+export function coverageBlock(
+  coverage: { facetId: number; state: CoverageStateValue }[],
+  elements: readonly ElementView[] = [],
+): string {
   const byId = new Map(coverage.map((c) => [c.facetId, c.state]));
+  const byFacet = new Map<number, ElementView[]>();
+  for (const e of elements) {
+    const list = byFacet.get(e.facetId) ?? [];
+    list.push(e);
+    byFacet.set(e.facetId, list);
+  }
+
   return FACETS.map((f) => {
     const state = byId.get(f.id) ?? 'pending';
-    return `  ${f.id}. ${f.name}: ${state} (${STATE_GLOSS[state]})`;
+    const head = `  ${f.id}. ${f.name}: ${state} (${STATE_GLOSS[state]})`;
+    const rows = byFacet.get(f.id);
+    if (!rows || rows.length === 0) return head;
+
+    // Show the checklist so the model can see precisely what is still wanted, and
+    // never re-ask for something already captured (R1.1).
+    const lines = rows.map((e) => {
+      if (e.state === 'captured') return `       ✓ ${e.elementId} — ${e.summary || 'captured'}`;
+      if (e.state === 'not_applicable') return `       – ${e.elementId} — n/a: ${e.naReason || 'no reason given'}`;
+      return `       ○ ${e.elementId} — still outstanding`;
+    });
+    return [head, ...lines].join('\n');
   }).join('\n');
+}
+
+export interface ElementView {
+  facetId: number;
+  elementId: string;
+  state: 'outstanding' | 'captured' | 'not_applicable';
+  summary: string;
+  naReason: string;
 }
 
 export function buildSystemPrompt(input: {
   role: string;
   processName: string | null;
   coverage: { facetId: number; state: CoverageStateValue }[];
+  elements?: readonly ElementView[];
 }): string {
   const processLine = input.processName
     ? `The process under discussion is: "${input.processName}".`
@@ -68,14 +128,16 @@ export function buildSystemPrompt(input: {
   return [
     CONDUCT.replace('{ROLE}', input.role),
     '',
+    SCORING,
+    '',
     'THE TWELVE FACETS (your blueprint — never say these names to the informant):',
     '',
     facetSpecBlock(),
     '',
     processLine,
     '',
-    'LIVE COVERAGE (updated every turn — steer toward the facets that still need progress):',
-    coverageBlock(input.coverage),
+    'LIVE COVERAGE (updated every turn — steer toward what is still outstanding, and never re-ask for a ✓):',
+    coverageBlock(input.coverage, input.elements ?? []),
   ].join('\n');
 }
 
