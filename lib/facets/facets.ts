@@ -257,13 +257,13 @@ export const FACETS: readonly Facet[] = [
         id: 'rules.thresholds',
         label: 'The limits and figures',
         capturedWhen:
-          'Concrete thresholds are given (£ bands, time limits, counts) — or established that none exist. "It gets approved" is not enough.',
+          'EVERY band in the escalation ladder is given as a number, not just the first. If they say "I can do £25 myself, above that it goes to a manager", the manager\'s own limit and whatever sits above it are still outstanding — keep probing until they reach the top of the ladder or say they do not know. "It gets approved" and a single figure are both insufficient.',
       },
       {
         id: 'rules.approvals',
         label: 'Who signs off, and at what level',
         capturedWhen:
-          'Approval tiers are tied to the roles that hold them, or established that no approval is required.',
+          'Every approval tier is tied to the role that holds it, up to the top of the ladder — or established that no approval is required.',
       },
     ],
     elicitation: 'open',
