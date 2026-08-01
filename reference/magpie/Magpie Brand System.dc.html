@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+  @font-face { font-family:'Aeonik Pro'; src:url('fonts/AeonikPro-Light.woff') format('woff'); font-weight:300; font-display:swap; }
+  @font-face { font-family:'Aeonik Pro'; src:url('fonts/AeonikPro-Regular.woff') format('woff'); font-weight:400; font-display:swap; }
+  @font-face { font-family:'Aeonik Pro'; src:url('fonts/AeonikPro-Medium.woff') format('woff'); font-weight:500; font-display:swap; }
+  @font-face { font-family:'Aeonik Pro'; src:url('fonts/AeonikPro-Bold.woff') format('woff'); font-weight:600 700; font-display:swap; }
+  @font-face { font-family:'Aeonik Pro'; src:url('fonts/AeonikPro-Black.woff') format('woff'); font-weight:800 900; font-display:swap; }
+  body { margin:0; background:#FAF8FB; }
+  a { color:#712D85; text-decoration:none; }
+  a:hover { color:#5C2569; text-decoration:underline; }
+  @keyframes mp-bob { 0%,100% { transform:translateY(0) } 50% { transform:translateY(-6%) } }
+  @keyframes mp-tail { 0%,100% { transform:rotate(0deg) } 50% { transform:rotate(-7deg) } }
+  @keyframes mp-blink { 0%,92%,100% { transform:scaleY(1) } 96% { transform:scaleY(0.12) } }
+  @keyframes mp-hop { 0% { transform:translateY(0) } 30% { transform:translateY(-14%) } 55% { transform:translateY(0) } 70% { transform:translateY(-4%) } 100% { transform:translateY(0) } }
+  @keyframes mp-gather { 0% { transform:translateX(-6%) } 50% { transform:translateX(4%) } 100% { transform:translateX(-6%) } }
+  @keyframes mp-patch { 0%,100% { opacity:1 } 50% { opacity:0.55 } }
+  @keyframes mp-sweep { 0% { background-position:0% 50% } 100% { background-position:200% 50% } }
+  @media (prefers-reduced-motion: reduce) { * { transition:none !important; animation:none !important; } }
+</style>
+</helmet>
+
+<div style="font-family:'Aeonik Pro','Helvetica Neue',Helvetica,system-ui,sans-serif;color:#1C1620;background:#FAF8FB;padding:0 0 96px 0;-webkit-font-smoothing:antialiased">
+
+  <!-- ============ MASTHEAD ============ -->
+  <div style="background:linear-gradient(100deg,#0050FF 0%,#712D85 52%,#E10A0A 100%);color:#FFFFFF;padding:56px 64px 48px">
+    <div style="max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:32px">
+      <div style="display:flex;align-items:center;gap:18px">
+        <div style="background:#712D85;border-radius:16px;padding:8px;display:flex"><svg viewBox="0 0 64 64" width="56" height="56" style="display:block"><g fill="#FFFFFF"><polygon points="1.8,18 11.6,14.6 11.6,21.2"></polygon><circle cx="19.5" cy="17" r="8.6"></circle><ellipse cx="32.5" cy="32" rx="14" ry="12" transform="rotate(-10 32.5 32)"></ellipse><polygon points="43,29.5 63,40.5 61,45.6 39,37.5"></polygon></g><ellipse cx="28.5" cy="30.5" rx="5" ry="3.3" transform="rotate(-20 28.5 30.5)" fill="#712D85"></ellipse><circle cx="17" cy="15" r="2.9" fill="#712D85"></circle></svg></div>
+        <span style="font-size:44px;font-weight:500;letter-spacing:-0.02em;line-height:1">Magpie</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:48px;align-items:flex-end;justify-content:space-between">
+        <p style="margin:0;max-width:620px;font-size:20px;line-height:30px;color:#EEE0F2;text-wrap:pretty">Brand design system. A brand layer on top of the VMO2 design system – for the internal process-capture product that gathers scattered knowledge and keeps it safe.</p>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;line-height:20px;color:#DCC2E3;text-align:right">
+          <div>v0.1 · pilot</div>
+          <div>#0050FF + #E10A0A → #712D85</div>
+        </div>
+      </div>
+      <div style="border:1px solid rgba(255,255,255,0.28);border-radius:8px;padding:14px 18px;font-size:14px;line-height:20px;color:#F7F1F9;max-width:820px">Governance: the Magpie lockup and the derived brand colour require VMO2 brand governance sign-off before any exposure beyond the pilot group.</div>
+    </div>
+  </div>
+
+  <div style="max-width:1120px;margin:0 auto;padding:0 64px;display:flex;flex-direction:column;gap:88px">
+
+    <!-- ============ 01 COLOUR ============ -->
+    <section style="padding-top:72px;display:flex;flex-direction:column;gap:32px" data-screen-label="01 Colour">
+      <div style="display:flex;flex-direction:column;gap:10px;border-top:2px solid #1C1620;padding-top:18px">
+        <div style="display:flex;align-items:center;align-self:flex-start"><span style="background:#712D85;color:#FFFFFF;font-size:13px;font-weight:500;line-height:1;padding:9px 20px 9px 18px;border-radius:9999px;display:flex;gap:10px;align-items:center"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;opacity:0.75">01</span>Colour system</span><span style="width:22px;height:22px;border-radius:9999px;background:#0050FF;margin-left:-9px"></span></div>
+        <h2 style="margin:0;font-size:32px;line-height:38px;font-weight:600;letter-spacing:-0.02em">Colour system</h2>
+        <p style="margin:0;max-width:680px;font-size:16px;line-height:24px;color:#5A5060">Magpie purple is an identity accent. It never carries semantic meaning and never replaces O2 Blue on interactive controls.</p>
+      </div>
+
+      <!-- derivation -->
+      <div style="background:#FFFFFF;border:1px solid #E7DFEA;border-radius:12px;padding:28px 32px;display:flex;flex-direction:column;gap:20px">
+        <h3 style="margin:0;font-size:20px;line-height:26px;font-weight:600">The colour story</h3>
+        <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+          <div style="display:flex;flex-direction:column;gap:8px"><div style="width:132px;height:72px;background:#0050FF;border-radius:8px"></div><div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#5A5060">O2 Blue<br/>#0050FF</div></div>
+          <div style="font-size:24px;color:#9A8FA3">+</div>
+          <div style="display:flex;flex-direction:column;gap:8px"><div style="width:132px;height:72px;background:#E10A0A;border-radius:8px"></div><div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#5A5060">Virgin Media Red<br/>#E10A0A</div></div>
+          <div style="font-size:24px;color:#9A8FA3">=</div>
+          <div style="display:flex;flex-direction:column;gap:8px"><div style="width:180px;height:72px;background:#712D85;border-radius:8px"></div><div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#5A5060">Magpie purple<br/>#712D85</div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:20px;color:#1C1620;max-width:640px">
+          <div style="background:#F7F1F9;border-radius:8px;padding:10px 14px">R (0 + 225) / 2 = 113 → 71</div>
+          <div style="background:#F7F1F9;border-radius:8px;padding:10px 14px">G (80 + 10) / 2 = 45 → 2D</div>
+          <div style="background:#F7F1F9;border-radius:8px;padding:10px 14px">B (255 + 10) / 2 = 133 → 85</div>
+        </div>
+        <p style="margin:0;max-width:720px;font-size:16px;line-height:24px;color:#5A5060">Channel-wise midpoint of the two heritage brands. Magpie sits at the intersection of O2 and Virgin Media, and its colour is literally made from both.</p>
+      </div>
+
+      <!-- heritage blend -->
+      <div style="background:#FFFFFF;border:1px solid #E7DFEA;border-radius:12px;padding:28px 32px;display:flex;flex-direction:column;gap:22px">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <h3 style="margin:0;font-size:20px;line-height:26px;font-weight:600">Heritage blend</h3>
+          <p style="margin:0;max-width:760px;font-size:16px;line-height:24px;color:#5A5060">The derivation is easier to read as a journey than as a single swatch. The heritage blend shows both parent brands travelling into Magpie purple and back out – it is a brand device, never a surface treatment. Amendment to the flat-colour constraint: these two gradients are the only ones in the system.</p>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="height:72px;border-radius:8px;background:linear-gradient(90deg,#0050FF 0%,#712D85 50%,#E10A0A 100%)"></div>
+          <div style="display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:12px;color:#5A5060"><span>Full blend · #0050FF → #712D85 50% → #E10A0A</span><span>white on any stop ≥ 4.94:1</span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="height:48px;border-radius:8px;background:linear-gradient(90deg,#0050FF 0%,#712D85 100%)"></div>
+          <div style="display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:12px;color:#5A5060"><span>Quiet blend · #0050FF → #712D85</span><span>white ≥ 5.85:1</span></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="font-size:15px;font-weight:600">Where the blend goes</div>
+            <ul style="margin:0;padding-left:20px;font-size:15px;line-height:23px;color:#3E3545;display:flex;flex-direction:column;gap:6px">
+              <li>Mastheads and document covers – the full blend, left to right.</li>
+              <li>The 4 px rule at the head of a specification page.</li>
+              <li>Splash and app-icon plate at 64 px and above.</li>
+              <li>Loading sweep – quiet blend only; red never appears while waiting.</li>
+            </ul>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="font-size:15px;font-weight:600">Where it never goes</div>
+            <ul style="margin:0;padding-left:20px;font-size:15px;line-height:23px;color:#3E3545;display:flex;flex-direction:column;gap:6px">
+              <li>Behind body text, tables, or forms – the mark and a flat field carry those.</li>
+              <li>Any interactive control; buttons stay flat O2 Blue.</li>
+              <li>Marks and plates below 64 px – the blend collapses to flat #712D85.</li>
+              <li>More than one blend element per screen or page.</li>
+            </ul>
+          </div>
+        </div>
+        <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:center;padding-top:4px;border-top:1px solid #F0EAF2">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+            <div style="width:104px;height:104px;border-radius:23px;background:linear-gradient(135deg,#0050FF 0%,#712D85 55%,#E10A0A 100%);display:flex;align-items:center;justify-content:center">
+              <svg viewBox="0 0 64 64" width="70" height="70" style="display:block"><g fill="#FFFFFF"><polygon points="1.8,18 11.6,14.6 11.6,21.2"></polygon><circle cx="19.5" cy="17" r="8.6"></circle><ellipse cx="32.5" cy="32" rx="14" ry="12" transform="rotate(-10 32.5 32)"></ellipse><polygon points="43,29.5 63,40.5 61,45.6 39,37.5"></polygon></g><ellipse cx="28.5" cy="30.5" rx="5" ry="3.3" transform="rotate(-20 28.5 30.5)" fill="none" stroke="rgba(255,255,255,0)"></ellipse></svg>
+            </div>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7A7080">Blend app icon · ≥ 64 px</span>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+            <div style="width:104px;height:104px;border-radius:23px;background:#712D85;display:flex;align-items:center;justify-content:center">
+              <svg viewBox="0 0 64 64" width="70" height="70" style="display:block"><g fill="#FFFFFF"><polygon points="1.8,18 11.6,14.6 11.6,21.2"></polygon><circle cx="19.5" cy="17" r="8.6"></circle><ellipse cx="32.5" cy="32" rx="14" ry="12" transform="rotate(-10 32.5 32)"></ellipse><polygon points="43,29.5 63,40.5 61,45.6 39,37.5"></polygon></g><ellipse cx="28.5" cy="30.5" rx="5" ry="3.3" transform="rotate(-20 28.5 30.5)" fill="#712D85"></ellipse><circle cx="17" cy="15" r="2.9" fill="#712D85"></circle></svg>
+            </div>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7A7080">Flat fallback · &lt; 64 px</span>
+          </div>
+          <p style="margin:0;max-width:420px;font-size:14px;line-height:21px;color:#5A5060">On the blend plate the knockouts close – the shoulder patch and eye can no longer be background, so the blend icon is a solid silhouette. Below 64 px use the flat purple plate, where the knockouts return.</p>
+        </div>
+      </div>
+
+      <!-- ramp -->
+      <div style="background:#FFFFFF;border:1px solid #E7DFEA;border-radius:12px;overflow:hidden">
+        <div style="display:grid;grid-template-columns:96px 120px 1fr 190px;gap:0;padding:14px 24px;background:#F7F1F9;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.06em;color:#5A5060;text-transform:uppercase">
+          <div>Stop</div><div>Hex</div><div>Role</div><div>Contrast (AA)</div>
+        </div>
+        <sc-for list="{{ ramp }}" as="s" hint-placeholder-count="10">
+          <div style="display:grid;grid-template-columns:96px 120px 1fr 190px;align-items:center;gap:0;padding:0 24px;border-top:1px solid #F0EAF2;min-height:56px">
+            <div style="display:flex;align-items:center;gap:10px"><span style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(0,0,0,0.08);background:{{ s.hex }}"></span><span style="font-size:14px;font-weight:600">{{ s.stop }}</span></div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#1C1620">{{ s.hex }}</div>
+            <div style="font-size:14px;line-height:20px;color:#5A5060">{{ s.role }}</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#1C1620">{{ s.contrast }}</div>
+          </div>
+        </sc-for>
+      </div>
+      <p style="margin:-16px 0 0;font-size:13px;line-height:20px;color:#7A7080">Anchor stop is 600 – #712D85 exactly as locked. Ratios are measured against the pairing named in each row; every pairing listed passes WCAG AA for its stated use (4.5:1 body text, 3:1 large text and UI boundaries).</p>
+
+      <!-- light / dark mapping -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+        <div style="background:#FFFFFF;border:1px solid #E7DFEA;border-radius:12px;padding:28px;display:flex;flex-direction:column;gap:18px">
+          <h3 style="margin:0;font-size:18px;font-weight:600">Light mode mapping</h3>
+          <sc-for list="{{ lightMap }}" as="m" hint-placeholder-count="6">
+            <div style="display:flex;gap:14px;align-items:flex-start;padding-bottom:14px;border-bottom:1px solid #F0EAF2">
+              <span style="width:22px;height:22px;border-radius:5px;flex:none;margin-top:2px;border:1px solid rgba(0,0,0,0.08);background:{{ m.hex }}"></span>
+              <div style="display:flex;flex-direction:column;gap:3px">
+                <div style="font-size:14px;font-weight:600">{{ m.use }}</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#7A7080">{{ m.detail }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="background:#15121A;border:1px solid #2A2432;border-radius:12px;padding:28px;display:flex;flex-direction:column;gap:18px">
+          <h3 style="margin:0;font-size:18px;font-weight:600;color:#F4F0F7">Dark mode mapping</h3>
+          <sc-for list="{{ darkMap }}" as="m" hint-placeholder-count="6">
+            <div style="display:flex;gap:14px;align-items:flex-start;padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.10)">
+              <span style="width:22px;height:22px;border-radius:5px;flex:none;margin-top:2px;border:1px solid rgba(255,255,255,0.14);background:{{ m.hex }}"></span>
+              <div style="display:flex;flex-direction:column;gap:3px">
+                <div style="font-size:14px;font-weight:600;color:#F4F0F7">{{ m.use }}</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#B9AEC2">{{ m.detail }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <!-- interaction rules -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+        <div style="background:#F7F1F9;border:1px solid #DCC2E3;border-radius:12px;padding:28px;display:flex;flex-direction:column;gap:14px">
+          <h3 style="margin:0;font-size:18px;font-weight:600">Purple does</h3>
+          <ul style="margin:0;padding-left:20px;font-size:15px;line-height:24px;color:#3E3545;display:flex;flex-direction:column;gap:8px">
+            <li>Logo, lockups, app icon, favicon.</li>
+            <li>Loading and processing moments.</li>
+            <li>Empty states and first-run moments.</li>
+            <li>One accent moment per screen – a rule, a header band, a mark.</li>
+            <li>Document covers and running headers.</li>
+          </ul>
+        </div>
+        <div style="background:#FFF3F3;border:1px solid #F3C9C9;border-radius:12px;padding:28px;display:flex;flex-direction:column;gap:14px">
+          <h3 style="margin:0;font-size:18px;font-weight:600">Purple never</h3>
+          <ul style="margin:0;padding-left:20px;font-size:15px;line-height:24px;color:#3E3545;display:flex;flex-direction:column;gap:8px">
+            <li>Means success, warning, or error.</li>
+            <li>Fills a button, link, toggle, tab, or any interactive control – that stays O2 Blue #0050FF.</li>
+            <li>Sits next to Virgin Media Red as a paired accent.</li>
+            <li>Tints a data visualisation category.</li>
+            <li>Appears at more than one accent moment per screen.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div style="background:#FFFFFF;border:1px solid #E7DFEA;border-radius:12px;padding:28px;display:flex;flex-direction:column;gap:16px">
+        <h3 style="margin:0;font-size:18px;font-weight:600">Base palette, unchanged</h3>
+        <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px">
+          <div style="display:flex;flex-direction:column;gap:8px"><div style="height:56px;border-radius:8px;background:#0050FF"></div><div style="font-size:13px;line-height:19px"><strong style="font-weight:600">O2 Blue</strong> #0050FF<br/><span style="color:#7A7080">All interactive controls. White on blue 5.85:1.</span></div></div>
+          <div style="display:flex;flex-direction:column;gap:8px"><div style="height:56px;border-radius:8px;background:#E10A0A"></div><div style="font-size:13px;line-height:19px"><strong style="font-weight:600">VM Red</strong> #E10A0A<br/><span style="color:#7A7080">Destructive and stop. White on red 4.94:1. Never in loading.</span></div></div>
+          <div style="display:flex;flex-direction:column;gap:8px"><div style="height:56px;border-radius:8px;background:#FF0090"></div><div style="font-size:13px;line-height:19px"><strong style="font-weight:600">Hot Pink</strong> #FF0090<br/><span style="color:#7A7080">Fill only. Ink on pink 5.65:1; as text it deepens to #C4006F.</span></div></div>
+          <div style="display:flex;flex-direction:column;gap:8px"><div style="height:56px;border-radius:8px;background:#1C1620"></div><div style="font-size:13px;line-height:19px"><strong style="font-weight:600">Ink</strong> #1C1620<br/><span style="color:#7A7080">Body text on #FAF8FB, 16.7:1.</span></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 02 MARK ============ -->
+    <section style="display:flex;flex-direction:column;gap:32px" data-screen-label="02 Mark">
+      <div style="display:flex;flex-direction:column;gap:10px;border-top:2px solid #1C1620;padding-top:18px">
+        <div style="display:flex;align-items:center;align-self:flex-start"><span style="background:#712D85;color:#FFFFFF;font-size:13px;font-weight:500;line-height:1;padding:9px 20px 9px 18px;border-radius:9999px;display:flex;gap:10px;align-items:center"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;opacity:0.75">02</span>The mark</span><span style="width:22px;height:22px;border-radius:9999px;background:#0050FF;margin-left:-9px"></span></div>
+        <h2 style="margin:0;font-size:32px;line-height:38px;font-weight:600;letter-spacing:-0.02em">The mark</h2>
+        <p style="margin:0;max-width:680px;font-size:16px;line-height:24px;color:#5A5060">Refined from the starting-point geometry: a distinct head lobe with a throat notch instead of one merged blob, the eye moved into the head just behind the beak, the shoulder patch shrunk to 36% of body width and moved onto the wing so a light–dark rhythm survives downscaling, and the tail now leaves the body's rear edge and tapers to a near-point over a longer, shallower sweep.</p>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px">
+        <div style="background:#FFFFFF;border:1px solid #E7DFEA;border-radius:12px;padding:32px;display:flex;flex-direction:column;gap:20px;align-items:center">
+          <svg viewBox="0 0 64 64" width="150" height="150" style="display:block"><g fill="#712D85"><polygon points="1.8,18 11.6,14.6 11.6,21.2"></polygon><circle cx="19.5" cy="17" r="8.6"></circle><ellipse cx="32.5" cy="32" rx="14" ry="12" transform="rotate(-10 32.5 32)"></ellipse><polygon points="43,29.5 63,40.5 61,45.6 39,37.5"></polygon></g><ellipse cx="28.5" cy="30.5" rx="5" ry="3.3" transform="rotate(-20 28.5 30.5)" fill="#FFFFFF"></ellipse><circle cx="17" cy="15" r="2.9" fill="#FFFFFF"></circle></svg>
+          <div style="text-align:center;font-size:14px;line-height:20px"><strong style="font-weight:600">Primary</strong><br/><span style="color:#7A7080">#712D85 on light. Patch and eye are the background, not white ink.</span></div>
+        </div>
+        <div style="background:#712D85;border:1px solid #712D85;border-radius:12px;padding:32px;display:flex;flex-direction:column;gap:20px;align-items:center">
+          <svg viewBox="0 0 64 64" width="150" height="150" style="display:block"><g fill="#FFFFFF"><polygon points="1.8,18 11.6,14.6 11.6,21.2"></polygon><circle cx="19.5" cy="17" r="8.6"></circle><ellipse cx="32.5" cy="32" rx="14" ry="12" transform="rotate(-10 32.5 32)"></ellipse><polygon points="43,29.5 63,40.5 61,45.6 39,37.5"></polygon></g><ellipse cx="28.5" cy="30.5" rx="5" ry="3.3" transform="rotate(-20 28.5 30.5)" fill="#712D85"></ellipse><circle cx="17" cy="15" r="2.9" fill="#712D85"></circle></svg>
+          <div style="text-align:center;font-size:14px;line-height:20px;color:#FFFFFF"><strong style="font-weight:600">Reversed</strong><br/><span style="color:#DCC2E3">White on #712D85. 8.68:1.</span></div>
+        </div>
+        <div style="background:#FFFFFF;border:1px solid #E7DFEA;border-radius:12px;padding:32px;display:flex;flex-direction:column;gap:20px;align-items:center">
+          <svg viewBox="0 0 64 64" width="150" height="150" style="display:block"><g fill="#1C1620"><polygon points="1.8,18 11.6,14.6 11.6,21.2"></polygon><circle cx="19.5" cy="17" r="8.6"></circle><ellipse cx="32.5" cy="32" rx="14" ry="12" transform="rotate(-10 32.5 32)"></ellipse><polygon points="43,29.5 63,40.5 61,45.6 39,37.5"></polygon></g><ellipse cx="28.5" cy="30.5" rx="5" ry="3.3" transform="rotate(-20 28.5 30.5)" fill="#FFFFFF"></ellipse><circle cx="17" cy="15" r="2.9" fill="#FFFFFF"></circle></svg>
+          <div style="text-align:center;font-size:14px;line-height:20px"><strong style="font-weight:600">Mono</strong><br/><span style="color:#7A7080">One colour for print, foil, engraving. Knockouts stay open.</span></div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:24px">
+        <div style="background:#FFFFFF;border:1px solid #E7DFEA;border-radius:12px;padding:32px;display:flex;flex-direction:column;gap:24px">
+          <h3 style="margin:0;font-size:18px;font-weight:600">Small-size proof</h3>
+          <div style="display:flex;align-items:flex-end;gap:44px">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:10px"><svg viewBox="0 0 64 64" width="16" height="16" style="display:block"><g fill="#712D85"><polygon points="0.5,18 11.6,13.8 11.6,22"></polygon><circle cx="19.5" cy="17" r="9.4"></circle><ellipse cx="32.5" cy="32" rx="15" ry="12.8" transform="rotate(-10 32.5 32)"></ellipse><polygon points="43,29 63.5,40 61,46.4 39,37.5"></polygon></g><ellipse cx="28.5" cy="30.5" rx="6.4" ry="4.2" transform="rotate(-20 28.5 30.5)" fill="#FFFFFF"></ellipse></svg><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7A7080">16</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:10px"><svg viewBox="0 0 64 64" width="24" height="24" style="display:block"><g fill="#712D85"><polygon points="1.8,18 11.6,14.6 11.6,21.2"></polygon><circle cx="19.5" cy="17" r="8.6"></circle><ellipse cx="32.5" cy="32" rx="14" ry="12" transform="rotate(-10 32.5 32)"></ellipse><polygon points="43,29.5 63,40.5 61,45.6 39,37.5"></polygon></g><ellipse cx="28.5" cy="30.5" rx="5" ry="3.3" transform="rotate(-20 28.5 30.5)" fill="#FFFFFF"></ellipse><circle cx="17" cy="15" r="2.9" fill="#FFFFFF"></circle></svg><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7A7080">24</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:10px"><svg viewBox="0 0 64 64" width="32" height="32" style="display:block"><g fill="#712D85"><polygon points="1.8,18 11.6,14.6 11.6,21.2"></polygon><circle cx="19.5" cy="17" r="8.6"></circle><ellipse cx="32.5" cy="32" rx="14" ry="12" transform="rotate(-10 32.5 32)"></ellipse><polygon points="43,29.5 63,40.5 61,45.6 39,37.5"></polygon></g><ellipse cx="28.5" cy="30.5" rx="5" ry="3.3" transform="rotate(-20 28.5 30.5)" fill="#FFFFFF"></ellipse><circle cx="17" cy="15" r="2.9" fill="#FFFFFF"></circle></svg><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7A7080">32</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:10px"><svg viewBox="0 0 64 64" width="64" height="64" style="display:block"><g fill="#712D85"><polygon points="1.8,18 11.6,14.6 11.6,21.2"></polygon><circle cx="19.5" cy="17" r="8.6"></circle><ellipse cx="32.5" cy="32" rx="14" ry="12" transform="rotate(-10 32.5 32)"></ellipse><polygon points="43,29.5 63,40.5 61,45.6 39,37.5"></polygon></g><ellipse cx="28.5" cy="30.5" rx="5" ry="3.3" transform="rotate(-20 28.5 30.5)" fill="#FFFFFF"></ellipse><circle cx="17" cy="15" r="2.9" fill="#FFFFFF"></circle></svg><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7A7080">64</span></div>
+          </div>
+          <p style="margin:0;font-size:14px;line-height:21px;color:#5A5060">Minimum size 16 px, and 16 px is a separate drawing. The 16 px optical variant drops the eye, thickens head and tail by roughly 8%, and widens the shoulder patch – the patch is the only knockout that survives, and it is what makes the shape read as a bird rather than a dot. From 24 px up, the full mark is used. Below 16 px, wordmark alone.</p>
+        </div>
+        <div style="background:#FFFFFF;border:1px solid #E7DFEA;border-radius:12px;padding:32px;display:flex;flex-direction:column;gap:20px">
+          <h3 style="margin:0;font-size:18px;font-weight:600">Clear space</h3>
+          <div style="align-self:flex-start;border:1px dashed #C69ECF;padding:20px;border-radius:6px;background:#F7F1F9">
+            <svg viewBox="0 0 64 64" width="96" height="96" style="display:block"><g fill="#712D85"><polygon points="1.8,18 11.6,14.6 11.6,21.2"></polygon><circle cx="19.5" cy="17" r="8.6"></circle><ellipse cx="32.5" cy="32" rx="14" ry="12" transform="rotate(-10 32.5 32)"></ellipse><polygon points="43,29.5 63,40.5 61,45.6 39,37.5"></polygon></g><ellipse cx="28.5" cy="30.5" rx="5" ry="3.3" transform="rotate(-20 28.5 30.5)" fill="#F7F1F9"></ellipse><circle cx="17" cy="15" r="2.9" fill="#F7F1F9"></circle></svg>
+          </div>
+          <p style="margin:0;font-size:14px;line-height:21px;color:#5A5060">Clear space on all four sides equals the height of the shoulder patch – 0.16 × mark height. Nothing enters it, including the wordmark of a parent VMO2 lockup.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 03 LOCKUPS ============ -->
+    <section style="display:flex;flex-direction:column;gap:32px" data-screen-label="03 Lockups">
+      <div style="display:flex;flex-direction:column;gap:10px;border-top:2px solid #1C1620;padding-top:18px">
+        <div style="display:flex;align-items:center;align-self:flex-start"><span style="background:#712D85;color:#FFFFFF;font-size:13px;font-weight:500;line-height:1;padding:9px 20px 9px 18px;border-radius:9999px;display:flex;gap:10px;align-items:center"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;opacity:0.75">03</span>Lockups</span><span style="width:22px;height:22px;border-radius:9999px;background:#0050FF;margin-left:-9px"></span></div>
+        <h2 style="margin:0;font-size:32px;line-height:38px;font-weight:600;letter-spacing:-0.02em">Lockups</h2>
+        <p style="margin:0;max-width:680px;font-size:16px;line-height:24px;color:#5A5060">Wordmark set in Aeonik Pro Medium, sentence case, tracking −0.02 em. Cap height of the wordmark equals 0.52 × mark height.</p>
+      </div>
+      <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:24px">
+        <div style="background:#FFFFFF;border:1px solid #E7DFEA;border-radius:12px;padding:36px;display:flex;flex-direction:column;gap:24px;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:19px">
+            <svg viewBox="0 0 64 64" width="76" height="76" style="display:block"><g fill="#712D85"><polygon points="1.8,18 11.6,14.6 11.6,21.2"></polygon><circle cx="19.5" cy="17" r="8.6"></circle><ellipse cx="32.5" cy="32" rx="14" ry="12" transform="rotate(-10 32.5 32)"></ellipse><polygon points="43,29.5 63,40.5 61,45.6 39,37.5"></polygon></g><ellipse cx="28.5" cy="30.5" rx="5" ry="3.3" transform="rotate(-20 28.5 30.5)" fill="#FFFFFF"></ellipse><circle cx="17" cy="15" r="2.9" fill="#FFFFFF"></circle></svg>
+            <span style="font-size:52px;font-weight:500;letter-spacing:-0.02em;line-height:1;color:#1C1620">Magpie</span>
+          </div>
+          <div style="font-size:14px;line-height:21px"><strong style="font-weight:600">Horizontal – primary.</strong><br/><span style="color:#7A7080">Gap between mark and wordmark = 0.25 × mark height. Baseline of wordmark aligns to the mark's optical centre.</span></div>
+        </div>
+        <div style="background:#FFFFFF;border:1px solid #E7DFEA;border-radius:12px;padding:36px;display:flex;flex-direction:column;gap:24px;justify-content:space-between">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:14px;padding-top:8px">
+            <svg viewBox="0 0 64 64" width="72" height="72" style="display:block"><g fill="#712D85"><polygon points="1.8,18 11.6,14.6 11.6,21.2"></polygon><circle cx="19.5" cy="17" r="8.6"></circle><ellipse cx="32.5" cy="32" rx="14" ry="12" transform="rotate(-10 32.5 32)"></ellipse><polygon points="43,29.5 63,40.5 61,45.6 39,37.5"></polygon></g><ellipse cx="28.5" cy="30.5" rx="5" ry="3.3" transform="rotate(-20 28.5 30.5)" fill="#FFFFFF"></ellipse><circle cx="17" cy="15" r="2.9" fill="#FFFFFF"></circle></svg>
+            <span style="font-size:34px;font-weight:500;letter-spacing:-0.02em;line-height:1;color:#1C1620">Magpie</span>
+          </div>
+          <div style="font-size:14px;line-height:21px"><strong style="font-weight:600">Stacked – secondary.</strong><br/><span style="color:#7A7080">Vertical gap = 0.20 × mark height. For square slots, covers, app splash.</span></div>
+        </div>
+        <div style="background:#15121A;border:1px solid #2A2432;border-radius:12px;padding:36px;display:flex;flex-direction:column;gap:24px;justify-content:space-between">
+          <div style="padding-top:14px"><span style="font-size:44px;font-weight:500;letter-spacing:-0.02em;line-height:1;color:#FFFFFF">Magpie</span></div>
+          <div style="font-size:14px;line-height:21px;color:#F4F0F7"><strong style="font-weight:600">Wordmark only.</strong><br/><span style="color:#B9AEC2">Below 16 px mark size, in running text, and in dense product chrome. White on ink 18.8:1.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 04 ICONS ============ -->
+    <section style="display:flex;flex-direction:column;gap:32px" data-screen-label="04 Icons">
+      <div style="display:flex;flex-direction:column;gap:10px;border-top:2px solid #1C1620;padding-top:18px">
+        <div style="display:flex;align-items:center;align-self:flex-start"><span style="background:#712D85;color:#FFFFFF;font-size:13px;font-weight:500;line-height:1;padding:9px 20px 9px 18px;border-radius:9999px;display:flex;gap:10px;align-items:center"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;opacity:0.75">04</span>Icons</span><span style="width:22px;height:22px;border-radius:9999px;background:#0050FF;margin-left:-9px"></span></div>
+        <h2 style="margin:0;font-size:32px;line-height:38px;font-weight:600;letter-spacing:-0.02em">Favicon and app icon</h2>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:24px">
+        <div style="background:#FFFFFF;border:1px solid #E7DFEA;border-radius:12px;padding:32px;display:flex;flex-direction:column;gap:22px">
+          <h3 style="margin:0;font-size:18px;font-weight:600">Favicon</h3>
+          <div style="display:flex;align-items:flex-end;gap:32px">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:10px"><div style="width:16px;height:16px;background:#FFFFFF;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 64 64" width="16" height="16" style="display:block"><g fill="#712D85"><polygon points="0.5,18 11.6,13.8 11.6,22"></polygon><circle cx="19.5" cy="17" r="9.4"></circle><ellipse cx="32.5" cy="32" rx="15" ry="12.8" transform="rotate(-10 32.5 32)"></ellipse><polygon points="43,29 63.5,40 61,46.4 39,37.5"></polygon></g><ellipse cx="28.5" cy="30.5" rx="6.4" ry="4.2" transform="rotate(-20 28.5 30.5)" fill="#FFFFFF"></ellipse></svg></div><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7A7080">16</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:10px"><svg viewBox="0 0 64 64" width="32" height="32" style="display:block"><g fill="#712D85"><polygon points="1.8,18 11.6,14.6 11.6,21.2"></polygon><circle cx="19.5" cy="17" r="8.6"></circle><ellipse cx="32.5" cy="32" rx="14" ry="12" transform="rotate(-10 32.5 32)"></ellipse><polygon points="43,29.5 63,40.5 61,45.6 39,37.5"></polygon></g><ellipse cx="28.5" cy="30.5" rx="5" ry="3.3" transform="rotate(-20 28.5 30.5)" fill="#FFFFFF"></ellipse><circle cx="17" cy="15" r="2.9" fill="#FFFFFF"></circle></svg><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7A7080">32</span></div>
+          </div>
+          <p style="margin:0;font-size:14px;line-height:21px;color:#5A5060">Mark only, purple on transparent, no plate. 16 px uses the optical variant – a dedicated SVG, never a downscale of the 64.</p>
+        </div>
+        <div style="background:#FFFFFF;border:1px solid #E7DFEA;border-radius:12px;padding:32px;display:flex;flex-direction:column;gap:22px">
+          <h3 style="margin:0;font-size:18px;font-weight:600">App icon – reversed on Magpie purple</h3>
+          <div style="display:flex;align-items:flex-end;gap:28px;flex-wrap:wrap">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:10px"><div style="width:120px;height:120px;border-radius:27px;background:#712D85;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 64 64" width="80" height="80" style="display:block"><g fill="#FFFFFF"><polygon points="1.8,18 11.6,14.6 11.6,21.2"></polygon><circle cx="19.5" cy="17" r="8.6"></circle><ellipse cx="32.5" cy="32" rx="14" ry="12" transform="rotate(-10 32.5 32)"></ellipse><polygon points="43,29.5 63,40.5 61,45.6 39,37.5"></polygon></g><ellipse cx="28.5" cy="30.5" rx="5" ry="3.3" transform="rotate(-20 28.5 30.5)" fill="#712D85"></ellipse><circle cx="17" cy="15" r="2.9" fill="#712D85"></circle></svg></div><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7A7080">1024 @ 12%</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:10px"><div style="width:64px;height:64px;border-radius:14px;background:#712D85;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 64 64" width="44" height="44" style="display:block"><g fill="#FFFFFF"><polygon points="1.8,18 11.6,14.6 11.6,21.2"></polygon><circle cx="19.5" cy="17" r="8.6"></circle><ellipse cx="32.5" cy="32" rx="14" ry="12" transform="rotate(-10 32.5 32)"></ellipse><polygon points="43,29.5 63,40.5 61,45.6 39,37.5"></polygon></g><ellipse cx="28.5" cy="30.5" rx="5" ry="3.3" transform="rotate(-20 28.5 30.5)" fill="#712D85"></ellipse><circle cx="17" cy="15" r="2.9" fill="#712D85"></circle></svg></div><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7A7080">180</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:10px"><div style="width:40px;height:40px;border-radius:9px;background:#712D85;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 64 64" width="28" height="28" style="display:block"><g fill="#FFFFFF"><polygon points="1.8,18 11.6,14.6 11.6,21.2"></polygon><circle cx="19.5" cy="17" r="8.6"></circle><ellipse cx="32.5" cy="32" rx="14" ry="12" transform="rotate(-10 32.5 32)"></ellipse><polygon points="43,29.5 63,40.5 61,45.6 39,37.5"></polygon></g><ellipse cx="28.5" cy="30.5" rx="5" ry="3.3" transform="rotate(-20 28.5 30.5)" fill="#712D85"></ellipse><circle cx="17" cy="15" r="2.9" fill="#712D85"></circle></svg></div><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7A7080">64</span></div>
+          </div>
+          <p style="margin:0;font-size:14px;line-height:21px;color:#5A5060">Corner radius 22.5% of icon width. Mark occupies 68% of the plate, optically centred – the tail pulls the centroid right, so the artwork sits 2% left of geometric centre.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 05 UI ============ -->
+    <section style="display:flex;flex-direction:column;gap:32px" data-screen-label="05 UI application">
+      <div style="display:flex;flex-direction:column;gap:10px;border-top:2px solid #1C1620;padding-top:18px">
+        <div style="display:flex;align-items:center;align-self:flex-start"><span style="background:#712D85;color:#FFFFFF;font-size:13px;font-weight:500;line-height:1;padding:9px 20px 9px 18px;border-radius:9999px;display:flex;gap:10px;align-items:center"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;opacity:0.75">05</span>UI application</span><span style="width:22px;height:22px;border-radius:9999px;background:#0050FF;margin-left:-9px"></span></div>
+        <h2 style="margin:0;font-size:32px;line-height:38px;font-weight:600;letter-spacing:-0.02em">UI application</h2>
+        <p style="margin:0;max-width:680px;font-size:16px;line-height:24px;color:#5A5060">VMO2 components unchanged. Magpie contributes one accent moment per screen.</p>
+      </div>
+
+      <!-- interview chat, light -->
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.06em;color:#7A7080;text-transform:uppercase">Interview – light</div>
+        <div style="background:#FFFFFF;border:1px solid #E7DFEA;border-radius:12px;overflow:hidden">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid #F0EAF2">
+            <div style="display:flex;align-items:center;gap:10px">
+              <svg viewBox="0 0 64 64" width="24" height="24" style="display:block"><g fill="#712D85"><polygon points="1.8,18 11.6,14.6 11.6,21.2"></polygon><circle cx="19.5" cy="17" r="8.6"></circle><ellipse cx="32.5" cy="32" rx="14" ry="12" transform="rotate(-10 32.5 32)"></ellipse><polygon points="43,29.5 63,40.5 61,45.6 39,37.5"></polygon></g><ellipse cx="28.5" cy="30.5" rx="5" ry="3.3" transform="rotate(-20 28.5 30.5)" fill="#FFFFFF"></ellipse><circle cx="17" cy="15" r="2.9" fill="#FFFFFF"></circle></svg>
+              <span style="font-size:16px;font-weight:500;letter-spacing:-0.01em">Magpie</span>
+              <span style="font-size:14px;color:#7A7080">· Field engineer callout triage</span>
+            </div>
+            <button style="border:none;background:#E10A0A;color:#FFFFFF;font-family:inherit;font-size:14px;font-weight:600;padding:9px 16px;border-radius:8px;display:flex;align-items:center;gap:8px;cursor:pointer" style-hover="background:#B80808"><span style="width:9px;height:9px;background:#FFFFFF;border-radius:2px;display:block"></span>Stop recording</button>
+          </div>
+          <div style="padding:32px 24px;display:flex;flex-direction:column;gap:22px;background:#FCFBFD">
+            <div style="max-width:600px;display:flex;flex-direction:column;gap:6px">
+              <div style="font-size:12px;color:#7A7080">Magpie</div>
+              <div style="background:#FFFFFF;border:1px solid #E7DFEA;border-radius:12px;padding:16px 18px;font-size:16px;line-height:24px">When a callout comes in outside hours, who decides whether it waits until morning?</div>
+            </div>
+            <div style="max-width:600px;align-self:flex-end;display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+              <div style="font-size:12px;color:#7A7080">You</div>
+              <div style="background:#0050FF;color:#FFFFFF;border-radius:12px;padding:16px 18px;font-size:16px;line-height:24px">Usually the duty lead, but if it's a priority-one site the NOC will just page us directly and we skip that step.</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:4px 0">
+              <svg viewBox="0 0 64 64" width="26" height="26" style="display:block"><g fill="{{ craftColour }}"><polygon points="1.8,18 11.6,14.6 11.6,21.2"></polygon><circle cx="19.5" cy="17" r="8.6"></circle><ellipse cx="32.5" cy="32" rx="14" ry="12" transform="rotate(-10 32.5 32)"></ellipse><polygon points="43,29.5 63,40.5 61,45.6 39,37.5"> style="animation:mp-tail 2.2s ease-in-out infinite;transform-origin:38px 32px"></polygon></g><ellipse cx="28.5" cy="30.5" rx="5" ry="3.3" transform="rotate(-20 28.5 30.5)" fill="#FCFBFD"</ellipse><circle cx="17" cy="15" r="2.9" fill="#FCFBFD"></circle></svg>
+              <span style="font-size:16px;font-weight:500;transition:opacity 220ms ease,color 220ms ease;color:{{ craftColour }};opacity:{{ craftOpacity }}">{{ craftWord }}</span>
+              <span style="flex:1;max-width:180px;height:3px;border-radius:2px;background:linear-gradient(90deg,#0050FF,#712D85,#0050FF);background-size:200% 100%;animation:mp-sweep 2.4s linear infinite"></span>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;border:1px solid #D9D2DE;border-radius:12px;padding:14px 16px;background:#FFFFFF">
+              <span style="font-size:16px;color:#9A8FA3;flex:1">Type your answer, or keep talking</span>
+              <button style="border:none;background:#0050FF;color:#FFFFFF;font-family:inherit;font-size:14px;font-weight:600;padding:9px 18px;border-radius:8px;cursor:pointer" style-hover="background:#0040CC">Send</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- loading spec -->
+      <div style="background:#F7F1F9;border:1px solid #DCC2E3;border-radius:12px;padding:24px 28px;display:flex;flex-wrap:wrap;gap:32px;justify-content:space-between;align-items:center">
+        <div style="max-width:560px;font-size:14px;line-height:21px;color:#3E3545"><strong style="font-weight:600">Loading behaviour.</strong> Mark beside a rotating craft word: Gathering… Weaving… Cross-checking… Distilling… Collecting the shiny bits… Word and mark cycle through O2 Blue #0050FF, Hot Pink, Magpie purple #712D85. The mark runs the Gathering animation and the progress track uses the quiet blend as an indeterminate sweep. Cross-fade only, 220 ms, no spinner. Virgin Media Red is excluded – it reads as an error while waiting.<br/><br/>Assumption stated: at loading-word size Hot Pink is used as its text tint #C4006F, not #FF0090. #FF0090 as text on the light chat surface is 3.71:1 and fails AA; the deepened tint is 5.7:1. #FF0090 keeps its existing VMO2 role as a fill.</div>
+        <div style="display:flex;align-items:center;gap:10px;background:#FFFFFF;border-radius:8px;padding:12px 16px">
+          <svg viewBox="0 0 64 64" width="22" height="22" style="display:block"><g fill="#712D85"><polygon points="1.8,18 11.6,14.6 11.6,21.2"></polygon><circle cx="19.5" cy="17" r="8.6"></circle><ellipse cx="32.5" cy="32" rx="14" ry="12" transform="rotate(-10 32.5 32)"></ellipse><polygon points="43,29.5 63,40.5 61,45.6 39,37.5"></polygon></g><ellipse cx="28.5" cy="30.5" rx="5" ry="3.3" transform="rotate(-20 28.5 30.5)" fill="#FFFFFF"></ellipse><circle cx="17" cy="15" r="2.9" fill="#FFFFFF"></circle></svg>
+          <span style="font-size:15px;font-weight:500;color:#712D85">Working…</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7A7080">reduced-motion fallback</span>
+        </div>
+      </div>
+
+      <!-- admin dashboard, dark -->
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.06em;color:#7A7080;text-transform:uppercase">Admin analysis – dark</div>
+        <div style="background:#15121A;border:1px solid #2A2432;border-radius:12px;overflow:hidden;color:#F4F0F7">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid rgba(255,255,255,0.10)">
+            <div style="display:flex;align-items:center;gap:10px">
+              <svg viewBox="0 0 64 64" width="22" height="22" style="display:block"><g fill="#C69ECF"><polygon points="1.8,18 11.6,14.6 11.6,21.2"></polygon><circle cx="19.5" cy="17" r="8.6"></circle><ellipse cx="32.5" cy="32" rx="14" ry="12" transform="rotate(-10 32.5 32)"></ellipse><polygon points="43,29.5 63,40.5 61,45.6 39,37.5"></polygon></g><ellipse cx="28.5" cy="30.5" rx="5" ry="3.3" transform="rotate(-20 28.5 30.5)" fill="#15121A"></ellipse><circle cx="17" cy="15" r="2.9" fill="#15121A"></circle></svg>
+              <span style="font-size:15px;font-weight:500">Magpie</span>
+              <span style="font-size:13px;color:#B9AEC2">· Analysis</span>
+            </div>
+            <div style="display:flex;gap:8px;font-size:13px">
+              <span style="padding:7px 14px;border-radius:8px;background:rgba(255,255,255,0.06)">Specifications</span>
+              <span style="padding:7px 14px;border-radius:8px;background:#0050FF;color:#FFFFFF;font-weight:600">Process maps</span>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:rgba(255,255,255,0.10)">
+            <div style="background:#15121A;padding:22px 24px;display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;color:#B9AEC2">Processes captured</span><span style="font-size:30px;font-weight:600;letter-spacing:-0.02em">34</span></div>
+            <div style="background:#15121A;padding:22px 24px;display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;color:#B9AEC2">Verified with owner</span><span style="font-size:30px;font-weight:600;letter-spacing:-0.02em">21</span></div>
+            <div style="background:#15121A;padding:22px 24px;display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;color:#B9AEC2">Recommendations open</span><span style="font-size:30px;font-weight:600;letter-spacing:-0.02em">57</span></div>
+          </div>
+          <div style="padding:24px;display:flex;flex-direction:column;gap:2px">
+            <div style="display:grid;grid-template-columns:2fr 1fr 1fr 96px;gap:16px;padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.06em;color:#B9AEC2;text-transform:uppercase">
+              <div>Process</div><div>Owner</div><div>Interviews</div><div>Status</div>
+            </div>
+            <sc-for list="{{ rows }}" as="r" hint-placeholder-count="4">
+              <div style="display:grid;grid-template-columns:2fr 1fr 1fr 96px;gap:16px;padding:14px 12px;border-top:1px solid rgba(255,255,255,0.08);align-items:center;font-size:14px">
+                <div style="font-weight:500">{{ r.name }}</div>
+                <div style="color:#B9AEC2">{{ r.owner }}</div>
+                <div style="color:#B9AEC2;font-family:'JetBrains Mono',monospace;font-size:13px">{{ r.n }}</div>
+                <div><span style="font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px;background:{{ r.tone }};color:{{ r.toneFg }}">{{ r.status }}</span></div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <!-- empty states -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.06em;color:#7A7080;text-transform:uppercase">Empty state – light</div>
+          <div style="background:#FFFFFF;border:1px solid #E7DFEA;border-radius:12px;padding:64px 40px;display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center">
+            <svg viewBox="0 0 64 64" width="56" height="56" style="display:block"><g fill="#712D85"><polygon points="1.8,18 11.6,14.6 11.6,21.2"></polygon><circle cx="19.5" cy="17" r="8.6"></circle><ellipse cx="32.5" cy="32" rx="14" ry="12" transform="rotate(-10 32.5 32)"></ellipse><polygon points="43,29.5 63,40.5 61,45.6 39,37.5"></polygon></g><ellipse cx="28.5" cy="30.5" rx="5" ry="3.3" transform="rotate(-20 28.5 30.5)" fill="#FFFFFF"></ellipse><circle cx="17" cy="15" r="2.9" fill="#FFFFFF"></circle></svg>
+            <div style="font-size:20px;font-weight:600;letter-spacing:-0.01em">Nothing gathered yet</div>
+            <p style="margin:0;max-width:340px;font-size:15px;line-height:23px;color:#5A5060">Magpie collects what people already know. Start an interview and the first specification will appear here.</p>
+            <button style="border:none;background:#0050FF;color:#FFFFFF;font-family:inherit;font-size:15px;font-weight:600;padding:11px 20px;border-radius:8px;cursor:pointer" style-hover="background:#0040CC">Start an interview</button>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.06em;color:#7A7080;text-transform:uppercase">Empty state – dark</div>
+          <div style="background:#15121A;border:1px solid #2A2432;border-radius:12px;padding:64px 40px;display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center">
+            <svg viewBox="0 0 64 64" width="56" height="56" style="display:block"><g fill="#C69ECF"><polygon points="1.8,18 11.6,14.6 11.6,21.2"></polygon><circle cx="19.5" cy="17" r="8.6"></circle><ellipse cx="32.5" cy="32" rx="14" ry="12" transform="rotate(-10 32.5 32)"></ellipse><polygon points="43,29.5 63,40.5 61,45.6 39,37.5"></polygon></g><ellipse cx="28.5" cy="30.5" rx="5" ry="3.3" transform="rotate(-20 28.5 30.5)" fill="#15121A"></ellipse><circle cx="17" cy="15" r="2.9" fill="#15121A"></circle></svg>
+            <div style="font-size:20px;font-weight:600;letter-spacing:-0.01em;color:#F4F0F7">Nothing gathered yet</div>
+            <p style="margin:0;max-width:340px;font-size:15px;line-height:23px;color:#B9AEC2">Magpie collects what people already know. Start an interview and the first specification will appear here.</p>
+            <button style="border:none;background:#4D85FF;color:#0A1026;font-family:inherit;font-size:15px;font-weight:600;padding:11px 20px;border-radius:8px;cursor:pointer" style-hover="background:#78A2FF">Start an interview</button>
+          </div>
+        </div>
+      </div>
+      <p style="margin:-12px 0 0;font-size:13px;line-height:20px;color:#7A7080">Recommendation on empty-state illustration: none. The mark at 56 px, one line of copy, one action. Ornate spot illustration would break the flat-colour constraint and dates faster than the product.</p>
+    </section>
+
+    <!-- ============ 05b ANIMATED MARK ============ -->
+    <section style="display:flex;flex-direction:column;gap:32px" data-screen-label="05b Animated mark">
+      <div style="display:flex;flex-direction:column;gap:10px;border-top:2px solid #1C1620;padding-top:18px">
+        <div style="display:flex;align-items:center;align-self:flex-start"><span style="background:#712D85;color:#FFFFFF;font-size:13px;font-weight:500;line-height:1;padding:9px 20px 9px 18px;border-radius:9999px;display:flex;gap:10px;align-items:center"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;opacity:0.75">05b</span>Animated mark</span><span style="width:22px;height:22px;border-radius:9999px;background:#0050FF;margin-left:-9px"></span></div>
+        <h2 style="margin:0;font-size:32px;line-height:38px;font-weight:600;letter-spacing:-0.02em">Animated mark</h2>
+        <p style="margin:0;max-width:700px;font-size:16px;line-height:24px;color:#5A5060">Four states, one bird. Motion is small, slow, and always loops back to rest – the interviewee is talking about their job, not watching a mascot. Every state has a static fallback under prefers-reduced-motion.</p>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:24px">
+
+        <div style="background:#FFFFFF;border:1px solid #E7DFEA;border-radius:12px;padding:28px;display:flex;flex-direction:column;gap:18px;align-items:center;text-align:center">
+          <div style="height:96px;display:flex;align-items:center">
+            <svg viewBox="0 0 64 64" width="88" height="88" style="display:block;animation:mp-bob 3.2s cubic-bezier(0.16,1,0.3,1) infinite;transform-origin:50% 60%"><g fill="#712D85"><polygon points="1.8,18 11.6,14.6 11.6,21.2"></polygon><circle cx="19.5" cy="17" r="8.6"></circle><ellipse cx="32.5" cy="32" rx="14" ry="12" transform="rotate(-10 32.5 32)"></ellipse><polygon points="43,29.5 63,40.5 61,45.6 39,37.5"></polygon></g><ellipse cx="28.5" cy="30.5" rx="5" ry="3.3" transform="rotate(-20 28.5 30.5)" fill="#FFFFFF"></ellipse><circle cx="17" cy="15" r="2.9" fill="#FFFFFF" style="animation:mp-blink 5s steps(1,end) infinite;transform-origin:17px 15px"></circle></svg>
+          </div>
+          <div style="font-size:15px;font-weight:600">Listening</div>
+          <p style="margin:0;font-size:13px;line-height:20px;color:#5A5060">3.2 s bob, 6% travel, plus a blink every 5 s. Runs while the interviewee is speaking.</p>
+        </div>
+
+        <div style="background:#FFFFFF;border:1px solid #E7DFEA;border-radius:12px;padding:28px;display:flex;flex-direction:column;gap:18px;align-items:center;text-align:center">
+          <div style="height:96px;display:flex;align-items:center">
+            <svg viewBox="0 0 64 64" width="88" height="88" style="display:block"><g fill="#712D85"><polygon points="1.8,18 11.6,14.6 11.6,21.2"></polygon><circle cx="19.5" cy="17" r="8.6"></circle><ellipse cx="32.5" cy="32" rx="14" ry="12" transform="rotate(-10 32.5 32)"></ellipse><polygon points="43,29.5 63,40.5 61,45.6 39,37.5" style="animation:mp-tail 2.2s ease-in-out infinite;transform-origin:38px 32px"></polygon></g><ellipse cx="28.5" cy="30.5" rx="5" ry="3.3" transform="rotate(-20 28.5 30.5)" fill="#FFFFFF"></ellipse><circle cx="17" cy="15" r="2.9" fill="#FFFFFF"></circle></svg>
+          </div>
+          <div style="font-size:15px;font-weight:600">Gathering</div>
+          <p style="margin:0;font-size:13px;line-height:20px;color:#5A5060">Tail sweeps −7° over 2.2 s. Body stays still. Pairs with the rotating craft word.</p>
+        </div>
+
+        <div style="background:#FFFFFF;border:1px solid #E7DFEA;border-radius:12px;padding:28px;display:flex;flex-direction:column;gap:18px;align-items:center;text-align:center">
+          <div style="height:96px;display:flex;align-items:center">
+            <svg viewBox="0 0 64 64" width="88" height="88" style="display:block"><defs><linearGradient id="mpQuiet" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#0050FF"></stop><stop offset="100%" stop-color="#712D85"></stop></linearGradient></defs><g fill="url(#mpQuiet)" style="animation:mp-gather 2.6s ease-in-out infinite"><polygon points="1.8,18 11.6,14.6 11.6,21.2"></polygon><circle cx="19.5" cy="17" r="8.6"></circle><ellipse cx="32.5" cy="32" rx="14" ry="12" transform="rotate(-10 32.5 32)"></ellipse><polygon points="43,29.5 63,40.5 61,45.6 39,37.5"></polygon></g></svg>
+          </div>
+          <div style="font-size:15px;font-weight:600">Processing</div>
+          <p style="margin:0;font-size:13px;line-height:20px;color:#5A5060">Quiet-blend silhouette drifting 10% horizontally, 2.6 s. Silhouette only – this is the one state without knockouts.</p>
+        </div>
+
+        <div style="background:#FFFFFF;border:1px solid #E7DFEA;border-radius:12px;padding:28px;display:flex;flex-direction:column;gap:18px;align-items:center;text-align:center">
+          <div style="height:96px;display:flex;align-items:center">
+            <svg viewBox="0 0 64 64" width="88" height="88" style="display:block;animation:mp-hop 4s cubic-bezier(0.16,1,0.3,1) infinite"><g fill="#712D85"><polygon points="1.8,18 11.6,14.6 11.6,21.2"></polygon><circle cx="19.5" cy="17" r="8.6"></circle><ellipse cx="32.5" cy="32" rx="14" ry="12" transform="rotate(-10 32.5 32)"></ellipse><polygon points="43,29.5 63,40.5 61,45.6 39,37.5"></polygon></g><ellipse cx="28.5" cy="30.5" rx="5" ry="3.3" transform="rotate(-20 28.5 30.5)" fill="#FFFFFF" style="animation:mp-patch 4s ease-in-out infinite"></ellipse><circle cx="17" cy="15" r="2.9" fill="#FFFFFF"></circle></svg>
+          </div>
+          <div style="font-size:15px;font-weight:600">Kept</div>
+          <p style="margin:0;font-size:13px;line-height:20px;color:#5A5060">A single hop on save, then rest. Plays once in product – looping here for reference.</p>
+        </div>
+      </div>
+
+      <div style="background:#F7F1F9;border:1px solid #DCC2E3;border-radius:12px;padding:24px 28px;font-size:14px;line-height:22px;color:#3E3545;max-width:860px"><strong style="font-weight:600">Motion rules.</strong> No rotation of the whole mark, no bounce past rest, no flight. Amplitude stays under 14% of mark height. Nothing animates below 24 px – the movement reads as a rendering fault. One animated mark on screen at a time, and never while the interviewee is mid-answer except Listening.</div>
+    </section>
+
+    <!-- ============ 06 DOCUMENTS ============ -->
+    <section style="display:flex;flex-direction:column;gap:32px" data-screen-label="06 Documents">
+      <div style="display:flex;flex-direction:column;gap:10px;border-top:2px solid #1C1620;padding-top:18px">
+        <div style="display:flex;align-items:center;align-self:flex-start"><span style="background:#712D85;color:#FFFFFF;font-size:13px;font-weight:500;line-height:1;padding:9px 20px 9px 18px;border-radius:9999px;display:flex;gap:10px;align-items:center"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;opacity:0.75">06</span>Documents</span><span style="width:22px;height:22px;border-radius:9999px;background:#0050FF;margin-left:-9px"></span></div>
+        <h2 style="margin:0;font-size:32px;line-height:38px;font-weight:600;letter-spacing:-0.02em">Document templates</h2>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.06em;color:#7A7080;text-transform:uppercase">Process specification – light</div>
+          <div style="background:#FFFFFF;border:1px solid #E7DFEA;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;min-height:420px">
+            <div style="border-top:4px solid transparent;background-image:linear-gradient(#FFFFFF,#FFFFFF),linear-gradient(90deg,#0050FF 0%,#712D85 50%,#E10A0A 100%);background-origin:border-box;background-clip:padding-box,border-box;padding:20px 28px 16px;display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1px solid #F0EAF2">
+              <div style="display:flex;align-items:center;gap:10px"><svg viewBox="0 0 64 64" width="22" height="22" style="display:block"><g fill="#712D85"><polygon points="1.8,18 11.6,14.6 11.6,21.2"></polygon><circle cx="19.5" cy="17" r="8.6"></circle><ellipse cx="32.5" cy="32" rx="14" ry="12" transform="rotate(-10 32.5 32)"></ellipse><polygon points="43,29.5 63,40.5 61,45.6 39,37.5"></polygon></g><ellipse cx="28.5" cy="30.5" rx="5" ry="3.3" transform="rotate(-20 28.5 30.5)" fill="#FFFFFF"></ellipse><circle cx="17" cy="15" r="2.9" fill="#FFFFFF"></circle></svg><span style="font-size:15px;font-weight:500">Magpie</span></div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#7A7080;text-align:right">Process specification<br/>SPEC-0142 · v3 · verified</div>
+            </div>
+            <div style="padding:28px;display:flex;flex-direction:column;gap:14px;flex:1">
+              <h3 style="margin:0;font-size:24px;line-height:30px;font-weight:600;letter-spacing:-0.02em">Out-of-hours callout triage</h3>
+              <div style="font-size:13px;color:#7A7080">Owner: Field Operations · Captured 14 July 2026 · 4 interviews</div>
+              <div style="height:1px;background:#F0EAF2"></div>
+              <div style="font-size:14px;font-weight:600">1. Trigger</div>
+              <p style="margin:0;font-size:14px;line-height:22px;color:#3E3545">A callout is raised by the NOC or by a site alarm between 18:00 and 07:00. The duty lead assesses site priority before any engineer is paged.</p>
+              <div style="font-size:14px;font-weight:600">2. Exception</div>
+              <p style="margin:0;font-size:14px;line-height:22px;color:#3E3545">Priority-one sites bypass the duty lead. The NOC pages the on-call engineer directly and notifies the lead afterwards.</p>
+            </div>
+            <div style="padding:12px 28px;border-top:1px solid #F0EAF2;display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:11px;color:#7A7080"><span>VMO2 internal · restricted</span><span>Page 3 of 11</span></div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.06em;color:#7A7080;text-transform:uppercase">Handover report cover – dark</div>
+          <div style="background:#15121A;border:1px solid #2A2432;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;min-height:420px;color:#F4F0F7">
+            <div style="background:linear-gradient(104deg,#0050FF 0%,#712D85 54%,#E10A0A 100%);padding:32px 28px;display:flex;flex-direction:column;gap:22px">
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <svg viewBox="0 0 64 64" width="46" height="46" style="display:block"><g fill="#FFFFFF"><polygon points="1.8,18 11.6,14.6 11.6,21.2"></polygon><circle cx="19.5" cy="17" r="8.6"></circle><ellipse cx="32.5" cy="32" rx="14" ry="12" transform="rotate(-10 32.5 32)"></ellipse><polygon points="43,29.5 63,40.5 61,45.6 39,37.5"></polygon></g><ellipse cx="28.5" cy="30.5" rx="5" ry="3.3" transform="rotate(-20 28.5 30.5)" fill="none"></ellipse></svg>
+                <span style="font-size:28px;font-weight:500;letter-spacing:-0.02em;color:#FFFFFF">Magpie</span>
+              </div>
+            </div>
+            <div style="padding:32px 28px;display:flex;flex-direction:column;gap:16px;flex:1">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.06em;color:#C69ECF;text-transform:uppercase">Handover report</div>
+              <h3 style="margin:0;font-size:34px;line-height:40px;font-weight:600;letter-spacing:-0.02em;color:#FFFFFF;text-wrap:pretty">Field Operations – out-of-hours estate</h3>
+              <p style="margin:0;font-size:15px;line-height:23px;color:#B9AEC2;max-width:420px">Nine processes captured across eleven interviews. Twenty-one recommendations, four flagged as single points of knowledge.</p>
+              <div style="margin-top:auto;display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:11px;color:#B9AEC2;padding-top:24px;border-top:1px solid rgba(255,255,255,0.10)"><span>Prepared 28 July 2026</span><span>VMO2 internal · restricted</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p style="margin:-12px 0 0;font-size:13px;line-height:20px;color:#7A7080">Assumption: documents are produced as PDF at A4 portrait. The 4 px purple rule at the head of the specification is the single brand moment on an otherwise typographic page; the handover cover carries the full purple field because it is a cover, not a working page.</p>
+    </section>
+
+    <!-- ============ 07 GUIDELINES ============ -->
+    <section style="display:flex;flex-direction:column;gap:32px" data-screen-label="07 Guidelines">
+      <div style="display:flex;flex-direction:column;gap:10px;border-top:2px solid #1C1620;padding-top:18px">
+        <div style="display:flex;align-items:center;align-self:flex-start"><span style="background:#712D85;color:#FFFFFF;font-size:13px;font-weight:500;line-height:1;padding:9px 20px 9px 18px;border-radius:9999px;display:flex;gap:10px;align-items:center"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;opacity:0.75">07</span>Guidelines</span><span style="width:22px;height:22px;border-radius:9999px;background:#0050FF;margin-left:-9px"></span></div>
+        <h2 style="margin:0;font-size:32px;line-height:38px;font-weight:600;letter-spacing:-0.02em">Brand guidelines</h2>
+      </div>
+
+      <div style="background:#FFFFFF;border:1px solid #E7DFEA;border-radius:12px;padding:32px;display:flex;flex-direction:column;gap:14px">
+        <h3 style="margin:0;font-size:20px;font-weight:600">Story</h3>
+        <p style="margin:0;max-width:760px;font-size:16px;line-height:25px;color:#3E3545;text-wrap:pretty">Magpies gather and keep valuable things. Magpie gathers scattered knowledge – the parts of a job that live in people's heads and leave the building when they do – and keeps it safe as verified process specifications, maps, and recommendations. The colour is the channel-wise midpoint of O2 Blue and Virgin Media Red: the product sits at the intersection of the two brands, and its colour is literally made from both.</p>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+        <div style="background:#FFFFFF;border:1px solid #E7DFEA;border-radius:12px;padding:32px;display:flex;flex-direction:column;gap:14px">
+          <h3 style="margin:0;font-size:20px;font-weight:600">Logo rules</h3>
+          <ul style="margin:0;padding-left:20px;font-size:15px;line-height:24px;color:#3E3545;display:flex;flex-direction:column;gap:8px">
+            <li>Clear space = shoulder-patch height on all sides.</li>
+            <li>Minimum mark size 16 px; below that, wordmark only.</li>
+            <li>Never outline, rotate, stretch, or recolour outside purple / white / single-colour mono. The one exception is the heritage-blend plate behind a white mark, at 64 px and above.</li>
+            <li>Negative space is the background showing through – never a painted white shape on a photo.</li>
+            <li>Wordmark is always sentence case: Magpie, never MAGPIE or magpie.</li>
+            <li>The VMO2 capsule-and-endcap motif carries Magpie's section labels: purple capsule, O2 Blue endcap circle overlapping the right edge by 40% of its diameter. Purple capsule with a Virgin Media Red endcap is not used – the pairing reads as a status.</li>
+            <li>Magpie never appears beside the VMO2 corporate infinity lockup in a single lockup. Where both are needed, they sit at opposite ends of the page.</li>
+          </ul>
+        </div>
+        <div style="background:#FFFFFF;border:1px solid #E7DFEA;border-radius:12px;padding:32px;display:flex;flex-direction:column;gap:14px">
+          <h3 style="margin:0;font-size:20px;font-weight:600">The never-rules</h3>
+          <ul style="margin:0;padding-left:20px;font-size:15px;line-height:24px;color:#3E3545;display:flex;flex-direction:column;gap:8px">
+            <li>Magpie purple never carries semantic meaning – no success, warning, or error.</li>
+            <li>Magpie purple never appears on an interactive control. O2 Blue stays primary.</li>
+            <li>Virgin Media Red never appears in a loading or processing state.</li>
+            <li>Only two gradients exist – the heritage blend and the quiet blend. No other gradient, no decorative shadow, no texture.</li>
+            <li>The blend never sits behind reading text, never on a control, never more than once per screen.</li>
+            <li>Do not restyle VMO2 core components. Magpie is a layer, not a replacement.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div style="background:#FFFFFF;border:1px solid #E7DFEA;border-radius:12px;padding:32px;display:flex;flex-direction:column;gap:20px">
+        <h3 style="margin:0;font-size:20px;font-weight:600">Typography – Aeonik Pro</h3>
+        <sc-for list="{{ typeScale }}" as="t" hint-placeholder-count="7">
+          <div style="display:grid;grid-template-columns:180px 1fr;gap:24px;align-items:baseline;padding-bottom:14px;border-bottom:1px solid #F0EAF2">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:12px;line-height:18px;color:#7A7080">{{ t.spec }}</div>
+            <div style="font-size:{{ t.px }};line-height:1.25;font-weight:{{ t.weight }};letter-spacing:{{ t.track }};color:#1C1620">{{ t.name }}</div>
+          </div>
+        </sc-for>
+        <p style="margin:0;font-size:13px;line-height:20px;color:#7A7080">Licensed Aeonik Pro web fonts are wired from the VMO2 estate bundle – Light 300, Regular 400, Medium 500, Bold 700, Black 900. Display moments may use Black uppercase per the VMO2 toolkit, but Magpie's own wordmark stays Medium, sentence case.</p>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+        <div style="background:#F7F1F9;border:1px solid #DCC2E3;border-radius:12px;padding:32px;display:flex;flex-direction:column;gap:16px">
+          <h3 style="margin:0;font-size:20px;font-weight:600">Tone – do</h3>
+          <ul style="margin:0;padding-left:20px;font-size:15px;line-height:24px;color:#3E3545;display:flex;flex-direction:column;gap:8px">
+            <li>Describe Magpie's craft: gathering, weaving, cross-checking, distilling.</li>
+            <li>Sentence case everywhere. British English.</li>
+            <li>Plain, calm, specific: "Four interviews, twenty-one recommendations."</li>
+            <li>Credit the person: "Thanks – that's the part no document has."</li>
+            <li>Say what happens next, in one line.</li>
+          </ul>
+        </div>
+        <div style="background:#FFF3F3;border:1px solid #F3C9C9;border-radius:12px;padding:32px;display:flex;flex-direction:column;gap:16px">
+          <h3 style="margin:0;font-size:20px;font-weight:600">Tone – don't</h3>
+          <ul style="margin:0;padding-left:20px;font-size:15px;line-height:24px;color:#3E3545;display:flex;flex-direction:column;gap:8px">
+            <li>Judge the process: "inefficient", "workaround", "should be".</li>
+            <li>Describe the user's work as messy, undocumented, or a gap.</li>
+            <li>Imply the output feeds a headcount decision.</li>
+            <li>Title Case, exclamation marks, emoji, or American spelling.</li>
+            <li>Marketing adjectives: "seamless", "powerful", "intelligent".</li>
+          </ul>
+        </div>
+      </div>
+
+      <div style="background:#FFFFFF;border:1px solid #E7DFEA;border-radius:12px;padding:32px;display:flex;flex-direction:column;gap:14px">
+        <h3 style="margin:0;font-size:20px;font-weight:600">Accessibility commitments</h3>
+        <ul style="margin:0;padding-left:20px;font-size:15px;line-height:24px;color:#3E3545;display:flex;flex-direction:column;gap:8px">
+          <li>Every text/background pairing in this system meets WCAG 2.2 AA; ratios are stated beside each pairing.</li>
+          <li>Colour is never the only carrier of meaning – status uses a label as well as a tone.</li>
+          <li>The loading cross-fade and all four animated mark states respect prefers-reduced-motion: a static "Working…" in Magpie purple, no colour cycling, no movement.</li>
+          <li>The heritage blend is decorative only – no text, control, or status relies on a position within it.</li>
+          <li>Focus rings follow the VMO2 base system, 2 px O2 Blue with 2 px offset, on both light and dark surfaces.</li>
+          <li>Interview transcripts are keyboard-navigable and screen-reader ordered; the Stop recording control is always the first focusable element on the interview screen.</li>
+        </ul>
+      </div>
+
+      <div style="background:#712D85;border-radius:12px;padding:28px 32px;color:#FFFFFF;font-size:15px;line-height:24px">Governance: the Magpie lockup and the derived brand colour require VMO2 brand governance sign-off before exposure beyond the pilot group. Until then, all surfaces carry the internal-restricted footer.</div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{}">
+class Component extends DCLogic {
+  state = { i: 0, vis: 1 };
+
+  componentDidMount() {
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) return;
+    this.t = setInterval(() => {
+      this.setState({ vis: 0 });
+      this.t2 = setTimeout(() => this.setState(s => ({ i: s.i + 1, vis: 1 })), 240);
+    }, 2000);
+  }
+  componentWillUnmount() { clearInterval(this.t); clearTimeout(this.t2); }
+
+  renderVals() {
+    const words = ['Gathering…', 'Weaving…', 'Cross-checking…', 'Distilling…', 'Collecting the shiny bits…'];
+    const colours = ['#0050FF', '#C4006F', '#712D85']; // Hot Pink deepened to #C4006F for AA on light surfaces
+    const i = this.state.i;
+    return {
+      craftWord: words[i % words.length],
+      craftColour: colours[i % colours.length],
+      craftOpacity: this.state.vis,
+      ramp: [
+        { stop: '50', hex: '#F7F1F9', role: 'Page wash for brand moments, empty-state canvas', contrast: 'ink on 50 – 14.6:1' },
+        { stop: '100', hex: '#EEE0F2', role: 'Selected rows, brand callout fill', contrast: 'ink on 100 – 13.7:1' },
+        { stop: '200', hex: '#DCC2E3', role: 'Hairlines and dividers inside brand areas', contrast: 'ink on 200 – 10.9:1' },
+        { stop: '300', hex: '#C69ECF', role: 'Dark-mode brand text and mark', contrast: 'on #15121A – 8.2:1' },
+        { stop: '400', hex: '#A972B8', role: 'Dark-mode secondary brand, large text only', contrast: 'on #15121A – 5.2:1' },
+        { stop: '500', hex: '#8B4AA0', role: 'Light-mode brand text on white', contrast: 'on #FFFFFF – 5.9:1' },
+        { stop: '600', hex: '#712D85', role: 'Anchor. Mark, lockup, brand fields, loading', contrast: 'white on 600 – 8.7:1' },
+        { stop: '700', hex: '#5C2569', role: 'Pressed and hover on brand fields', contrast: 'white on 700 – 10.9:1' },
+        { stop: '800', hex: '#451B4F', role: 'Document cover fields, deep brand surfaces', contrast: 'white on 800 – 13.8:1' },
+        { stop: '900', hex: '#2E1235', role: 'Brand-tinted ink for headings on purple washes', contrast: 'on #F7F1F9 – 13.9:1' }
+      ],
+      lightMap: [
+        { hex: '#FAF8FB', use: 'Page background', detail: 'Neutral, faintly purple-leaning' },
+        { hex: '#712D85', use: 'Mark, lockup, brand fields', detail: '600 · white text 8.7:1' },
+        { hex: '#8B4AA0', use: 'Brand text on white', detail: '500 · 5.9:1' },
+        { hex: '#F7F1F9', use: 'Brand callout surface', detail: '50 · ink 14.6:1' },
+        { hex: '#0050FF', use: 'All interactive controls', detail: 'Unchanged VMO2 · white 5.9:1' },
+        { hex: '#1C1620', use: 'Body text', detail: 'On #FAF8FB · 16.7:1' },
+        { hex: '#C4006F', use: 'Hot Pink (text tint) in loading cycle', detail: 'Deepened from #FF0090 · on #FCFBFD 5.7:1' }
+      ],
+      darkMap: [
+        { hex: '#15121A', use: 'Page background', detail: 'Purple-tinted ink, never pure black' },
+        { hex: '#1E1A26', use: 'Raised surface', detail: 'Cards, panels, sheets' },
+        { hex: '#C69ECF', use: 'Mark, brand text', detail: '300 · 8.2:1' },
+        { hex: '#A972B8', use: 'Secondary brand, large text', detail: '400 · 5.2:1' },
+        { hex: '#4D85FF', use: 'All interactive controls', detail: 'Blue lifted for dark · 5.5:1. #0050FF fails at 3.2:1' },
+        { hex: '#F4F0F7', use: 'Body text', detail: 'On #15121A · 16.7:1' }
+      ],
+      rows: [
+        { name: 'Out-of-hours callout triage', owner: 'Field Ops', n: '4', status: 'Verified', tone: 'rgba(0,168,86,0.18)', toneFg: '#5FE0A0' },
+        { name: 'Vendor onboarding checks', owner: 'Procurement', n: '3', status: 'In review', tone: 'rgba(77,133,255,0.18)', toneFg: '#9DBBFF' },
+        { name: 'Site access permitting', owner: 'Estates', n: '2', status: 'Drafting', tone: 'rgba(255,255,255,0.10)', toneFg: '#B9AEC2' },
+        { name: 'Escalation to network engineering', owner: 'NOC', n: '5', status: 'Verified', tone: 'rgba(0,168,86,0.18)', toneFg: '#5FE0A0' }
+      ],
+      typeScale: [
+        { name: 'Display', spec: '48 / 52 · Medium · −0.02em', px: '48px', weight: '500', track: '-0.02em' },
+        { name: 'Heading 1', spec: '32 / 38 · Semibold · −0.02em', px: '32px', weight: '600', track: '-0.02em' },
+        { name: 'Heading 2', spec: '24 / 30 · Semibold · −0.02em', px: '24px', weight: '600', track: '-0.02em' },
+        { name: 'Heading 3', spec: '20 / 26 · Semibold · −0.01em', px: '20px', weight: '600', track: '-0.01em' },
+        { name: 'Body large', spec: '18 / 28 · Regular', px: '18px', weight: '400', track: '0' },
+        { name: 'Body', spec: '16 / 24 · Regular', px: '16px', weight: '400', track: '0' },
+        { name: 'Caption', spec: '12 / 16 · Medium · +0.02em', px: '12px', weight: '500', track: '0.02em' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

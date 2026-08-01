@@ -32,8 +32,8 @@ export function EntryScreen(props: EntryScreenProps) {
 
   return (
     <div className="pc-narrow">
-      <span className="pc-secpill pink">
-        Process capture
+      <span className="pc-secpill purple">
+        Magpie
         <i className="pc-cap" aria-hidden="true" />
       </span>
 

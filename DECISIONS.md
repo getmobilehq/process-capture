@@ -329,3 +329,22 @@ decision, why it is the minimal option (§10).
   worked example of the partial-ladder mistake. **Generalisable lesson: an element
   whose answer is a list needs a rubric that says so, or the checklist trades
   vocabulary-sensitivity for premature closure.**
+- **DL.25 · Magpie identity layer sits on top of the VMO2 tokens, not in place of
+  them** — `public/brand/magpie.css` loads after `colors_and_type.css` and overrides
+  only brand and surface tokens. The spacing scale, radii, type scale and motion are
+  deliberately untouched: the layout's white space is the part of the VMO2 system
+  that already worked, and a rebrand is no reason to compress it. Page background
+  moves to `#FAF8FB` (faintly purple) with cards staying `#FFFFFF`, which is the
+  brand system's own light map.
+- **DL.26 · Purple is identity, blue is interaction** — Magpie purple `#712D85`
+  carries the mark, lockup, capsules and brand callouts; every interactive control
+  stays O2 Blue `#0050FF`, exactly as the brand system specifies. Colour therefore
+  never tells someone a thing is clickable when it is not. Coverage-rail state
+  colours (green/yellow/pink/grey) are semantic, not brand, and are unchanged.
+- **DL.27 · Dark mode is documented but not auto-enabled (deviation)** — The brand
+  system's dark map is implemented under `:root[data-theme="dark"]`, *not*
+  `prefers-color-scheme`. Binding it to the media query was tried and reverted: the
+  component layer still uses fixed ink tokens (`--ink-900` on inputs, white pill
+  text) that do not flip with the surfaces, producing dark text on dark fields.
+  Enabling it properly means flipping the ink ramp through `brand-ui.css` — separate
+  work, deliberately not smuggled into a rebrand.

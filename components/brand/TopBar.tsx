@@ -1,18 +1,20 @@
+import { MagpieMark } from './MagpieMark';
+
 /**
- * The Virgin Media O2 lockup, carried on every page of both faces (FR-6.2).
- * Reproduces the approved demo's header so a reviewer recognises the built
- * product as the same thing. Plain <img> against the statically served brand
- * asset — no Next image pipeline, the file is already sized for its slot.
+ * The Magpie lockup, carried on every page of both faces (FR-6.2).
+ *
+ * Mark plus wordmark, with the delivery partner named underneath rather than
+ * beside it — Magpie is the product, Virgin Media O2 is who it is for, and the
+ * hierarchy should say so.
  */
 export function TopBar() {
   return (
     <header className="pc-topbar">
       <div className="pc-topbar-in">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/brand/logos/vmo2-logo.png" alt="Virgin Media O2" />
+        <MagpieMark size={34} />
         <div>
-          <div className="pc-tname">Process capture</div>
-          <div className="pc-tsub">SME interview tool · V1</div>
+          <div className="pc-tname">Magpie</div>
+          <div className="pc-tsub">Process capture for Virgin Media O2</div>
         </div>
       </div>
     </header>

@@ -5,7 +5,7 @@
 
 /* ── Topbar — the VMO2 lockup, on every page (matches the demo header) ──── */
 .pc-topbar {
-  border-bottom: 1px solid var(--ink-100);
+  border-bottom: 1px solid var(--brand-border);
   background: var(--paper);
   position: sticky;
   top: 0;
@@ -91,6 +91,14 @@
 .pc-secpill.pink .pc-cap {
   background: var(--vm-red);
 }
+/* Magpie identity: purple carries the brand moment, and the endcap keeps the
+   O2 Blue lineage the purple was derived from. */
+.pc-secpill.purple {
+  background: var(--brand-mark);
+}
+.pc-secpill.purple .pc-cap {
+  background: var(--o2-blue);
+}
 
 /* ── Buttons ────────────────────────────────────────────────────────────── */
 .pc-btn {
@@ -165,14 +173,14 @@
 
 /* ── Privacy notice ─────────────────────────────────────────────────────── */
 .pc-privacy {
-  background: var(--o2-blue-10);
+  background: var(--brand-surface);
   border-radius: var(--radius-md);
   padding: 14px 16px;
   font: 400 13px / 1.5 var(--font-sans);
   color: var(--ink-700);
 }
 .pc-privacy b {
-  color: var(--o2-blue);
+  color: var(--brand-mark-text);
 }
 
 /* ── Coverage rail (FR-3.5) ─────────────────────────────────────────────── */

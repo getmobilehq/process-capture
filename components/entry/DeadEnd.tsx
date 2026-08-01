@@ -7,8 +7,8 @@ export function DeadEnd({ kind }: { kind: 'invalid' | 'used_up' }) {
 
   return (
     <div className="pc-deadend">
-      <span className="pc-secpill blue">
-        Process capture
+      <span className="pc-secpill purple">
+        Magpie
         <i className="pc-cap" aria-hidden="true" />
       </span>
       <h1 className="t-h3" style={{ marginTop: 'var(--space-6)' }}>
