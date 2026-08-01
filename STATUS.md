@@ -321,28 +321,86 @@ V1.1 (D3.1) — turns use a single JSON exchange. Everything else follows the br
 
 ---
 
-## Delta v1.1 — R1 complete (2026-08-01)
+## Delta v1.1 — overnight run (2026-08-01)
 
-**R1 — Completeness scoring: transparency and tolerance (P0).**
+Worked in the delta's priority order: R1 → R2 → R10 → R9 → R5 → R8 → R4 → R3 → R6.
+Each requirement is one commit, gates run before every commit.
 
-- R1.1 — 40 checklist elements across the 12 facets in the facets spec; new
-  `element_states` table seeded per session; the facet meter is derived by
-  `deriveFacetState`, and `set_coverage` can no longer propose `answered`/`partial`.
-  Rail rewritten: expandable per-facet checklist showing captured (with readback),
-  ruled-out (with reason) and outstanding, and an element count in place of a bare
-  percentage.
-- R1.2 — Scoring rubric rewritten with contrastive pairs (natural-language answers
-  that must capture; keyword-stuffed answers that must not).
-- R1.3 — Interviewee-driven not-applicable with a mandatory reason, via a
-  mark-only endpoint; recorded in spec front-matter.
+### Complete
 
-Gates: `lint` ✓, `typecheck` ✓, **72 unit/integration** ✓ (was 52 at V1; +11 element
-coverage, +5 tool validation, +4 transcribe retry). Migration `0001` generated and
-applied.
+- **R1 — Completeness scoring (P0).** `2f0a2e4`. 40 checklist elements across the 12
+  facets; new `element_states` table; the facet meter is *derived* and
+  `set_coverage` can no longer propose `answered`/`partial`. Rail is an expandable
+  checklist with readbacks. Scoring rubric rewritten with contrastive pairs.
+  Interviewee-driven N/A with a mandatory reason.
+- **R2 — Deterministic facets as pick-lists (P0).** `76997af`. Facets 2/3/4/8 are
+  tick-lists with an escape hatch; the other eight stay open. New `entities` +
+  `entity_mentions`, canonical keys, VMO2 taxonomy seeded per project, every option
+  carrying its source. Acceptance met: a system named at facet 4 is pre-ticked at
+  facet 8 with attribution.
+- **R10 — Interview UX and data-loss protection (P0).** `55e16c7`. Three
+  unmistakable capture states with icon *and* word, pulse and timer. New
+  `answer_drafts`: continuous autosave, session recovery, soft discard with Undo,
+  re-record archiving the prior take, `beforeunload` guard, destructive controls
+  separated from Submit. Nothing in the draft layer hard-deletes.
+- **R9 — Bounded interview and graceful finish (P0).** `0976835`. Question budget
+  with a visible counter; `lib/engine/priority.ts` ranks by information value
+  (shared with R4.2 — one implementation); "Finish recording" works at any point;
+  unreached elements land in `open_items` naming their facet; truncated sections
+  state their own gaps in the prose.
+- **R4 — Adaptive follow-ups (P1).** `e02bf8c`. The question phase is handed the
+  top two ranked candidates, each citing what prompted it. New
+  `lib/engine/ledger.ts` — a claims ledger derived from statements, checklist and
+  entity mentions; follow-up generation reads the ledger, not the transcript, which
+  makes "never ask twice" structural.
+- **R5.1 — Typed process graph (P0, the R5 foundation).** `565c030`. Zod schema for
+  the graph, change-sets and opportunity overlay, plus the structural validators.
+  Mandatory `sourceFacet` lineage; planted faults fail loudly. R5.4's
+  "every change resolves a bottleneck" and R5.5's "no label without evidence" are
+  both enforced.
 
-**Not yet verified:** the expanded checklist has not been confirmed in a browser —
-the collapsed rail renders correctly (element counts, derived states), but the
-browser tooling stopped reaching `document_idle` on the interview page before the
-expanded state could be captured. Needs a manual look, or an E2E test.
+### Not started
 
-**Not started:** R2, R10, R9, R5, R8, R4, R3, R6.
+- **R5.2–R5.7** — BPMN 2.0 serialisation, bpmn-js rendering, the three views and
+  the UI tab. R5.1 gives them a validated artefact to build on. Needs new
+  dependencies (bpmn-js, elkjs), each wanting a P6 justification in DECISIONS.md.
+- **R8 — Suggested responses (answer chips).** The pieces it needs exist: entity
+  sourcing (R2) and the ranking module (R9.2/R4.2). Note R8.1's rule that chips
+  never appear on facets 10 or 12.
+- **R3 — Artefact ingestion.** The `documented` / `corroborated` / `conflicting`
+  provenance classes are already declared in the ledger and the `conflicting` tier
+  is wired but empty in the ranking, so R3 slots in without reshaping either.
+- **R6 — Process-template pre-fetch (P2).** Explicitly deferrable per the delta.
+
+### Gates
+
+`lint` ✓, `typecheck` ✓, **129 unit/integration tests** ✓ (52 at V1 → 129).
+Migrations 0001–0003 generated and applied. Not re-run this session: Playwright E2E
+and the live-model eval harness (`npm run eval`) — both predate the delta and their
+fixtures assume the V1 coverage contract, so **they will need updating for R1's
+derived meter before they are meaningful again.**
+
+### Known gaps and deviations
+
+1. **E2E and eval fixtures are stale.** They assume the model can set a facet
+   `answered` directly, which R1 removed by design. They need rewriting against the
+   checklist contract before Phase 6's three-consecutive-run gate means anything.
+2. **Live transcription is chunked, not streaming (DL.14).** R10.2 asks for text
+   appearing as the informant speaks; Whisper has no streaming interface. Needs a
+   realtime ASR — a provider decision, so flagged rather than assumed.
+3. **The interview page could not be verified in a browser.** Its markup is
+   confirmed server-side (topbar, checklist, pick-list with source labels and
+   escape hatch, recording controls, draft bar, budget counter, Finish recording),
+   but Chrome automation would not reach `document_idle` on that route all session,
+   so the interactive states — expanded checklist, recording, discard/undo — have
+   not been seen working. **This is the first thing worth a human eye.**
+4. **The delta's fixtures are still absent.** `spec-fault-management-process-v1.md`
+   and `r5-reference/*.svg` are not in the repo. Per your call they were treated as
+   guidance, so R5.7's eval assertions have not been written against ground truth.
+
+### Suggested next session
+
+R5.2–R5.6 is the largest remaining block and now has a validated artefact under it.
+Before that, though, the stale E2E and eval fixtures are worth an hour: they are the
+only gates that currently prove the engine behaves end to end, and they are red by
+construction rather than by accident.
