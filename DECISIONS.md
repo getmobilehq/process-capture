@@ -289,3 +289,15 @@ decision, why it is the minimal option (§10).
 - **DL.18 · The budget is counted in questions asked, not answers captured (R9.5)** —
   So a chip-accepted answer (R8) costs less of the informant's time without gaming
   the counter; suggestions stretch what a budget captures rather than inflating it.
+- **DL.19 · The question phase is handed a ranked shortlist (R4.2)** — Instead of
+  leaving the model to pick, the engine passes the top two candidates from
+  `priority.ts`, each citing what prompted it. At most two per turn, so the
+  interview reads as a competent listener rather than a questionnaire.
+- **DL.20 · The ledger is a projection, not a second source of truth (R4.3)** —
+  `lib/engine/ledger.ts` derives every claim from the append-only statements, the
+  element checklist and the entity mentions, so it cannot drift from the record it
+  describes (P1). Superseded statements are excluded, so the ledger reflects what
+  the informant settled on (P2). Follow-up generation reads this block, never the
+  raw transcript, which is what makes "never ask twice" structural rather than a
+  prompt instruction. The `documented` / `corroborated` / `conflicting` provenance
+  classes are declared now so the ledger's shape does not change when R3 lands.

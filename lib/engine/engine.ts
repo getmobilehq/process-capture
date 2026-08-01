@@ -33,7 +33,8 @@ import {
 } from '@/lib/db/queries';
 import { generateAndSaveSpec } from '@/lib/spec/generate';
 import { allResolved, IllegalCoverageTransitionError, type CoverageStateValue } from './coverage';
-import { budgetState, highestValueCandidate } from './priority';
+import { budgetState, selectFollowUps } from './priority';
+import { buildLedger, ledgerBlock } from './ledger';
 import {
   PICKLIST_FACETS,
   elementBelongsToFacet,
@@ -68,8 +69,24 @@ const EXTRACTION_DIRECTIVE =
   'Use set_coverage only for an honest whole-facet judgement the checklist cannot reach: unknown_to_informant, or not_applicable. You cannot mark a facet answered — that is derived from its elements. If every facet is already terminal, call end_interview. ' +
   'Make only tool calls in this step — do not write any message to the informant. When there is nothing left to record for this answer, stop.';
 
-const QUESTION_DIRECTIVE =
-  '[Internal step.] Recording is done. Now write your single next message to the informant: exactly one question that makes progress on a facet still pending or partial, anchoring on a concrete last-real-occurrence before general practice. Warm, plain British English, one question mark, and do not call any tools.';
+/**
+ * Delta v1.1 R4.2 — the question phase is handed the ranked shortlist rather than
+ * left to choose for itself. Interviewees want to talk freely and be asked one or
+ * two sharp clarifiers, not walked through a questionnaire.
+ */
+function questionDirective(shortlist: readonly { label: string; because: string }[]): string {
+  const base =
+    '[Internal step.] Recording is done. Now write your single next message to the informant: exactly one question, anchoring on a concrete last-real-occurrence before general practice. Warm, plain British English, one question mark, and do not call any tools.';
+  if (shortlist.length === 0) return base;
+
+  const lines = shortlist.map((c) => `  · ${c.label} — because ${c.because}`).join('\n');
+  return (
+    base +
+    '\n\nThe highest-value things still missing, in order:\n' +
+    lines +
+    '\n\nAsk about the first one unless the conversation makes the second more natural. Never ask about anything already captured — let them talk, and clarify sparingly.'
+  );
+}
 
 // R9.1 — framed as a natural end, never as a failure to finish.
 const BUDGET_MESSAGE =
@@ -478,7 +495,25 @@ export async function processUserTurn(
   // ── Phase B — the agent's message (no tools): one question, or the playback
   //    once every facet is terminal (FR-3.3, FR-4.1).
   const qMessages = buildMessages(sessionId, db);
-  qMessages.push({ role: 'user', content: nowReview ? PLAYBACK_DIRECTIVE : QUESTION_DIRECTIVE });
+  // R4.2 — hand the model the ranked shortlist, each item citing what prompted it.
+  const shortlist = nowReview
+    ? []
+    : selectFollowUps({
+        coverage: coverageView(getCoverage(sessionId, db)),
+        elements: getElements(sessionId, db).map((e) => ({
+          facetId: e.facetId,
+          elementId: e.elementId,
+          state: e.state,
+        })),
+      });
+  // R4.3 — the ledger, not the raw transcript, is what guarantees no repeats.
+  const ledger = nowReview ? '' : ledgerBlock(buildLedger(sessionId, db));
+  qMessages.push({
+    role: 'user',
+    content: nowReview
+      ? PLAYBACK_DIRECTIVE
+      : [ledger, questionDirective(shortlist)].filter(Boolean).join('\n\n'),
+  });
   const qResp = await callModel({
     sessionId,
     system: systemNow(),
