@@ -514,3 +514,52 @@ decision, why it is the minimal option (§10).
   in the middle of a large empty rectangle. If the Fullscreen API is refused
   (permissions policy, embedded contexts) it falls back to a fixed-position
   expansion, so the control always does something.
+- **DL.56 · The to-be map ships disabled (`ENABLE_TOBE`)** — R5.4's human
+  verification gate is not built: nothing yet stops an unreviewed,
+  machine-generated change-set reaching a handover report, and the delta locks
+  that decision. Off by default, and gated in **two** places — the tab renders
+  disabled with a tooltip saying why, and the route itself returns 404. Hiding a
+  tab does not stop a POST, and on a deployed URL the difference matters. Remove
+  the flag when the gate lands, not before.
+- **DL.57 · The pilot runs on exactly one instance, for correctness not capacity** —
+  `lib/rate-limit.ts` keeps its buckets in a per-process Map, so with N instances
+  every limit silently becomes N × its intended value — and nothing reports it.
+  Cloud Run is therefore pinned `--min-instances=1 --max-instances=1`: one instance
+  makes the limiter correct, removes cold starts in front of a waiting informant,
+  and costs a few pounds a month. Interviews are not concurrent at pilot scale, so
+  nothing is given up. **Raising max-instances without first moving the buckets
+  into a table is a silent regression** — the note now sits in the file itself, not
+  only in the deployment plan.
+- **DL.58 · An honest unknown may override derived coverage** — `answered →
+  unknown_to_informant` is now a legal transition. Since R1 (DL.2) the model cannot
+  declare a facet answered; that state is *derived* from the checklist. So a facet
+  can reach `answered` because elements were closed from adjacent material while
+  the informant's real position is "that isn't mine to answer". Found by the live
+  eval: a rambling informant produced facet 9 = `answered` **with a retarget
+  finding already raised** — the finding landed, the coverage correction was
+  rejected as an illegal transition, and the spec claimed knowledge nobody had.
+  That is a P3 violation ("no silent gaps") arriving from the opposite direction to
+  the one R1 was built to close. The reverse transition stays illegal, so this
+  remains a one-way door and terminal states are still immutable in the direction
+  that matters.
+- **DL.59 · The E2E server builds to its own directory (`NEXT_DIST_DIR`)** — A
+  `next build`, or a second `next dev`, sharing `.next` with a running dev server
+  overwrites the chunks that server has open. It does not crash: it stays up,
+  serves 500s, then connection-refused, and writes no error to its own log — only
+  a `[?25h` on shutdown, which reads like a clean exit. Diagnosed by reproducing
+  it: healthy server → `npm run build` → same PID alive → `/health` 500. The
+  Playwright webServer now sets `NEXT_DIST_DIR=.next-e2e`, so the suite and a dev
+  server coexist in one working tree.
+- **DL.60 · The spec detail page carries breadcrumbs** — It is only reachable from
+  a campaign register and previously dead-ended there, with no way back but the
+  browser button. Campaigns / campaign / process, with the middle crumb returning
+  to `?tab=register` so the reader lands on the list they came from.
+- **DL.61 · The container migrates itself at boot, and refuses to start if it
+  cannot** — `scripts/migrate.mjs` was still SQLite after the Postgres migration,
+  and the Dockerfile runs it before `next start`. Caught during the merge; it would
+  have failed the first Cloud Run deployment. Rewritten for postgres-js, with two
+  properties that matter: no `DATABASE_URL` is a hard exit rather than a silent
+  fallback to a local file, and a failed migration exits non-zero rather than
+  starting a server with no tables — which serves 500s on every request and reads
+  like an application bug. Safe at one instance (DL.57); if max-instances is ever
+  raised, this must become a one-shot Job or two containers will race.

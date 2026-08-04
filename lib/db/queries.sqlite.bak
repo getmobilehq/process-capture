@@ -51,17 +51,17 @@ import {
 } from '@/lib/engine/coverage';
 
 // Invite tokens: unguessable, ≥ 24 chars (§5). nanoid(32) → 32-char url-safe.
-export async function generateInviteToken(): Promise<string> {
+export function generateInviteToken(): string {
   return nanoid(32);
 }
 
 // ── Projects ─────────────────────────────────────────────────────────────────
-export async function createProject(
+export function createProject(
   input: Pick<NewProject, 'name' | 'department'> &
     Partial<Pick<NewProject, 'description' | 'targetProcesses'>>,
   db: DB = getDb(),
 ) {
-  const row = await db
+  const row = db
     .insert(projects)
     .values({
       name: input.name,
@@ -69,85 +69,83 @@ export async function createProject(
       description: input.description ?? '',
       targetProcesses: input.targetProcesses ?? [],
     })
-    .returning().then((r) => r[0]);
+    .returning().get();
   // Every engagement starts with the house vocabulary (R2.2).
-  await seedTaxonomy(row.id, db);
+  seedTaxonomy(row.id, db);
   return row;
 }
 
-export async function getProject(id: string, db: DB = getDb()) {
-  return db.select().from(projects).where(eq(projects.id, id)).then((r) => r[0]);
+export function getProject(id: string, db: DB = getDb()) {
+  return db.select().from(projects).where(eq(projects.id, id)).get();
 }
 
-export async function listProjects(db: DB = getDb()) {
-  return db.select().from(projects).orderBy(desc(projects.createdAt));
+export function listProjects(db: DB = getDb()) {
+  return db.select().from(projects).orderBy(desc(projects.createdAt)).all();
 }
 
-export async function updateProject(
+export function updateProject(
   id: string,
   patch: Partial<Pick<NewProject, 'name' | 'department' | 'description' | 'status' | 'targetProcesses'>>,
   db: DB = getDb(),
 ) {
-  const row = await db
-.update(projects).set(patch).where(eq(projects.id, id)).returning().then((r) => r[0]);
+  const row = db.update(projects).set(patch).where(eq(projects.id, id)).returning().get();
   return row;
 }
 
 // ── Interviewees ─────────────────────────────────────────────────────────────
-export async function addInterviewee(
+export function addInterviewee(
   input: { projectId: string; fullName: string; email: string; role: string },
   db: DB = getDb(),
 ) {
-  const row = await db
+  const row = db
     .insert(interviewees)
     .values({
       projectId: input.projectId,
       fullName: input.fullName,
       email: input.email,
       role: input.role,
-      inviteToken: await generateInviteToken(),
+      inviteToken: generateInviteToken(),
     })
-    .returning().then((r) => r[0]);
+    .returning().get();
   return row;
 }
 
-export async function getInterviewee(id: string, db: DB = getDb()) {
-  return db.select().from(interviewees).where(eq(interviewees.id, id)).then((r) => r[0]);
+export function getInterviewee(id: string, db: DB = getDb()) {
+  return db.select().from(interviewees).where(eq(interviewees.id, id)).get();
 }
 
-export async function getIntervieweeByToken(token: string, db: DB = getDb()) {
-  return db.select().from(interviewees).where(eq(interviewees.inviteToken, token)).then((r) => r[0]);
+export function getIntervieweeByToken(token: string, db: DB = getDb()) {
+  return db.select().from(interviewees).where(eq(interviewees.inviteToken, token)).get();
 }
 
-export async function listInterviewees(projectId: string, db: DB = getDb()) {
+export function listInterviewees(projectId: string, db: DB = getDb()) {
   return db
     .select()
     .from(interviewees)
     .where(eq(interviewees.projectId, projectId))
     .orderBy(asc(interviewees.createdAt))
-    ;
+    .all();
 }
 
-export async function updateInterviewee(
+export function updateInterviewee(
   id: string,
   patch: Partial<{ fullName: string; email: string; role: string }>,
   db: DB = getDb(),
 ) {
-  const row = await db
-.update(interviewees).set(patch).where(eq(interviewees.id, id)).returning().then((r) => r[0]);
+  const row = db.update(interviewees).set(patch).where(eq(interviewees.id, id)).returning().get();
   return row;
 }
 
-export async function setIntervieweeStatus(
+export function setIntervieweeStatus(
   id: string,
   status: 'invited' | 'in_progress' | 'complete',
   db: DB = getDb(),
 ) {
-  const row = await db
+  const row = db
     .update(interviewees)
     .set({ status })
     .where(eq(interviewees.id, id))
-    .returning().then((r) => r[0]);
+    .returning().get();
   return row;
 }
 
@@ -156,12 +154,12 @@ export async function setIntervieweeStatus(
  * Create a session and seed its 12 coverage rows as `pending`, atomically.
  * Sets startedAt; caller is responsible for interviewee status transitions.
  */
-export async function createSession(
+export function createSession(
   input: { intervieweeId: string; projectId: string; processName?: string | null },
   db: DB = getDb(),
-): Promise<Session> {
-  return db.transaction(async (tx) => {
-    const session = await tx
+): Session {
+  return db.transaction((tx) => {
+    const session = tx
       .insert(sessions)
       .values({
         intervieweeId: input.intervieweeId,
@@ -170,15 +168,15 @@ export async function createSession(
         status: 'open',
         startedAt: new Date(),
       })
-      .returning().then((r) => r[0]);
+      .returning().get();
 
-    await tx.insert(coverageStates)
+    tx.insert(coverageStates)
       .values(FACET_IDS.map((facetId) => ({ sessionId: session.id, facetId, state: 'pending' as const })))
-      ;
+      .run();
 
     // Seed the checklist too (R1.1) — every element starts outstanding, so the
     // interviewee can see the full shape of what is wanted from turn one.
-    await tx.insert(elementStates)
+    tx.insert(elementStates)
       .values(
         ALL_ELEMENTS.map((e) => ({
           sessionId: session.id,
@@ -187,65 +185,64 @@ export async function createSession(
           state: 'outstanding' as const,
         })),
       )
-      ;
+      .run();
 
     return session;
   });
 }
 
-export async function getSession(id: string, db: DB = getDb()) {
-  return db.select().from(sessions).where(eq(sessions.id, id)).then((r) => r[0]);
+export function getSession(id: string, db: DB = getDb()) {
+  return db.select().from(sessions).where(eq(sessions.id, id)).get();
 }
 
 /** The most recent session for an interviewee, whatever its status. */
-export async function getLatestSession(intervieweeId: string, db: DB = getDb()) {
+export function getLatestSession(intervieweeId: string, db: DB = getDb()) {
   return db
     .select()
     .from(sessions)
     .where(eq(sessions.intervieweeId, intervieweeId))
     .orderBy(desc(sessions.createdAt))
-    .then((r) => r[0]);
+    .get();
 }
 
 /** The open (resumable) session for an interviewee, if any (FR-3.8). */
-export async function getResumableSession(intervieweeId: string, db: DB = getDb()) {
+export function getResumableSession(intervieweeId: string, db: DB = getDb()) {
   return db
     .select()
     .from(sessions)
     .where(and(eq(sessions.intervieweeId, intervieweeId), eq(sessions.status, 'open')))
     .orderBy(desc(sessions.createdAt))
-    .then((r) => r[0]);
+    .get();
 }
 
-export async function listSessionsForProject(projectId: string, db: DB = getDb()) {
+export function listSessionsForProject(projectId: string, db: DB = getDb()) {
   return db
     .select()
     .from(sessions)
     .where(eq(sessions.projectId, projectId))
     .orderBy(asc(sessions.createdAt))
-    ;
+    .all();
 }
 
-export async function updateSession(
+export function updateSession(
   id: string,
   patch: Partial<
     Pick<Session, 'processName' | 'status' | 'completedAt' | 'durationSec' | 'turnCount'>
   >,
   db: DB = getDb(),
 ) {
-  const row = await db
-.update(sessions).set(patch).where(eq(sessions.id, id)).returning().then((r) => r[0]);
+  const row = db.update(sessions).set(patch).where(eq(sessions.id, id)).returning().get();
   return row;
 }
 
 // ── Turns (append-only, idempotent) ──────────────────────────────────────────
-export async function nextTurnSeq(sessionId: string, db: DB = getDb()): Promise<number> {
-  const last = await db
+export function nextTurnSeq(sessionId: string, db: DB = getDb()): number {
+  const last = db
     .select({ seq: turns.seq })
     .from(turns)
     .where(eq(turns.sessionId, sessionId))
     .orderBy(desc(turns.seq))
-    .then((r) => r[0]);
+    .get();
   return (last?.seq ?? 0) + 1;
 }
 
@@ -253,18 +250,18 @@ export async function nextTurnSeq(sessionId: string, db: DB = getDb()): Promise<
  * Append a turn. Idempotent on (sessionId, seq): a duplicate submit (network
  * retry) returns the existing row instead of inserting a second (FR-3.9).
  */
-export async function appendTurn(
+export function appendTurn(
   input: { sessionId: string; seq: number; speaker: 'agent' | 'user' | 'system'; content: string },
   db: DB = getDb(),
 ) {
-  const existing = await db
+  const existing = db
     .select()
     .from(turns)
     .where(and(eq(turns.sessionId, input.sessionId), eq(turns.seq, input.seq)))
-    .then((r) => r[0]);
+    .get();
   if (existing) return existing;
 
-  const row = await db
+  const row = db
     .insert(turns)
     .values({
       sessionId: input.sessionId,
@@ -272,21 +269,21 @@ export async function appendTurn(
       speaker: input.speaker,
       content: input.content,
     })
-    .returning().then((r) => r[0]);
+    .returning().get();
   return row;
 }
 
-export async function listTurns(sessionId: string, db: DB = getDb()) {
+export function listTurns(sessionId: string, db: DB = getDb()) {
   return db
     .select()
     .from(turns)
     .where(eq(turns.sessionId, sessionId))
     .orderBy(asc(turns.seq))
-    ;
+    .all();
 }
 
 // ── Statements (append-only) ─────────────────────────────────────────────────
-export async function recordStatement(
+export function recordStatement(
   input: {
     sessionId: string;
     facetId: number;
@@ -296,8 +293,8 @@ export async function recordStatement(
     supersedesId?: string | null;
   },
   db: DB = getDb(),
-): Promise<Statement> {
-  const row = await db
+): Statement {
+  const row = db
     .insert(statements)
     .values({
       sessionId: input.sessionId,
@@ -307,7 +304,7 @@ export async function recordStatement(
       verbatim: input.verbatim ?? false,
       supersedesId: input.supersedesId ?? null,
     })
-    .returning().then((r) => r[0]);
+    .returning().get();
   return row;
 }
 
@@ -315,7 +312,7 @@ export async function recordStatement(
  * Record a correction that supersedes an earlier statement. The earlier row is
  * never mutated — this is the only correction path (P2, §5).
  */
-export async function supersedeStatement(
+export function supersedeStatement(
   input: {
     supersedesId: string;
     sessionId: string;
@@ -325,51 +322,51 @@ export async function supersedeStatement(
     verbatim?: boolean;
   },
   db: DB = getDb(),
-): Promise<Statement> {
-  return await recordStatement({ ...input, supersedesId: input.supersedesId }, db);
+): Statement {
+  return recordStatement({ ...input, supersedesId: input.supersedesId }, db);
 }
 
-export async function listStatements(sessionId: string, db: DB = getDb()) {
+export function listStatements(sessionId: string, db: DB = getDb()) {
   return db
     .select()
     .from(statements)
     .where(eq(statements.sessionId, sessionId))
     .orderBy(asc(statements.createdAt))
-    ;
+    .all();
 }
 
-export async function listStatementsForFacet(sessionId: string, facetId: number, db: DB = getDb()) {
+export function listStatementsForFacet(sessionId: string, facetId: number, db: DB = getDb()) {
   return db
     .select()
     .from(statements)
     .where(and(eq(statements.sessionId, sessionId), eq(statements.facetId, facetId)))
     .orderBy(asc(statements.createdAt))
-    ;
+    .all();
 }
 
 /** Only statements that have not themselves been superseded (the live set). */
-export async function listLiveStatements(sessionId: string, db: DB = getDb()) {
-  const all = await listStatements(sessionId, db);
+export function listLiveStatements(sessionId: string, db: DB = getDb()) {
+  const all = listStatements(sessionId, db);
   const supersededIds = new Set(all.map((s) => s.supersedesId).filter(Boolean) as string[]);
   return all.filter((s) => !supersededIds.has(s.id));
 }
 
 // ── Coverage ─────────────────────────────────────────────────────────────────
-export async function getCoverage(sessionId: string, db: DB = getDb()) {
+export function getCoverage(sessionId: string, db: DB = getDb()) {
   return db
     .select()
     .from(coverageStates)
     .where(eq(coverageStates.sessionId, sessionId))
     .orderBy(asc(coverageStates.facetId))
-    ;
+    .all();
 }
 
-export async function getCoverageState(sessionId: string, facetId: number, db: DB = getDb()) {
+export function getCoverageState(sessionId: string, facetId: number, db: DB = getDb()) {
   return db
     .select()
     .from(coverageStates)
     .where(and(eq(coverageStates.sessionId, sessionId), eq(coverageStates.facetId, facetId)))
-    .then((r) => r[0]);
+    .get();
 }
 
 /**
@@ -377,39 +374,39 @@ export async function getCoverageState(sessionId: string, facetId: number, db: D
  * against the state machine (throws IllegalCoverageTransitionError if illegal),
  * then persists. This is the server disposing of a model proposal (P1).
  */
-export async function setCoverage(
+export function setCoverage(
   sessionId: string,
   facetId: number,
   toState: CoverageStateValue,
   db: DB = getDb(),
 ) {
-  const current = await getCoverageState(sessionId, facetId, db);
+  const current = getCoverageState(sessionId, facetId, db);
   if (!current) throw new Error(`No coverage row for session ${sessionId} facet ${facetId}`);
   assertTransition(current.state, toState);
-  const row = await db
+  const row = db
     .update(coverageStates)
     .set({ state: toState })
     .where(and(eq(coverageStates.sessionId, sessionId), eq(coverageStates.facetId, facetId)))
-    .returning().then((r) => r[0]);
+    .returning().get();
   return row;
 }
 
 // ── Checklist elements (delta v1.1 R1) ───────────────────────────────────────
-export async function getElements(sessionId: string, db: DB = getDb()) {
+export function getElements(sessionId: string, db: DB = getDb()) {
   return db
     .select()
     .from(elementStates)
     .where(eq(elementStates.sessionId, sessionId))
     .orderBy(asc(elementStates.facetId))
-    ;
+    .all();
 }
 
-export async function getElementsForFacet(sessionId: string, facetId: number, db: DB = getDb()) {
+export function getElementsForFacet(sessionId: string, facetId: number, db: DB = getDb()) {
   return db
     .select()
     .from(elementStates)
     .where(and(eq(elementStates.sessionId, sessionId), eq(elementStates.facetId, facetId)))
-    ;
+    .all();
 }
 
 /**
@@ -420,16 +417,13 @@ export async function getElementsForFacet(sessionId: string, facetId: number, db
  * facet-level `not_applicable` are honest human judgements (P3) that outrank the
  * checklist, and `answered` is immutable by the state machine.
  */
-export async function reconcileFacetCoverage(sessionId: string, facetId: number, db: DB = getDb()) {
-  const current = await getCoverageState(sessionId, facetId, db);
+export function reconcileFacetCoverage(sessionId: string, facetId: number, db: DB = getDb()) {
+  const current = getCoverageState(sessionId, facetId, db);
   if (!current) throw new Error(`No coverage row for session ${sessionId} facet ${facetId}`);
-  // Terminal states outrank the checklist. In particular an honest unknown must
-  // survive later element captures — otherwise a facet the informant disclaimed
-  // creeps back to `answered` as adjacent material lands.
   if (isTerminal(current.state)) return current;
 
   const derived = deriveFacetState(
-    await (await getElementsForFacet(sessionId, facetId, db)).map((r) => ({
+    getElementsForFacet(sessionId, facetId, db).map((r) => ({
       elementId: r.elementId,
       state: r.state,
     })),
@@ -440,7 +434,7 @@ export async function reconcileFacetCoverage(sessionId: string, facetId: number,
     .update(coverageStates)
     .set({ state: derived })
     .where(and(eq(coverageStates.sessionId, sessionId), eq(coverageStates.facetId, facetId)))
-    .returning().then((r) => r[0]);
+    .returning().get();
 }
 
 /**
@@ -449,7 +443,7 @@ export async function reconcileFacetCoverage(sessionId: string, facetId: number,
  * against the facets spec, and evidence is never walked backwards — a closed
  * element may be refined but never returned to outstanding.
  */
-export async function setElement(
+export function setElement(
   input: {
     sessionId: string;
     facetId: number;
@@ -464,8 +458,8 @@ export async function setElement(
     throw new Error(`Element ${input.elementId} does not belong to facet ${input.facetId}`);
   }
 
-  return db.transaction(async (tx) => {
-    const current = await tx
+  return db.transaction((tx) => {
+    const current = tx
       .select()
       .from(elementStates)
       .where(
@@ -474,12 +468,12 @@ export async function setElement(
           eq(elementStates.elementId, input.elementId),
         ),
       )
-      .then((r) => r[0]);
+      .get();
     if (!current) {
       throw new Error(`No element row for session ${input.sessionId} element ${input.elementId}`);
     }
 
-    const row = await tx
+    const row = tx
       .update(elementStates)
       .set({
         state: input.state,
@@ -493,16 +487,16 @@ export async function setElement(
           eq(elementStates.elementId, input.elementId),
         ),
       )
-      .returning().then((r) => r[0]);
+      .returning().get();
 
-    await reconcileFacetCoverage(input.sessionId, input.facetId, tx as DB);
+    reconcileFacetCoverage(input.sessionId, input.facetId, tx as DB);
     return row;
   });
 }
 
 /** Outstanding elements, in plain language — what the interview still wants (R1.1). */
-export async function outstandingElements(sessionId: string, db: DB = getDb()) {
-  return (await getElements(sessionId, db))
+export function outstandingElements(sessionId: string, db: DB = getDb()) {
+  return getElements(sessionId, db)
     .filter((r) => r.state === 'outstanding')
     .map((r) => ({
       facetId: r.facetId,
@@ -517,30 +511,30 @@ export async function outstandingElements(sessionId: string, db: DB = getDb()) {
 // transcription.
 
 /** The live (active) draft for a session, if any. */
-export async function getActiveDraft(sessionId: string, db: DB = getDb()) {
+export function getActiveDraft(sessionId: string, db: DB = getDb()) {
   return db
     .select()
     .from(answerDrafts)
     .where(and(eq(answerDrafts.sessionId, sessionId), eq(answerDrafts.status, 'active')))
     .orderBy(desc(answerDrafts.updatedAt))
-    .then((r) => r[0]);
+    .get();
 }
 
 /** The most recently discarded draft — what Undo restores (R10.3). */
-export async function getUndoableDraft(sessionId: string, db: DB = getDb()) {
+export function getUndoableDraft(sessionId: string, db: DB = getDb()) {
   return db
     .select()
     .from(answerDrafts)
     .where(and(eq(answerDrafts.sessionId, sessionId), eq(answerDrafts.status, 'discarded')))
     .orderBy(desc(answerDrafts.updatedAt))
-    .then((r) => r[0]);
+    .get();
 }
 
 /**
  * Continuous autosave (R10.3). Upserts the live draft for a seq, so a crash, tab
  * close or dropped connection loses seconds rather than the answer.
  */
-export async function saveDraft(
+export function saveDraft(
   input: {
     sessionId: string;
     seq: number;
@@ -549,26 +543,26 @@ export async function saveDraft(
   },
   db: DB = getDb(),
 ) {
-  const active = await getActiveDraft(input.sessionId, db);
+  const active = getActiveDraft(input.sessionId, db);
   if (active && active.seq === input.seq) {
     return db
       .update(answerDrafts)
       .set({ content: input.content, origin: input.origin ?? active.origin })
       .where(eq(answerDrafts.id, active.id))
-      .returning().then((r) => r[0]);
+      .returning().get();
   }
 
   // A draft for a different seq means the previous answer was submitted; retire it.
   if (active) {
-    await db.update(answerDrafts).set({ status: 'submitted' }).where(eq(answerDrafts.id, active.id));
+    db.update(answerDrafts).set({ status: 'submitted' }).where(eq(answerDrafts.id, active.id)).run();
   }
 
-  const lastTake = await db
+  const lastTake = db
     .select()
     .from(answerDrafts)
     .where(and(eq(answerDrafts.sessionId, input.sessionId), eq(answerDrafts.seq, input.seq)))
     .orderBy(desc(answerDrafts.take))
-    .then((r) => r[0]);
+    .get();
 
   return db
     .insert(answerDrafts)
@@ -580,51 +574,51 @@ export async function saveDraft(
       origin: input.origin ?? 'typed',
       status: 'active',
     })
-    .returning().then((r) => r[0]);
+    .returning().get();
 }
 
 /** Soft-delete: recoverable by Undo for the rest of the session (R10.3). */
-export async function discardDraft(sessionId: string, db: DB = getDb()) {
-  const active = await getActiveDraft(sessionId, db);
+export function discardDraft(sessionId: string, db: DB = getDb()) {
+  const active = getActiveDraft(sessionId, db);
   if (!active) return undefined;
   return db
     .update(answerDrafts)
     .set({ status: 'discarded' })
     .where(eq(answerDrafts.id, active.id))
-    .returning().then((r) => r[0]);
+    .returning().get();
 }
 
 /** Restore the most recently discarded draft byte-identically (R10.3). */
-export async function undoDiscard(sessionId: string, db: DB = getDb()) {
-  const discarded = await getUndoableDraft(sessionId, db);
+export function undoDiscard(sessionId: string, db: DB = getDb()) {
+  const discarded = getUndoableDraft(sessionId, db);
   if (!discarded) return undefined;
   // Retire anything currently live so there is exactly one active draft.
-  const active = await getActiveDraft(sessionId, db);
+  const active = getActiveDraft(sessionId, db);
   if (active) {
-    await db.update(answerDrafts).set({ status: 'archived' }).where(eq(answerDrafts.id, active.id));
+    db.update(answerDrafts).set({ status: 'archived' }).where(eq(answerDrafts.id, active.id)).run();
   }
   return db
     .update(answerDrafts)
     .set({ status: 'active' })
     .where(eq(answerDrafts.id, discarded.id))
-    .returning().then((r) => r[0]);
+    .returning().get();
 }
 
 /**
  * Start a fresh take, archiving the prior one rather than overwriting it (R10.3).
  * The prior take stays recoverable until the replacement is submitted.
  */
-export async function startNewTake(sessionId: string, seq: number, db: DB = getDb()) {
-  const active = await getActiveDraft(sessionId, db);
+export function startNewTake(sessionId: string, seq: number, db: DB = getDb()) {
+  const active = getActiveDraft(sessionId, db);
   if (active) {
-    await db.update(answerDrafts).set({ status: 'archived' }).where(eq(answerDrafts.id, active.id));
+    db.update(answerDrafts).set({ status: 'archived' }).where(eq(answerDrafts.id, active.id)).run();
   }
-  const lastTake = await db
+  const lastTake = db
     .select()
     .from(answerDrafts)
     .where(and(eq(answerDrafts.sessionId, sessionId), eq(answerDrafts.seq, seq)))
     .orderBy(desc(answerDrafts.take))
-    .then((r) => r[0]);
+    .get();
 
   return db
     .insert(answerDrafts)
@@ -636,11 +630,11 @@ export async function startNewTake(sessionId: string, seq: number, db: DB = getD
       status: 'active',
       origin: 'voice',
     })
-    .returning().then((r) => r[0]);
+    .returning().get();
 }
 
 /** The archived take a re-record replaced — recoverable until submission (R10.3). */
-export async function getArchivedTakes(sessionId: string, seq: number, db: DB = getDb()) {
+export function getArchivedTakes(sessionId: string, seq: number, db: DB = getDb()) {
   return db
     .select()
     .from(answerDrafts)
@@ -652,16 +646,16 @@ export async function getArchivedTakes(sessionId: string, seq: number, db: DB = 
       ),
     )
     .orderBy(desc(answerDrafts.take))
-    ;
+    .all();
 }
 
 /** Mark the live draft submitted once its turn is safely persisted. */
-export async function markDraftSubmitted(sessionId: string, seq: number, db: DB = getDb()) {
+export function markDraftSubmitted(sessionId: string, seq: number, db: DB = getDb()) {
   return db
     .update(answerDrafts)
     .set({ status: 'submitted' })
     .where(and(eq(answerDrafts.sessionId, sessionId), eq(answerDrafts.seq, seq)))
-    ;
+    .run();
 }
 
 // ── Process graphs (delta v1.1 R5 — DL.38) ───────────────────────────────────
@@ -669,7 +663,7 @@ export async function markDraftSubmitted(sessionId: string, seq: number, db: DB 
 // calls are not deterministic, so regenerating per view would leave two reviewers
 // looking at different diagrams of the same specification.
 
-export async function getProcessGraph(
+export function getProcessGraph(
   sessionId: string,
   specVersion: number,
   kind: 'asis' | 'tobe',
@@ -685,7 +679,7 @@ export async function getProcessGraph(
         eq(processGraphs.kind, kind),
       ),
     )
-    .then((r) => r[0]);
+    .get();
 }
 
 /**
@@ -694,7 +688,7 @@ export async function getProcessGraph(
  * invalidate any change-set or review already keyed to it. A new spec version
  * gets a new row; regenerating an existing one is a separate, explicit act.
  */
-export async function saveProcessGraph(
+export function saveProcessGraph(
   input: {
     sessionId: string;
     specVersion: number;
@@ -704,7 +698,7 @@ export async function saveProcessGraph(
   },
   db: DB = getDb(),
 ) {
-  const existing = await getProcessGraph(input.sessionId, input.specVersion, input.kind, db);
+  const existing = getProcessGraph(input.sessionId, input.specVersion, input.kind, db);
   if (existing) return existing;
 
   return db
@@ -716,11 +710,11 @@ export async function saveProcessGraph(
       graph: input.graph,
       changeSet: input.changeSet ?? null,
     })
-    .returning().then((r) => r[0]);
+    .returning().get();
 }
 
 /** Discard a stored graph so the next request re-extracts it. */
-export async function deleteProcessGraph(
+export function deleteProcessGraph(
   sessionId: string,
   specVersion: number,
   kind: 'asis' | 'tobe',
@@ -735,7 +729,7 @@ export async function deleteProcessGraph(
         eq(processGraphs.kind, kind),
       ),
     )
-    ;
+    .run();
 }
 
 // ── Entities and pick-list options (delta v1.1 R2) ───────────────────────────
@@ -746,7 +740,7 @@ export async function deleteProcessGraph(
  * on one entity rather than three. A name first seen in an interview is created
  * `pending` — it is a candidate for the taxonomy, not yet part of it.
  */
-export async function upsertEntity(
+export function upsertEntity(
   input: {
     projectId: string;
     kind: EntityKind;
@@ -755,11 +749,11 @@ export async function upsertEntity(
     origin?: 'taxonomy' | 'interview';
   },
   db: DB = getDb(),
-): Promise<Entity> {
+): Entity {
   const key = canonicalKey(input.name);
   if (key === '') throw new Error(`Entity name has no canonical form: "${input.name}"`);
 
-  const existing = await db
+  const existing = db
     .select()
     .from(entities)
     .where(
@@ -769,7 +763,7 @@ export async function upsertEntity(
         eq(entities.canonicalKey, key),
       ),
     )
-    .then((r) => r[0]);
+    .get();
   if (existing) return existing;
 
   return db
@@ -782,41 +776,41 @@ export async function upsertEntity(
       status: input.status ?? 'pending',
       origin: input.origin ?? 'interview',
     })
-    .returning().then((r) => r[0]);
+    .returning().get();
 }
 
 /**
  * Seed a project's taxonomy with the house vocabulary (R2.2). Idempotent — safe on
  * every project creation and re-runnable after the seed list grows.
  */
-export async function seedTaxonomy(projectId: string, db: DB = getDb()): Promise<number> {
+export function seedTaxonomy(projectId: string, db: DB = getDb()): number {
   let created = 0;
   for (const group of TAXONOMY_SEED) {
     for (const name of group.names) {
-      const before = (await listEntities(projectId, group.kind, db)).length;
-      await upsertEntity(
+      const before = listEntities(projectId, group.kind, db).length;
+      upsertEntity(
         { projectId, kind: group.kind, name, status: 'confirmed', origin: 'taxonomy' },
         db,
       );
-      if ((await listEntities(projectId, group.kind, db)).length > before) created += 1;
+      if (listEntities(projectId, group.kind, db).length > before) created += 1;
     }
   }
   return created;
 }
 
-export async function listEntities(
+export function listEntities(
   projectId: string,
   kind: EntityKind | null = null,
   db: DB = getDb(),
-): Promise<Entity[]> {
+): Entity[] {
   const where = kind
     ? and(eq(entities.projectId, projectId), eq(entities.kind, kind))
     : eq(entities.projectId, projectId);
-  return db.select().from(entities).where(where).orderBy(asc(entities.name));
+  return db.select().from(entities).where(where).orderBy(asc(entities.name)).all();
 }
 
 /** Record that a session named or ticked an entity on a facet. Idempotent. */
-export async function recordEntityMention(
+export function recordEntityMention(
   input: {
     sessionId: string;
     entityId: string;
@@ -825,7 +819,7 @@ export async function recordEntityMention(
   },
   db: DB = getDb(),
 ) {
-  const existing = await db
+  const existing = db
     .select()
     .from(entityMentions)
     .where(
@@ -835,7 +829,7 @@ export async function recordEntityMention(
         eq(entityMentions.facetId, input.facetId),
       ),
     )
-    .then((r) => r[0]);
+    .get();
   if (existing) return existing;
 
   return db
@@ -846,15 +840,15 @@ export async function recordEntityMention(
       facetId: input.facetId,
       source: input.source ?? 'other',
     })
-    .returning().then((r) => r[0]);
+    .returning().get();
 }
 
-export async function listEntityMentions(sessionId: string, db: DB = getDb()) {
+export function listEntityMentions(sessionId: string, db: DB = getDb()) {
   return db
     .select()
     .from(entityMentions)
     .where(eq(entityMentions.sessionId, sessionId))
-    ;
+    .all();
 }
 
 export interface PicklistOption {
@@ -875,23 +869,23 @@ export interface PicklistOption {
  * Anything this session has already mentioned comes back pre-ticked, so reaching
  * facet 8 after systems were named at facet 4 is a confirmation, not a re-list.
  */
-export async function picklistOptions(
+export function picklistOptions(
   sessionId: string,
   facetId: number,
   db: DB = getDb(),
-): Promise<PicklistOption[]> {
+): PicklistOption[] {
   const kind = entityKindFor(facetId);
   if (!kind) return [];
-  const session = await getSession(sessionId, db);
+  const session = getSession(sessionId, db);
   if (!session) return [];
 
-  const all = await listEntities(session.projectId, kind, db);
-  const mentions = await db
+  const all = listEntities(session.projectId, kind, db);
+  const mentions = db
     .select()
     .from(entityMentions)
     .innerJoin(sessions, eq(entityMentions.sessionId, sessions.id))
     .where(eq(sessions.projectId, session.projectId))
-    ;
+    .all();
 
   const thisSession = new Set(
     mentions.filter((m) => m.entity_mentions.sessionId === sessionId).map((m) => m.entity_mentions.entityId),
@@ -923,8 +917,8 @@ export async function picklistOptions(
     .sort((a, b) => Number(b.selected) - Number(a.selected) || a.name.localeCompare(b.name));
 }
 
-export async function coverageSummary(sessionId: string, db: DB = getDb()) {
-  const rows = await getCoverage(sessionId, db);
+export function coverageSummary(sessionId: string, db: DB = getDb()) {
+  const rows = getCoverage(sessionId, db);
   return {
     answered: rows.filter((r) => r.state === 'answered').length,
     unknown: rows.filter((r) => r.state === 'unknown_to_informant').length,
@@ -936,52 +930,50 @@ export async function coverageSummary(sessionId: string, db: DB = getDb()) {
 }
 
 // ── Findings ─────────────────────────────────────────────────────────────────
-export async function raiseFinding(input: Omit<NewFinding, 'id' | 'createdAt' | 'updatedAt'>, db: DB = getDb()): Promise<Finding> {
-  const row = await db
-.insert(findings).values(input).returning().then((r) => r[0]);
+export function raiseFinding(input: Omit<NewFinding, 'id' | 'createdAt' | 'updatedAt'>, db: DB = getDb()): Finding {
+  const row = db.insert(findings).values(input).returning().get();
   return row;
 }
 
-export async function listFindings(projectId: string, db: DB = getDb()) {
+export function listFindings(projectId: string, db: DB = getDb()) {
   return db
     .select()
     .from(findings)
     .where(eq(findings.projectId, projectId))
     .orderBy(desc(findings.createdAt))
-    ;
+    .all();
 }
 
-export async function listFindingsForSession(sessionId: string, db: DB = getDb()) {
+export function listFindingsForSession(sessionId: string, db: DB = getDb()) {
   return db
     .select()
     .from(findings)
     .where(eq(findings.sessionId, sessionId))
     .orderBy(desc(findings.createdAt))
-    ;
+    .all();
 }
 
-export async function updateFinding(
+export function updateFinding(
   id: string,
   patch: Partial<Pick<Finding, 'status' | 'routedTo' | 'title' | 'detail'>>,
   db: DB = getDb(),
 ) {
-  const row = await db
-.update(findings).set(patch).where(eq(findings.id, id)).returning().then((r) => r[0]);
+  const row = db.update(findings).set(patch).where(eq(findings.id, id)).returning().get();
   return row;
 }
 
 // ── Specs (versioned) ────────────────────────────────────────────────────────
-export async function nextSpecVersion(sessionId: string, db: DB = getDb()): Promise<number> {
-  const last = await db
+export function nextSpecVersion(sessionId: string, db: DB = getDb()): number {
+  const last = db
     .select({ version: specs.version })
     .from(specs)
     .where(eq(specs.sessionId, sessionId))
     .orderBy(desc(specs.version))
-    .then((r) => r[0]);
+    .get();
   return (last?.version ?? 0) + 1;
 }
 
-export async function saveSpec(
+export function saveSpec(
   input: {
     sessionId: string;
     markdown: string;
@@ -990,8 +982,8 @@ export async function saveSpec(
   },
   db: DB = getDb(),
 ) {
-  const version = await nextSpecVersion(input.sessionId, db);
-  const row = await db
+  const version = nextSpecVersion(input.sessionId, db);
+  const row = db
     .insert(specs)
     .values({
       sessionId: input.sessionId,
@@ -1000,23 +992,23 @@ export async function saveSpec(
       coverageSummary: input.coverageSummary,
       openItems: input.openItems,
     })
-    .returning().then((r) => r[0]);
+    .returning().get();
   return row;
 }
 
-export async function getLatestSpec(sessionId: string, db: DB = getDb()) {
+export function getLatestSpec(sessionId: string, db: DB = getDb()) {
   return db
     .select()
     .from(specs)
     .where(eq(specs.sessionId, sessionId))
     .orderBy(desc(specs.version))
-    .then((r) => r[0]);
+    .get();
 }
 
-export async function getSpec(sessionId: string, version: number, db: DB = getDb()) {
+export function getSpec(sessionId: string, version: number, db: DB = getDb()) {
   return db
     .select()
     .from(specs)
     .where(and(eq(specs.sessionId, sessionId), eq(specs.version, version)))
-    .then((r) => r[0]);
+    .get();
 }

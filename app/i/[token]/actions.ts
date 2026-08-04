@@ -14,7 +14,7 @@ export async function startInterview(formData: FormData): Promise<void> {
   const processName = processRaw ? String(processRaw) : null;
 
   try {
-    startSession({
+    await startSession({
       token,
       processName: processName === '__something_else__' ? null : processName,
       fullName: str(formData.get('fullName')),

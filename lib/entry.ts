@@ -27,15 +27,18 @@ export type EntryResolution =
     };
 
 /** Resolve a token to what the entry route should render (FR-2.1). */
-export function resolveEntry(token: string, db: DB = getDb()): EntryResolution {
-  const interviewee = getIntervieweeByToken(token, db);
+export async function resolveEntry(
+  token: string,
+  db: DB = getDb(),
+): Promise<EntryResolution> {
+  const interviewee = await getIntervieweeByToken(token, db);
   if (!interviewee) return { kind: 'invalid' };
   if (interviewee.status === 'complete') return { kind: 'used_up', interviewee };
 
-  const project = getProject(interviewee.projectId, db);
+  const project = await getProject(interviewee.projectId, db);
   if (!project) return { kind: 'invalid' };
 
-  const resumable = getResumableSession(interviewee.id, db);
+  const resumable = await getResumableSession(interviewee.id, db);
   return { kind: 'ok', interviewee, project, resumable };
 }
 
@@ -52,7 +55,7 @@ export class EntryError extends Error {
  * interviewee to in_progress. `processName` is the picked target process (FR-2.3)
  * or null for "something else" / open elicitation.
  */
-export function startSession(
+export async function startSession(
   input: {
     token: string;
     processName?: string | null;
@@ -61,8 +64,8 @@ export function startSession(
     role?: string;
   },
   db: DB = getDb(),
-): Session {
-  const interviewee = getIntervieweeByToken(input.token, db);
+): Promise<Session> {
+  const interviewee = await getIntervieweeByToken(input.token, db);
   if (!interviewee) throw new EntryError('invalid');
   if (interviewee.status === 'complete') throw new EntryError('used_up');
 
@@ -78,26 +81,26 @@ export function startSession(
     patch.role = input.role.trim();
   }
   if (Object.keys(patch).length > 0) {
-    updateInterviewee(interviewee.id, patch, db);
+    await updateInterviewee(interviewee.id, patch, db);
   }
 
   const processName = input.processName?.trim() ? input.processName.trim() : null;
 
-  let session = getResumableSession(interviewee.id, db);
+  let session = await getResumableSession(interviewee.id, db);
   if (session) {
     // Resuming: adopt a newly-picked process name if the session lacked one.
     if (!session.processName && processName) {
-      session = updateSession(session.id, { processName }, db);
+      session = await updateSession(session.id, { processName }, db);
     }
   } else {
-    session = createSession(
+    session = await createSession(
       { intervieweeId: interviewee.id, projectId: interviewee.projectId, processName },
       db,
     );
   }
 
   if (interviewee.status !== 'in_progress') {
-    setIntervieweeStatus(interviewee.id, 'in_progress', db);
+    await setIntervieweeStatus(interviewee.id, 'in_progress', db);
   }
 
   return session;

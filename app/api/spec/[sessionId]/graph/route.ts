@@ -32,10 +32,10 @@ export async function POST(req: Request, { params }: { params: { sessionId: stri
     return NextResponse.json({ error: 'Not authorised' }, { status: 401 });
   }
 
-  const session = getSession(params.sessionId);
+  const session = await getSession(params.sessionId);
   if (!session) return NextResponse.json({ error: 'Unknown session' }, { status: 404 });
 
-  const spec = getLatestSpec(session.id);
+  const spec = await getLatestSpec(session.id);
   if (!spec) {
     return NextResponse.json(
       { error: 'This interview has no specification yet.' },
@@ -43,16 +43,16 @@ export async function POST(req: Request, { params }: { params: { sessionId: stri
     );
   }
 
-  const informant = getInterviewee(session.intervieweeId)?.fullName ?? 'the informant';
+  const informant = (await getInterviewee(session.intervieweeId))?.fullName ?? 'the informant';
 
   if (new URL(req.url).searchParams.get('refresh') === '1') {
-    deleteProcessGraph(session.id, spec.version, 'asis');
+    await deleteProcessGraph(session.id, spec.version, 'asis');
     // A to-be derived from the old graph would now be keyed to something that no
     // longer exists, so it goes with it.
-    deleteProcessGraph(session.id, spec.version, 'tobe');
+    await deleteProcessGraph(session.id, spec.version, 'tobe');
   }
 
-  const stored = getProcessGraph(session.id, spec.version, 'asis');
+  const stored = await getProcessGraph(session.id, spec.version, 'asis');
   if (stored) {
     const graph = stored.graph as Parameters<typeof toBpmnXml>[0];
     return NextResponse.json({ graph, xml: toBpmnXml(graph), informant, cached: true });
@@ -63,7 +63,7 @@ export async function POST(req: Request, { params }: { params: { sessionId: stri
       markdown: spec.markdown,
       specRef: `${session.id}:v${spec.version}`,
     });
-    saveProcessGraph({
+    await saveProcessGraph({
       sessionId: session.id,
       specVersion: spec.version,
       kind: 'asis',

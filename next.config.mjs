@@ -28,9 +28,17 @@ const securityHeaders = [
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  // better-sqlite3 is a native module; keep it external to the server bundle.
+  /**
+   * Build output directory, overridable per process.
+   *
+   * A `next build` or a second `next dev` sharing `.next` with a running dev
+   * server overwrites the chunks that server has open — it stays up and starts
+   * serving 500s, then connection-refused, with no error in its own log. The E2E
+   * suite starts its own dev server, so it gets its own directory and the two can
+   * coexist.
+   */
+  distDir: process.env.NEXT_DIST_DIR ?? '.next',
   experimental: {
-    serverComponentsExternalPackages: ['better-sqlite3'],
     // Enable instrumentation.ts (process-level error guards) on Next 14.2.
     instrumentationHook: true,
   },

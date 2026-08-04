@@ -41,9 +41,15 @@ export const config = {
   get voiceEnabled(): boolean {
     return Boolean(process.env.OPENAI_API_KEY);
   },
+  /**
+   * The to-be process map (delta R5.4). Off unless explicitly enabled, because
+   * R5.4's verification gate is not built: nothing yet stops a machine-generated,
+   * unreviewed change-set reaching a handover report, and the delta locks that
+   * decision. Turn this on only for analysis, never for a pilot where the output
+   * could be mistaken for an approved recommendation.
+   */
+  get toBeEnabled(): boolean {
+    return process.env.ENABLE_TOBE === '1';
+  },
 } as const;
 
-/** Bare filesystem path from a file: URL, for better-sqlite3. */
-export function dbFilePath(url: string = config.databaseUrl): string {
-  return url.replace(/^file:/, '');
-}

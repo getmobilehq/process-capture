@@ -38,7 +38,7 @@ export async function POST(req: Request, { params }: { params: { sessionId: stri
     );
   }
 
-  const session = getSession(params.sessionId);
+  const session = await getSession(params.sessionId);
   if (!session) return NextResponse.json({ error: 'Unknown session' }, { status: 404 });
   if (session.status === 'complete' || session.status === 'abandoned') {
     return NextResponse.json({ error: 'This interview is closed.' }, { status: 409 });
@@ -64,17 +64,17 @@ export async function POST(req: Request, { params }: { params: { sessionId: stri
   if (entityId) {
     resolvedId = entityId;
   } else if (name) {
-    resolvedId = upsertEntity({ projectId: session.projectId, kind, name }).id;
+    resolvedId = (await upsertEntity({ projectId: session.projectId, kind, name })).id;
   } else {
     return NextResponse.json({ error: 'Nothing to record' }, { status: 400 });
   }
 
-  recordEntityMention({
+  await recordEntityMention({
     sessionId: session.id,
     entityId: resolvedId,
     facetId,
     source: 'this_interview',
   });
 
-  return NextResponse.json({ options: picklistOptions(session.id, facetId) });
+  return NextResponse.json({ options: await picklistOptions(session.id, facetId) });
 }

@@ -6,9 +6,15 @@ import { createProjectAction } from './actions';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-export default function ConsoleHome() {
+export default async function ConsoleHome() {
   requireAdmin();
-  const projects = listProjects();
+  const projects = await listProjects();
+  // Counts are gathered here rather than in the JSX: a render callback cannot await.
+  const counts = new Map(
+    await Promise.all(
+      projects.map(async (p) => [p.id, (await listInterviewees(p.id)).length] as const),
+    ),
+  );
 
   return (
     <main className="pc-wrap">
@@ -51,7 +57,7 @@ export default function ConsoleHome() {
           ) : (
             <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 12 }}>
               {projects.map((p) => {
-                const count = listInterviewees(p.id).length;
+                const count = counts.get(p.id) ?? 0;
                 return (
                   <li key={p.id}>
                     <Link

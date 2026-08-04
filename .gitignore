@@ -39,5 +39,8 @@ tests/eval/*.log
 # large source archive kept out of the repo
 /VMO2 Design System.zip
 
+# The E2E server builds here so it cannot clobber a running dev server (DL.59).
+.next-e2e/
+
 # Word/Office lock files
 ~$*

@@ -7,26 +7,21 @@
  * see — the checklist has to be expanded, the draft has to survive a reload.
  */
 import { test, expect } from '@playwright/test';
-import Database from 'better-sqlite3';
+import { one, query } from './db';
 
-const DB_PATH = './data/e2e.db';
 
 /**
  * Sarah is the one seed informant no other spec touches — entry.spec takes the
  * first (Priya), interview.spec takes Tom, and console.spec adds its own. Sharing
  * an informant across specs couples them through session state.
  */
-function sarahToken(): string {
-  const db = new Database(DB_PATH, { readonly: true });
-  try {
-    const row = db
-      .prepare('SELECT invite_token FROM interviewees WHERE email = ?')
-      .get('sarah.whitfield@example.com') as { invite_token: string } | undefined;
-    if (!row) throw new Error('Seed interviewee sarah.whitfield@example.com not found');
-    return row.invite_token;
-  } finally {
-    db.close();
-  }
+async function sarahToken(): Promise<string> {
+  const row = await one<{ invite_token: string }>(
+    'SELECT invite_token FROM interviewees WHERE email = $1',
+    ['sarah.whitfield@example.com'],
+  );
+  if (!row) throw new Error('Seed interviewee sarah.whitfield@example.com not found');
+  return row.invite_token;
 }
 
 /**
@@ -59,7 +54,7 @@ test.describe('checklist coverage rail (R1)', () => {
   test('shows what is still wanted, in plain language, and lets the informant rule it out', async ({
     page,
   }) => {
-    const token = sarahToken();
+    const token = await sarahToken();
     await startInterview(page, token);
 
     // The meter is counted in elements, never a bare percentage (R1.1).
@@ -87,7 +82,7 @@ test.describe('checklist coverage rail (R1)', () => {
 
 test.describe('pick-list facets (R2)', () => {
   test('offers sourced options and an always-present escape hatch', async ({ page }) => {
-    const token = sarahToken();
+    const token = await sarahToken();
     await startInterview(page, token);
 
     const picklist = page.locator('.pc-picklist');
@@ -113,7 +108,7 @@ test.describe('pick-list facets (R2)', () => {
 
 test.describe('data-loss protection (R10.3)', () => {
   test('an unsubmitted answer survives a reload and comes back with a banner', async ({ page }) => {
-    const token = sarahToken();
+    const token = await sarahToken();
     await startInterview(page, token);
 
     await clearDraft(page);
@@ -133,7 +128,7 @@ test.describe('data-loss protection (R10.3)', () => {
   test('discard requires confirmation, states what is at stake, and is undoable', async ({
     page,
   }) => {
-    const token = sarahToken();
+    const token = await sarahToken();
     await startInterview(page, token);
 
     await clearDraft(page);
@@ -162,7 +157,7 @@ test.describe('data-loss protection (R10.3)', () => {
   test('the question budget is visible, so the interview has a felt horizon (R9.1)', async ({
     page,
   }) => {
-    const token = sarahToken();
+    const token = await sarahToken();
     await startInterview(page, token);
     await expect(page.getByText(/Question \d+ of ~25/)).toBeVisible();
     // R9.3 — finishing is available at all times, not only at the playback.

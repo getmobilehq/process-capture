@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { isValidSession } from '@/lib/auth';
+import { config } from '@/lib/config';
 import {
   getLatestSpec,
   getProcessGraph,
@@ -34,15 +35,24 @@ export async function POST(_req: Request, { params }: { params: { sessionId: str
     return NextResponse.json({ error: 'Not authorised' }, { status: 401 });
   }
 
-  const session = getSession(params.sessionId);
+  // Hiding the tab is not enough — the endpoint refuses too. R5.4's human
+  // verification gate is not built, so unreviewed proposals stay unreachable.
+  if (!config.toBeEnabled) {
+    return NextResponse.json(
+      { error: 'The to-be map is not enabled on this deployment.' },
+      { status: 404 },
+    );
+  }
+
+  const session = await getSession(params.sessionId);
   if (!session) return NextResponse.json({ error: 'Unknown session' }, { status: 404 });
 
-  const spec = getLatestSpec(session.id);
+  const spec = await getLatestSpec(session.id);
   if (!spec) {
     return NextResponse.json({ error: 'This interview has no specification yet.' }, { status: 409 });
   }
 
-  const asIsRow = getProcessGraph(session.id, spec.version, 'asis');
+  const asIsRow = await getProcessGraph(session.id, spec.version, 'asis');
   if (!asIsRow) {
     return NextResponse.json(
       { error: 'Draw the as-is process map first — changes are proposed against it.' },
@@ -57,7 +67,7 @@ export async function POST(_req: Request, { params }: { params: { sessionId: str
 
   // A to-be already proposed for this spec version is returned as-is, so a
   // reviewer comes back to the same proposal rather than a freshly generated one.
-  const storedToBe = getProcessGraph(session.id, spec.version, 'tobe');
+  const storedToBe = await getProcessGraph(session.id, spec.version, 'tobe');
   if (storedToBe) {
     const graph = storedToBe.graph as ProcessGraph;
     const changeSet = storedToBe.changeSet as ChangeSet;
@@ -76,7 +86,7 @@ export async function POST(_req: Request, { params }: { params: { sessionId: str
   try {
     const changeSet = await generateChangeSet(asIs.data);
     const applied = applyChangeSet(asIs.data, changeSet);
-    saveProcessGraph({
+    await saveProcessGraph({
       sessionId: session.id,
       specVersion: spec.version,
       kind: 'tobe',

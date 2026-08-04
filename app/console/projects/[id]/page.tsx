@@ -13,7 +13,7 @@ export const runtime = 'nodejs';
 
 type Tab = 'register' | 'findings' | 'conflicts';
 
-export default function ProjectPage({
+export default async function ProjectPage({
   params,
   searchParams,
 }: {
@@ -21,7 +21,7 @@ export default function ProjectPage({
   searchParams: { tab?: string };
 }) {
   requireAdmin();
-  const project = getProject(params.id);
+  const project = await getProject(params.id);
   if (!project) redirect('/console');
 
   const tab: Tab =
@@ -67,8 +67,8 @@ export default function ProjectPage({
 }
 
 // ── Register (FR-1.4) ────────────────────────────────────────────────────────
-function Register({ projectId, targetProcesses }: { projectId: string; targetProcesses: string[] }) {
-  const rows = buildRegister(projectId);
+async function Register({ projectId, targetProcesses }: { projectId: string; targetProcesses: string[] }) {
+  const rows = await buildRegister(projectId);
 
   return (
     <>
@@ -172,8 +172,8 @@ function Register({ projectId, targetProcesses }: { projectId: string; targetPro
 }
 
 // ── Findings (FR-1.5) ────────────────────────────────────────────────────────
-function Findings({ projectId }: { projectId: string }) {
-  const findings = [...listFindings(projectId)].sort((a, b) => {
+async function Findings({ projectId }: { projectId: string }) {
+  const findings = [...(await listFindings(projectId))].sort((a, b) => {
     const order = { open: 0, acknowledged: 1, resolved: 2 } as const;
     return order[a.status] - order[b.status];
   });
@@ -228,8 +228,8 @@ function Findings({ projectId }: { projectId: string }) {
 }
 
 // ── Candidate conflicts (FR-1.6) ─────────────────────────────────────────────
-function Conflicts({ projectId }: { projectId: string }) {
-  const groups = buildConflicts(projectId);
+async function Conflicts({ projectId }: { projectId: string }) {
+  const groups = await buildConflicts(projectId);
 
   if (groups.length === 0) {
     return (

@@ -106,10 +106,10 @@ const PLAYBACK =
   'controls as something for the compliance team, since that is not your area. Does that all sound right, ' +
   'or is there anything you would change before I close?';
 
-export function mockRespond(params: CallParams): ModelResponse {
+export async function mockRespond(params: CallParams): Promise<ModelResponse> {
   const { sessionId, lastAppliedTool, noTools, db } = params;
-  const session = getSession(sessionId, db)!;
-  const coverage = getCoverage(sessionId, db);
+  const session = (await getSession(sessionId, db))!;
+  const coverage = await getCoverage(sessionId, db);
   const lowest = coverage.find((c) => c.state === 'pending' || c.state === 'partial')?.facetId ?? null;
 
   // ── Question phase (no tools): produce the agent's next message. ───────────
@@ -131,7 +131,7 @@ export function mockRespond(params: CallParams): ModelResponse {
   }
   // Fresh answer: resolve the lowest facet, or end if everything is terminal.
   if (lowest === null) return toolResponse([{ name: 'end_interview', input: {} }]);
-  const role = getInterviewee(session.intervieweeId, db)?.role ?? 'process user';
+  const role = (await getInterviewee(session.intervieweeId, db))?.role ?? 'process user';
   return toolResponse(resolveFacet(lowest, role));
 }
 
