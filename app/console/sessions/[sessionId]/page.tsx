@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getInterviewee, getLatestSpec, getSession } from '@/lib/db/queries';
 import { SpecDetail } from '@/components/graph/SpecDetail';
+import { config } from '@/lib/config';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,6 +36,7 @@ export default async function SpecDetailPage({ params }: { params: { sessionId: 
             informant={interviewee?.fullName ?? 'the informant'}
             markdown={spec.markdown}
             specVersion={spec.version}
+            toBeEnabled={config.toBeEnabled}
           />
         </div>
       ) : (

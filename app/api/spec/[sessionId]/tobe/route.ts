@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { isValidSession } from '@/lib/auth';
+import { config } from '@/lib/config';
 import {
   getLatestSpec,
   getProcessGraph,
@@ -32,6 +33,15 @@ export const dynamic = 'force-dynamic';
 export async function POST(_req: Request, { params }: { params: { sessionId: string } }) {
   if (!isValidSession(cookies().get('pc_admin')?.value)) {
     return NextResponse.json({ error: 'Not authorised' }, { status: 401 });
+  }
+
+  // Hiding the tab is not enough — the endpoint refuses too. R5.4's human
+  // verification gate is not built, so unreviewed proposals stay unreachable.
+  if (!config.toBeEnabled) {
+    return NextResponse.json(
+      { error: 'The to-be map is not enabled on this deployment.' },
+      { status: 404 },
+    );
   }
 
   const session = await getSession(params.sessionId);

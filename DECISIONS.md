@@ -514,3 +514,10 @@ decision, why it is the minimal option (§10).
   in the middle of a large empty rectangle. If the Fullscreen API is refused
   (permissions policy, embedded contexts) it falls back to a fixed-position
   expansion, so the control always does something.
+- **DL.56 · The to-be map ships disabled (`ENABLE_TOBE`)** — R5.4's human
+  verification gate is not built: nothing yet stops an unreviewed,
+  machine-generated change-set reaching a handover report, and the delta locks
+  that decision. Off by default, and gated in **two** places — the tab renders
+  disabled with a tooltip saying why, and the route itself returns 404. Hiding a
+  tab does not stop a POST, and on a deployed URL the difference matters. Remove
+  the flag when the gate lands, not before.
