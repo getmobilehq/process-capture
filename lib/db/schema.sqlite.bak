@@ -4,20 +4,11 @@
  * All tables carry id (nanoid), createdAt, updatedAt. Statements and Turns are
  * append-only — corrections supersede (supersedesId), never mutate (enforced by
  * the query module, lib/db/queries.ts). Schema is written so a later swap to
- * Postgres (Cloud SQL). Timestamps are timestamptz, JSON columns are jsonb, and
- * booleans are real booleans — SQLite stored all three as integers or text.
+ * Postgres is a driver + connection-string change plus a migration re-run.
  */
 
-import {
-  boolean,
-  index,
-  integer,
-  jsonb,
-  pgTable,
-  text,
-  timestamp,
-  uniqueIndex,
-} from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { integer, sqliteTable, text, uniqueIndex, index } from 'drizzle-orm/sqlite-core';
 import { nanoid } from 'nanoid';
 
 const id = () =>
@@ -26,18 +17,18 @@ const id = () =>
     .$defaultFn(() => nanoid());
 
 const createdAt = () =>
-  timestamp('created_at', { withTimezone: true })
+  integer('created_at', { mode: 'timestamp_ms' })
     .notNull()
     .$defaultFn(() => new Date());
 
 const updatedAt = () =>
-  timestamp('updated_at', { withTimezone: true })
+  integer('updated_at', { mode: 'timestamp_ms' })
     .notNull()
     .$defaultFn(() => new Date())
     .$onUpdateFn(() => new Date());
 
 // ── Project ────────────────────────────────────────────────────────────────
-export const projects = pgTable('projects', {
+export const projects = sqliteTable('projects', {
   id: id(),
   name: text('name').notNull(),
   department: text('department').notNull(),
@@ -46,13 +37,16 @@ export const projects = pgTable('projects', {
     .notNull()
     .default('active'),
   // FR-1.2 / FR-2.3 — optional list of target process names, stored as JSON.
-  targetProcesses: jsonb('target_processes').notNull().$type<string[]>().default([]),
+  targetProcesses: text('target_processes', { mode: 'json' })
+    .notNull()
+    .$type<string[]>()
+    .default(sql`'[]'`),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
 
 // ── Interviewee ──────────────────────────────────────────────────────────────
-export const interviewees = pgTable(
+export const interviewees = sqliteTable(
   'interviewees',
   {
     id: id(),
@@ -76,7 +70,7 @@ export const interviewees = pgTable(
 );
 
 // ── Session ──────────────────────────────────────────────────────────────────
-export const sessions = pgTable(
+export const sessions = sqliteTable(
   'sessions',
   {
     id: id(),
@@ -90,8 +84,8 @@ export const sessions = pgTable(
     status: text('status', { enum: ['open', 'review', 'complete', 'abandoned'] })
       .notNull()
       .default('open'),
-    startedAt: timestamp('started_at', { withTimezone: true }),
-    completedAt: timestamp('completed_at', { withTimezone: true }),
+    startedAt: integer('started_at', { mode: 'timestamp_ms' }),
+    completedAt: integer('completed_at', { mode: 'timestamp_ms' }),
     durationSec: integer('duration_sec').notNull().default(0),
     turnCount: integer('turn_count').notNull().default(0),
     createdAt: createdAt(),
@@ -104,7 +98,7 @@ export const sessions = pgTable(
 );
 
 // ── Turn (append-only) ───────────────────────────────────────────────────────
-export const turns = pgTable(
+export const turns = sqliteTable(
   'turns',
   {
     id: id(),
@@ -123,7 +117,7 @@ export const turns = pgTable(
 );
 
 // ── Statement (append-only) ──────────────────────────────────────────────────
-export const statements = pgTable(
+export const statements = sqliteTable(
   'statements',
   {
     id: id(),
@@ -135,7 +129,7 @@ export const statements = pgTable(
     kind: text('kind', {
       enum: ['fact', 'step', 'rule', 'metric', 'issue', 'quote'],
     }).notNull(),
-    verbatim: boolean('verbatim').notNull().default(false),
+    verbatim: integer('verbatim', { mode: 'boolean' }).notNull().default(false),
     // A correction supersedes an earlier statement; the earlier row is untouched.
     supersedesId: text('supersedes_id'),
     createdAt: createdAt(),
@@ -146,7 +140,7 @@ export const statements = pgTable(
 );
 
 // ── CoverageState (one row per session × facet, seeded at start) ──────────────
-export const coverageStates = pgTable(
+export const coverageStates = sqliteTable(
   'coverage_states',
   {
     id: id(),
@@ -171,7 +165,7 @@ export const coverageStates = pgTable(
 // Delta v1.1 R1.1: elements are the unit of coverage. The facet meter in
 // coverage_states is *derived* from these rows by lib/engine/coverage.ts — never
 // set independently, so the meter can never disagree with the checklist.
-export const elementStates = pgTable(
+export const elementStates = sqliteTable(
   'element_states',
   {
     id: id(),
@@ -208,7 +202,7 @@ export const elementStates = pgTable(
 // reverse for the rest of the session, and a re-record archives the prior take
 // rather than overwriting it. Hard deletion happens only at engagement
 // decommission, under the existing destruction terms.
-export const answerDrafts = pgTable(
+export const answerDrafts = sqliteTable(
   'answer_drafts',
   {
     id: id(),
@@ -244,7 +238,7 @@ export const answerDrafts = pgTable(
 // Pick-list facets write canonical entity ids, not free text, so cross-interview
 // contribution analysis lines entities up reliably. Free-text "other" answers
 // create a `pending` entity awaiting admin confirmation.
-export const entities = pgTable(
+export const entities = sqliteTable(
   'entities',
   {
     id: id(),
@@ -277,7 +271,7 @@ export const entities = pgTable(
 );
 
 // ── EntityMention (this session selected/named this entity on this facet) ─────
-export const entityMentions = pgTable(
+export const entityMentions = sqliteTable(
   'entity_mentions',
   {
     id: id(),
@@ -312,7 +306,7 @@ export const entityMentions = pgTable(
 // could be looking at different diagrams of the same specification, and a
 // change-set could be keyed to a graph that no longer exists. Persisting by
 // (session, spec version, kind) makes the artefact stable and reviewable.
-export const processGraphs = pgTable(
+export const processGraphs = sqliteTable(
   'process_graphs',
   {
     id: id(),
@@ -322,9 +316,9 @@ export const processGraphs = pgTable(
     /** The spec version this graph was extracted from — a new spec, a new graph. */
     specVersion: integer('spec_version').notNull(),
     kind: text('kind', { enum: ['asis', 'tobe'] }).notNull(),
-    graph: jsonb('graph').notNull().$type<unknown>(),
+    graph: text('graph', { mode: 'json' }).notNull().$type<unknown>(),
     /** For a to-be graph: the change-set it was derived from (R5.4). */
-    changeSet: jsonb('change_set').$type<unknown>(),
+    changeSet: text('change_set', { mode: 'json' }).$type<unknown>(),
     createdAt: createdAt(),
   },
   (t) => ({
@@ -338,7 +332,7 @@ export const processGraphs = pgTable(
 );
 
 // ── Finding ──────────────────────────────────────────────────────────────────
-export const findings = pgTable(
+export const findings = sqliteTable(
   'findings',
   {
     id: id(),
@@ -366,7 +360,7 @@ export const findings = pgTable(
 );
 
 // ── Spec (versioned; regeneration increments, never overwrites) ───────────────
-export const specs = pgTable(
+export const specs = sqliteTable(
   'specs',
   {
     id: id(),
@@ -375,11 +369,11 @@ export const specs = pgTable(
       .references(() => sessions.id),
     version: integer('version').notNull(),
     markdown: text('markdown').notNull(),
-    coverageSummary: jsonb('coverage_summary')
+    coverageSummary: text('coverage_summary', { mode: 'json' })
       .notNull()
       .$type<{ answered: number; unknown: number; not_applicable: number }>(),
-    openItems: jsonb('open_items').notNull().$type<string[]>(),
-    generatedAt: timestamp('generated_at', { withTimezone: true })
+    openItems: text('open_items', { mode: 'json' }).notNull().$type<string[]>(),
+    generatedAt: integer('generated_at', { mode: 'timestamp_ms' })
       .notNull()
       .$defaultFn(() => new Date()),
     createdAt: createdAt(),
