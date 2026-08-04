@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Annotation, Change, ProcessGraph } from '@/lib/graph/schema';
 
 /**
@@ -40,6 +40,9 @@ export function ProcessMap({
   changeByNode?: Map<string, Change>;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const viewerRef = useRef<{ get: (n: string) => unknown } | null>(null);
+  const [full, setFull] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Annotation | null>(null);
   const [change, setChange] = useState<Change | null>(null);
@@ -58,6 +61,7 @@ export function ProcessMap({
 
         const v = new NavigatedViewer({ container: hostRef.current });
         viewer = v as unknown as { destroy: () => void };
+        viewerRef.current = v as unknown as { get: (n: string) => unknown };
 
         await v.importXML(xml);
         if (cancelled) return;
@@ -119,9 +123,59 @@ export function ProcessMap({
     void render();
     return () => {
       cancelled = true;
+      viewerRef.current = null;
       viewer?.destroy();
     };
   }, [xml, graph, variant, changedIds, changeByNode]);
+
+  function canvas() {
+    return viewerRef.current?.get('canvas') as
+      | { zoom: (a: string | number, b?: string) => void; viewbox: () => { scale: number } }
+      | undefined;
+  }
+
+  function zoom(direction: 1 | -1) {
+    const c = canvas();
+    if (!c) return;
+    c.zoom(Math.max(0.2, Math.min(4, c.viewbox().scale * (direction === 1 ? 1.25 : 0.8))));
+  }
+
+  const fit = useCallback(() => {
+    (
+      viewerRef.current?.get('canvas') as { zoom: (a: string, b?: string) => void } | undefined
+    )?.zoom('fit-viewport', 'auto');
+  }, []);
+
+  /**
+   * Full screen on the stage, not the whole page: the diagram is the thing worth
+   * the room. Refits after the transition so the new viewport is actually used —
+   * otherwise the diagram sits tiny in the middle of a large black rectangle.
+   */
+  async function toggleFull() {
+    const el = stageRef.current;
+    if (!el) return;
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        await el.requestFullscreen();
+      }
+    } catch {
+      // Fullscreen can be refused (permissions policy, embedded contexts). Fall
+      // back to an in-page expansion so the control always does something.
+      setFull((f) => !f);
+      setTimeout(fit, 60);
+    }
+  }
+
+  useEffect(() => {
+    function onChange() {
+      setFull(Boolean(document.fullscreenElement));
+      setTimeout(fit, 60);
+    }
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
+  }, [fit]);
 
   return (
     <div className="pc-map">
@@ -149,7 +203,21 @@ export function ProcessMap({
         </div>
       )}
 
-      <div className="pc-map-stage">
+      <div ref={stageRef} className={`pc-map-stage ${full ? 'full' : ''}`}>
+        <div className="pc-map-controls">
+          <button type="button" className="pc-mapbtn" onClick={() => zoom(1)} title="Zoom in">
+            +
+          </button>
+          <button type="button" className="pc-mapbtn" onClick={() => zoom(-1)} title="Zoom out">
+            −
+          </button>
+          <button type="button" className="pc-mapbtn" onClick={fit} title="Fit to view">
+            Fit
+          </button>
+          <button type="button" className="pc-mapbtn wide" onClick={toggleFull}>
+            {full ? 'Exit full screen' : 'Full screen'}
+          </button>
+        </div>
         <div ref={hostRef} className="pc-map-canvas" aria-label="Process map" />
         {!ready && !error && <p className="pc-map-status">Drawing the process map…</p>}
         {error && (

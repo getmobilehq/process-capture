@@ -499,3 +499,18 @@ decision, why it is the minimal option (§10).
   than regenerated per view — but it means a reviewer is approving *a* reading of
   the spec, and the pilot should say so rather than implying the diagram is derived
   mechanically.
+- **DL.54 · The specification is rendered, not dumped — and still downloads as .md**
+  — Feedback from reviewing a real spec on screen. The frontmatter becomes a
+  provenance panel with coverage stats and open items surfaced first; facets get
+  numbered headings and a state chip; prose sets at 72ch. The markdown parser is
+  ours rather than a library (P6): the renderer in `lib/spec/render.ts` writes
+  every line this ever sees, so the subset is known — and building React elements
+  rather than HTML means an informant's stray angle bracket can never become
+  markup. The `.md` download is unchanged and remains the artefact to hand on.
+- **DL.55 · The map expands to full screen, on the stage rather than the page** —
+  A 15-lane diagram in a 520px box is not readable. Zoom, fit and full-screen
+  controls sit on the canvas; full screen targets the stage element so the diagram
+  gets the whole viewport, and refits after the transition — otherwise it sits tiny
+  in the middle of a large empty rectangle. If the Fullscreen API is refused
+  (permissions policy, embedded contexts) it falls back to a fixed-position
+  expansion, so the control always does something.
