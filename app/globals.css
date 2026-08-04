@@ -3,6 +3,10 @@
    The vendor token sheet is loaded via a <link> in app/layout.tsx (keeps its
    relative font paths intact and loads reliably); brand-ui is bundled here. */
 @import './brand-ui.css';
+/* bpmn-js viewer styling for the process map (R5.3). Bundled, not CDN — the CSP
+   blocks external hosts and the diagram must render offline. */
+@import 'bpmn-js/dist/assets/diagram-js.css';
+@import 'bpmn-js/dist/assets/bpmn-font/css/bpmn.css';
 
 *,
 *::before,

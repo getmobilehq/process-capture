@@ -378,3 +378,21 @@ decision, why it is the minimal option (§10).
   rule: if the specification genuinely lacks an end state or a second branch, the
   right outcome is a failed extraction, not a graph padded until it validates. A
   diagram that passes because material was fabricated is worse than no diagram.
+- **DL.33 · bpmn-js earns its dependency; elkjs did not (R5.3, P6)** — Rendering
+  BPMN correctly means the full notation vocabulary, swimlane bands, edge routing,
+  pan and zoom, and an overlay system anchored to elements through both. That is
+  not eighty lines like the layout was, and hand-rolling it would produce a worse
+  diagram that a modeller would not trust. Loaded via dynamic `import()` so the
+  bundle only pays for it on the map view. Its CSS is bundled rather than fetched
+  from a CDN — the CSP blocks external hosts and the map must render offline.
+- **DL.34 · Viewer mode, never the modeller (R5.3)** — `NavigatedViewer`, so the
+  diagram pans and zooms but cannot be edited. The graph is extracted evidence,
+  not a drawing surface: letting someone drag a box would produce a diagram that
+  no longer matches the spec it claims to render, with nothing recording the
+  divergence. Changes belong in the to-be change-set (R5.4), where every one must
+  cite the bottleneck it resolves.
+- **DL.35 · Annotations are overlays, not BPMN text annotations (R5.3)** — Baking
+  them into the diagram would clutter it and lose the citation. As overlay badges
+  pinned to their target element they travel with pan and zoom, keep the diagram
+  legible, and put the facet citation one tap away in the evidence panel — which is
+  what R5.3 asks for.
