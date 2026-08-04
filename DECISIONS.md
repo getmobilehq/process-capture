@@ -348,3 +348,21 @@ decision, why it is the minimal option (§10).
   text) that do not flip with the surfaces, producing dark text on dark fields.
   Enabling it properly means flipping the ink ramp through `brand-ui.css` — separate
   work, deliberately not smuggled into a rebrand.
+- **DL.28 · Layered layout rolled rather than pulled in elkjs (R5.2)** — The delta
+  suggests elkjs with an "e.g.", not as a requirement. A left-to-right layered
+  layout over a graph of this shape is about eighty lines, and rolling it keeps
+  `toBpmnXml` a **pure synchronous function**: elkjs is async, which would make the
+  serialiser, the round-trip test and the export route all promise-based for no
+  gain, and adds ~1 MB to the bundle. P6 says extend before adding. If layout
+  quality later proves insufficient for large graphs, elkjs remains a drop-in for
+  `layoutGraph` alone — the seam is deliberate.
+- **DL.29 · Graph ids are sanitised on the way into XML (R5.2)** — Our ids carry a
+  readable kind prefix (`act:diagnose`), but a colon is a namespace separator in
+  XML, so an unsanitised id produces a document no BPMN tool will open — the exact
+  failure that would break the ARIS path silently. `xmlId` maps to a valid NCName;
+  the round-trip test asserts through the mapping rather than around it.
+- **DL.30 · Annotations are excluded from the export by default (R5.2/R5.3)** —
+  Bottleneck, risk and metric annotations render as in-app overlays where they can
+  carry their facet citation and evidence panel. Baking them into the exported XML
+  as text annotations is available behind `includeAnnotations`, but off by default
+  so the ARIS import is process semantics rather than commentary.
