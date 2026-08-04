@@ -530,3 +530,15 @@ decision, why it is the minimal option (§10).
   nothing is given up. **Raising max-instances without first moving the buckets
   into a table is a silent regression** — the note now sits in the file itself, not
   only in the deployment plan.
+- **DL.58 · An honest unknown may override derived coverage** — `answered →
+  unknown_to_informant` is now a legal transition. Since R1 (DL.2) the model cannot
+  declare a facet answered; that state is *derived* from the checklist. So a facet
+  can reach `answered` because elements were closed from adjacent material while
+  the informant's real position is "that isn't mine to answer". Found by the live
+  eval: a rambling informant produced facet 9 = `answered` **with a retarget
+  finding already raised** — the finding landed, the coverage correction was
+  rejected as an illegal transition, and the spec claimed knowledge nobody had.
+  That is a P3 violation ("no silent gaps") arriving from the opposite direction to
+  the one R1 was built to close. The reverse transition stays illegal, so this
+  remains a one-way door and terminal states are still immutable in the direction
+  that matters.
