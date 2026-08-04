@@ -36,12 +36,17 @@ const toolReply = (input: unknown) => ({
   content: [{ type: 'tool_use', id: 't1', name: 'emit_process_graph', input }],
 });
 
+/** The second pass returns annotations; default to none unless a test supplies them. */
+const annotationReply = (annotations: unknown[] = []) => ({
+  content: [{ type: 'tool_use', id: 't2', name: 'emit_annotations', input: { annotations } }],
+});
+
 describe('spec → graph extraction (R5.1)', () => {
   beforeEach(() => create.mockReset());
   afterEach(() => vi.restoreAllMocks());
 
   it('returns a validated graph from a well-formed proposal', async () => {
-    create.mockResolvedValueOnce(toolReply(proposal()));
+    create.mockResolvedValueOnce(toolReply(proposal())).mockResolvedValueOnce(annotationReply());
     const g = await extractProcessGraph({
       markdown: '# spec',
       specRef: 'spec:abc:v1',
@@ -55,7 +60,7 @@ describe('spec → graph extraction (R5.1)', () => {
   it('stamps specRef and generatedAt server-side, overriding anything proposed', async () => {
     create.mockResolvedValueOnce(
       toolReply(proposal({ specRef: 'spec:MADE-UP', generatedAt: '1999-01-01T00:00:00.000Z' })),
-    );
+    ).mockResolvedValueOnce(annotationReply());
     const g = await extractProcessGraph({
       markdown: '# spec',
       specRef: 'spec:abc:v1',
@@ -74,11 +79,15 @@ describe('spec → graph extraction (R5.1)', () => {
         { id: 'f3', from: 'gw:nba', to: 'ev:end' },
       ],
     });
-    create.mockResolvedValueOnce(toolReply(broken)).mockResolvedValueOnce(toolReply(proposal()));
+    create
+      .mockResolvedValueOnce(toolReply(broken))
+      .mockResolvedValueOnce(toolReply(proposal()))
+      .mockResolvedValueOnce(annotationReply());
 
     const g = await extractProcessGraph({ markdown: '# spec', specRef: 's', now: 'n' });
     expect(g.flows).toHaveLength(4);
-    expect(create).toHaveBeenCalledTimes(2);
+    // structural attempt 1, structural retry, then the annotation pass.
+    expect(create).toHaveBeenCalledTimes(3);
 
     // The retry must name the actual failure, not just ask again.
     const retry = create.mock.calls[1][0].messages.at(-1).content as string;
@@ -116,7 +125,7 @@ describe('spec → graph extraction (R5.1)', () => {
   });
 
   it('forces the tool rather than hoping for it', async () => {
-    create.mockResolvedValueOnce(toolReply(proposal()));
+    create.mockResolvedValueOnce(toolReply(proposal())).mockResolvedValueOnce(annotationReply());
     await extractProcessGraph({ markdown: '# spec', specRef: 's', now: 'n' });
     expect(create.mock.calls[0][0].tool_choice).toEqual({
       type: 'tool',
@@ -125,8 +134,52 @@ describe('spec → graph extraction (R5.1)', () => {
   });
 
   it('defaults annotations to empty rather than leaving them undefined', async () => {
-    create.mockResolvedValueOnce(toolReply(proposal()));
+    create.mockResolvedValueOnce(toolReply(proposal())).mockResolvedValueOnce(annotationReply());
     const g = await extractProcessGraph({ markdown: '# spec', specRef: 's', now: 'n' });
+    expect(g.annotations).toEqual([]);
+  });
+
+  // Validated against the real fraud-resolution spec: asking one call for both
+  // structure and evidence produced valid graphs with zero annotations, against a
+  // specification whose facet 12 described four separate bottlenecks.
+  it('reads annotations in a second, dedicated pass', async () => {
+    const note = {
+      id: 'ann:manual-form',
+      targetId: 'act:diagnose',
+      kind: 'bottleneck',
+      text: 'Agents copy values by hand across three platforms.',
+      evidence: { facet: 12, quote: 'the most significant bottleneck' },
+    };
+    create.mockResolvedValueOnce(toolReply(proposal())).mockResolvedValueOnce(annotationReply([note]));
+
+    const g = await extractProcessGraph({ markdown: '# spec', specRef: 's', now: 'n' });
+    expect(g.annotations).toHaveLength(1);
+    expect(g.annotations[0].evidence.facet).toBe(12);
+
+    // The second call is a separate concern with its own tool.
+    expect(create.mock.calls[1][0].tool_choice).toEqual({ type: 'tool', name: 'emit_annotations' });
+    expect(create.mock.calls[1][0].system).toMatch(/facet 12/i);
+  });
+
+  it('drops an annotation aimed at a node that is not in the graph', async () => {
+    const dangling = {
+      id: 'ann:ghost',
+      targetId: 'act:not-here',
+      kind: 'bottleneck',
+      text: 'x',
+      evidence: { facet: 12 },
+    };
+    create.mockResolvedValueOnce(toolReply(proposal())).mockResolvedValueOnce(annotationReply([dangling]));
+    const g = await extractProcessGraph({ markdown: '# spec', specRef: 's', now: 'n' });
+    expect(g.annotations).toEqual([]);
+  });
+
+  // The structure is the more valuable artefact — losing it because the evidence
+  // pass stumbled would be the wrong trade.
+  it('keeps the graph when the annotation pass fails outright', async () => {
+    create.mockResolvedValueOnce(toolReply(proposal())).mockRejectedValueOnce(new Error('boom'));
+    const g = await extractProcessGraph({ markdown: '# spec', specRef: 's', now: 'n' });
+    expect(g.activities).toHaveLength(1);
     expect(g.annotations).toEqual([]);
   });
 });
