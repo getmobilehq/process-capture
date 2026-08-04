@@ -300,6 +300,37 @@ export const entityMentions = sqliteTable(
   }),
 );
 
+// ── ProcessGraph (delta v1.1 R5 — persisted so a map is drawn once per spec) ──
+// Extraction and change-set generation are live model calls and are not
+// deterministic, so a graph regenerated per view would drift: two reviewers
+// could be looking at different diagrams of the same specification, and a
+// change-set could be keyed to a graph that no longer exists. Persisting by
+// (session, spec version, kind) makes the artefact stable and reviewable.
+export const processGraphs = sqliteTable(
+  'process_graphs',
+  {
+    id: id(),
+    sessionId: text('session_id')
+      .notNull()
+      .references(() => sessions.id),
+    /** The spec version this graph was extracted from — a new spec, a new graph. */
+    specVersion: integer('spec_version').notNull(),
+    kind: text('kind', { enum: ['asis', 'tobe'] }).notNull(),
+    graph: text('graph', { mode: 'json' }).notNull().$type<unknown>(),
+    /** For a to-be graph: the change-set it was derived from (R5.4). */
+    changeSet: text('change_set', { mode: 'json' }).$type<unknown>(),
+    createdAt: createdAt(),
+  },
+  (t) => ({
+    sessionVersionKindUnique: uniqueIndex('process_graphs_session_version_kind_unique').on(
+      t.sessionId,
+      t.specVersion,
+      t.kind,
+    ),
+    bySession: index('process_graphs_session_idx').on(t.sessionId),
+  }),
+);
+
 // ── Finding ──────────────────────────────────────────────────────────────────
 export const findings = sqliteTable(
   'findings',
@@ -367,6 +398,7 @@ export type NewStatement = typeof statements.$inferInsert;
 export type CoverageState = typeof coverageStates.$inferSelect;
 export type ElementState = typeof elementStates.$inferSelect;
 export type AnswerDraft = typeof answerDrafts.$inferSelect;
+export type ProcessGraphRow = typeof processGraphs.$inferSelect;
 export type Entity = typeof entities.$inferSelect;
 export type NewEntity = typeof entities.$inferInsert;
 export type EntityMention = typeof entityMentions.$inferSelect;

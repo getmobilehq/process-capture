@@ -382,8 +382,6 @@ Each requirement is one commit, gates run before every commit.
   change. Until that exists, treat the To-be tab as analysis only.
 - **R5.5** — the opportunity overlay. Schema and validator exist; the classifier
   and view do not.
-- **Graph persistence** — the map re-extracts on every view (DL.38). Wants a table
-  keyed by spec version.
 - **Runtime verification of the map** — the component compiles and the tab renders,
   but no diagram has been drawn end-to-end: that needs a completed spec plus a live
   model call. E2E covers the tab, not the render.
@@ -399,7 +397,7 @@ Each requirement is one commit, gates run before every commit.
 ### Gates
 
 `lint` ✓, `typecheck` ✓, **129 unit/integration** ✓, **10 E2E** ✓ (was 5).
-Migrations 0001–0003 generated and applied.
+Migrations 0001–0004 generated and applied.
 
 **§9 eval gate: PASS (2026-08-04).** All three personas passed A1–A9 on three
 consecutive runs: cooperative 3/3, rambling 3/3, terse 3/3. A3 — the threshold

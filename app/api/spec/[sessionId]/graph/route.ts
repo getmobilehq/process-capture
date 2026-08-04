@@ -1,5 +1,12 @@
 import { NextResponse } from 'next/server';
-import { getInterviewee, getLatestSpec, getSession } from '@/lib/db/queries';
+import {
+  deleteProcessGraph,
+  getInterviewee,
+  getLatestSpec,
+  getProcessGraph,
+  getSession,
+  saveProcessGraph,
+} from '@/lib/db/queries';
 import { extractProcessGraph, GraphExtractionError } from '@/lib/graph/extract';
 import { toBpmnXml } from '@/lib/graph/bpmn';
 import { isValidSession } from '@/lib/auth';
@@ -15,11 +22,12 @@ export const dynamic = 'force-dynamic';
  * informant is shown. Extraction is a live model call, so this is a POST — it is
  * not a cheap idempotent read, and nothing should prefetch it.
  *
- * NOT YET PERSISTED: every call re-extracts. The graph belongs in a table keyed by
- * spec version so a map is drawn once per spec rather than once per view; that is
- * follow-up work, recorded in STATUS.
+ * Extracted once per (session, spec version) and stored. Model calls are not
+ * deterministic, so re-extracting per view would leave two reviewers looking at
+ * different diagrams of the same specification. `?refresh=1` discards the stored
+ * graph and extracts again — an explicit act, never a side effect of viewing.
  */
-export async function POST(_req: Request, { params }: { params: { sessionId: string } }) {
+export async function POST(req: Request, { params }: { params: { sessionId: string } }) {
   if (!isValidSession(cookies().get('pc_admin')?.value)) {
     return NextResponse.json({ error: 'Not authorised' }, { status: 401 });
   }
@@ -35,15 +43,37 @@ export async function POST(_req: Request, { params }: { params: { sessionId: str
     );
   }
 
+  const informant = getInterviewee(session.intervieweeId)?.fullName ?? 'the informant';
+
+  if (new URL(req.url).searchParams.get('refresh') === '1') {
+    deleteProcessGraph(session.id, spec.version, 'asis');
+    // A to-be derived from the old graph would now be keyed to something that no
+    // longer exists, so it goes with it.
+    deleteProcessGraph(session.id, spec.version, 'tobe');
+  }
+
+  const stored = getProcessGraph(session.id, spec.version, 'asis');
+  if (stored) {
+    const graph = stored.graph as Parameters<typeof toBpmnXml>[0];
+    return NextResponse.json({ graph, xml: toBpmnXml(graph), informant, cached: true });
+  }
+
   try {
     const graph = await extractProcessGraph({
       markdown: spec.markdown,
       specRef: `${session.id}:v${spec.version}`,
     });
+    saveProcessGraph({
+      sessionId: session.id,
+      specVersion: spec.version,
+      kind: 'asis',
+      graph,
+    });
     return NextResponse.json({
       graph,
       xml: toBpmnXml(graph),
-      informant: getInterviewee(session.intervieweeId)?.fullName ?? 'the informant',
+      informant,
+      cached: false,
     });
   } catch (err) {
     if (err instanceof GraphExtractionError) {

@@ -72,17 +72,14 @@ export function SpecDetail({
   /** To-be needs the as-is map first — changes are proposed against that graph. */
   async function drawToBe() {
     if (tobe || loading) return;
-    const base = map ?? (await drawMap());
-    if (!base) return;
+    // The as-is must exist first: the server proposes changes against the stored
+    // graph, so drawing it is what puts it there.
+    if (!(map ?? (await drawMap()))) return;
     setLoading(true);
     setError(null);
     setDetails([]);
     try {
-      const res = await fetch(`/api/spec/${sessionId}/tobe`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ graph: base.graph }),
-      });
+      const res = await fetch(`/api/spec/${sessionId}/tobe`, { method: 'POST' });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setDetails(Array.isArray(data.details) ? data.details : []);
