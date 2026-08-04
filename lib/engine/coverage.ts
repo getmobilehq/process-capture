@@ -29,15 +29,24 @@ export const TERMINAL_STATES: readonly CoverageStateValue[] = [
 ];
 
 /**
- * Legal transitions, exactly as specified in FR-3.2:
- *   pending → partial | answered | unknown_to_informant | not_applicable
- *   partial → answered | unknown_to_informant
- * Terminal states have no outgoing transitions.
+ * Legal transitions, per FR-3.2 with one addition from delta v1.1.
+ *
+ * `answered → unknown_to_informant` is now legal. Since R1 (DL.2) the model cannot
+ * declare a facet answered — that state is *derived* from the checklist. So a
+ * facet can reach `answered` because elements were closed from adjacent material,
+ * while the informant's actual position is "that isn't mine to answer". An honest
+ * unknown is strictly more truthful than derived coverage and must be able to
+ * override it; the reverse is never allowed, so this stays a one-way door and P3
+ * still holds.
+ *
+ * Found by the live eval: a rambling informant produced facet 9 = answered with a
+ * retarget finding raised — the finding landed, the coverage correction was
+ * rejected as an illegal transition, and the spec claimed knowledge nobody had.
  */
 const LEGAL_TRANSITIONS: Record<CoverageStateValue, readonly CoverageStateValue[]> = {
   pending: ['partial', 'answered', 'unknown_to_informant', 'not_applicable'],
   partial: ['answered', 'unknown_to_informant'],
-  answered: [],
+  answered: ['unknown_to_informant'],
   unknown_to_informant: [],
   not_applicable: [],
 };

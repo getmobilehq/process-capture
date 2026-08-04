@@ -423,6 +423,9 @@ export async function getElementsForFacet(sessionId: string, facetId: number, db
 export async function reconcileFacetCoverage(sessionId: string, facetId: number, db: DB = getDb()) {
   const current = await getCoverageState(sessionId, facetId, db);
   if (!current) throw new Error(`No coverage row for session ${sessionId} facet ${facetId}`);
+  // Terminal states outrank the checklist. In particular an honest unknown must
+  // survive later element captures — otherwise a facet the informant disclaimed
+  // creeps back to `answered` as adjacent material lands.
   if (isTerminal(current.state)) return current;
 
   const derived = deriveFacetState(
