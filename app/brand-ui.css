@@ -666,3 +666,134 @@
 .pc-budget {
   font-variant-numeric: tabular-nums;
 }
+
+/* ── Process map (R5.3) — the diagram is the hero, chrome recedes ────────── */
+.pc-map {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+}
+.pc-map-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: var(--radius-pill);
+  font: 500 12.5px / 1.4 var(--font-sans);
+  width: fit-content;
+}
+.pc-map-banner b {
+  font-weight: 700;
+}
+/* As-is is stated evidence — solid treatment. To-be is proposed and dashed. */
+.pc-map-banner.asis {
+  background: var(--brand-surface);
+  color: var(--brand-mark-text);
+  border: 1px solid var(--brand-border);
+}
+.pc-map-banner.tobe {
+  background: transparent;
+  color: var(--ink-700);
+  border: 1px dashed var(--ink-300);
+}
+.pc-map-stage {
+  position: relative;
+  min-height: 420px;
+  background: var(--paper);
+  border: 1px solid var(--ink-100);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.pc-map-canvas {
+  width: 100%;
+  height: 520px;
+}
+.pc-map-status {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: var(--space-6);
+  text-align: center;
+  font: 400 13.5px / 1.5 var(--font-sans);
+  color: var(--ink-500);
+}
+.pc-map-status.error {
+  color: var(--vm-red);
+}
+
+/* Annotation badges — pinned to their element, evidence one tap away. */
+.pc-badge {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  font: 900 12px / 1 var(--font-sans);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+}
+.pc-badge.bottleneck {
+  background: var(--vm-red);
+}
+.pc-badge.risk {
+  background: var(--vmo2-yellow);
+  color: var(--ink-900);
+}
+.pc-badge.metric {
+  background: var(--o2-blue);
+}
+
+.pc-evidence {
+  padding: 16px 18px;
+  background: var(--paper);
+  border: 1px solid var(--ink-100);
+  border-radius: var(--radius-lg);
+}
+.pc-evidence-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.pc-evidence-kind {
+  font: 700 11px / 1 var(--font-sans);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  color: #fff;
+}
+.pc-evidence-kind.bottleneck {
+  background: var(--vm-red);
+}
+.pc-evidence-kind.risk {
+  background: var(--vmo2-yellow);
+  color: var(--ink-900);
+}
+.pc-evidence-kind.metric {
+  background: var(--o2-blue);
+}
+.pc-evidence-head .pc-check-na {
+  margin-left: auto;
+}
+.pc-evidence-text {
+  margin: 0 0 8px;
+  font: 500 14px / 1.5 var(--font-sans);
+  color: var(--ink-900);
+}
+.pc-evidence-quote {
+  margin: 0 0 8px;
+  padding-left: 12px;
+  border-left: 3px solid var(--brand-border);
+  font: 400 13.5px / 1.5 var(--font-sans);
+  color: var(--ink-700);
+}
+.pc-evidence-cite {
+  margin: 0;
+  font: 500 12px / 1.4 var(--font-sans);
+  color: var(--ink-500);
+}
