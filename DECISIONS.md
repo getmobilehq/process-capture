@@ -405,10 +405,8 @@ decision, why it is the minimal option (§10).
   specifies three sub-views. To-be and Opportunities render as disabled tabs so the
   shape of what is coming is visible and their absence is legible, rather than the
   page quietly implying the map is all there is.
-- **DL.38 · The graph is not persisted yet (known gap)** — Every visit to the map
-  tab re-extracts, which is a model call per view. The graph belongs in a table
-  keyed by spec version so a map is drawn once per spec. Deliberately deferred
-  rather than half-done; recorded in STATUS as follow-up.
+- **DL.38 · Graph persistence — RESOLVED (see DL.49)** — Originally deferred; the
+  `process_graphs` table now stores a graph per (session, spec version, kind).
 - **DL.39 · The generator is offered only the evidenced bottlenecks (R5.4)** — The
   prompt carries the annotations and the flow, and says "these, and only these, are
   what a change may resolve". Nothing else about the process is offered as raw
@@ -459,3 +457,19 @@ decision, why it is the minimal option (§10).
   naming the bottleneck the change resolves. A legend states both states in words.
   A reader can tell changed from unchanged before reading a label, which is what the
   reference renderings make normative.
+- **DL.49 · Graphs are stored per spec version, and never silently replaced** —
+  New `process_graphs` table keyed by (session, spec version, kind). Extraction and
+  change-set generation are live model calls and are not deterministic, so
+  regenerating per view would leave two reviewers looking at different diagrams of
+  the same specification — and would orphan any change-set keyed to the older
+  graph. `saveProcessGraph` therefore returns the existing row rather than
+  upserting: replacing a graph is an explicit act (`?refresh=1`), never a side
+  effect of viewing. Refreshing an as-is graph also discards its to-be, because a
+  change-set is only meaningful against the graph it was proposed for.
+- **DL.50 · The to-be reads the as-is from the store, not the request (supersedes
+  DL.47)** — With persistence landed, the to-be route no longer accepts a graph
+  over the wire. A change-set is only meaningful against the exact graph it was
+  proposed for, and accepting one from a client would let changes be keyed to a
+  graph nobody else can see. Both the change-set and the derived graph are
+  persisted, so a reviewer returns to the same proposal they left rather than a
+  freshly generated one.

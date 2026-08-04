@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { isValidSession } from '@/lib/auth';
-import { processGraphSchema } from '@/lib/graph/schema';
+import {
+  getLatestSpec,
+  getProcessGraph,
+  getSession,
+  saveProcessGraph,
+} from '@/lib/db/queries';
+import { processGraphSchema, type ChangeSet, type ProcessGraph } from '@/lib/graph/schema';
 import { generateChangeSet, ChangeSetGenerationError } from '@/lib/graph/changeset';
 import { applyChangeSet, ChangeSetApplicationError } from '@/lib/graph/apply';
 import { toBpmnXml } from '@/lib/graph/bpmn';
@@ -10,38 +16,73 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /**
- * Generate a to-be change-set from an as-is graph and return the applied graph
- * (delta v1.1 R5.4).
+ * Generate a to-be change-set from the stored as-is graph and return the applied
+ * graph (delta v1.1 R5.4).
  *
- * Takes the graph in the body rather than re-extracting: the client already has
- * the as-is map, and re-extracting would risk generating changes against a
- * different graph than the one on screen. Once graphs are persisted (DL.38) this
- * should take a graph id instead.
+ * The as-is graph is read from the store, never taken from the request: a
+ * change-set is only meaningful against the exact graph it was proposed for, and
+ * accepting one over the wire would let a client key changes to a graph nobody
+ * else can see. Both the change-set and the derived graph are persisted, so a
+ * reviewer returns to the same proposal they left.
  *
- * Console-only, and everything returned is `proposed` / `verified: false`. R5.4's
- * gate means none of this may reach a handover report until a human has reviewed
- * each change — and that review path is not built yet.
+ * Everything returned is `proposed` / `verified: false`. R5.4's gate means none of
+ * it may reach a handover report until a human has reviewed each change, and that
+ * review path is not built yet.
  */
-export async function POST(req: Request) {
+export async function POST(_req: Request, { params }: { params: { sessionId: string } }) {
   if (!isValidSession(cookies().get('pc_admin')?.value)) {
     return NextResponse.json({ error: 'Not authorised' }, { status: 401 });
   }
 
-  let body: unknown;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+  const session = getSession(params.sessionId);
+  if (!session) return NextResponse.json({ error: 'Unknown session' }, { status: 404 });
+
+  const spec = getLatestSpec(session.id);
+  if (!spec) {
+    return NextResponse.json({ error: 'This interview has no specification yet.' }, { status: 409 });
   }
 
-  const parsed = processGraphSchema.safeParse((body as { graph?: unknown })?.graph);
-  if (!parsed.success) {
-    return NextResponse.json({ error: 'A valid as-is graph is required' }, { status: 400 });
+  const asIsRow = getProcessGraph(session.id, spec.version, 'asis');
+  if (!asIsRow) {
+    return NextResponse.json(
+      { error: 'Draw the as-is process map first — changes are proposed against it.' },
+      { status: 409 },
+    );
+  }
+
+  const asIs = processGraphSchema.safeParse(asIsRow.graph);
+  if (!asIs.success) {
+    return NextResponse.json({ error: 'The stored as-is graph is not valid.' }, { status: 500 });
+  }
+
+  // A to-be already proposed for this spec version is returned as-is, so a
+  // reviewer comes back to the same proposal rather than a freshly generated one.
+  const storedToBe = getProcessGraph(session.id, spec.version, 'tobe');
+  if (storedToBe) {
+    const graph = storedToBe.graph as ProcessGraph;
+    const changeSet = storedToBe.changeSet as ChangeSet;
+    const applied = applyChangeSet(asIs.data, changeSet);
+    return NextResponse.json({
+      changeSet,
+      graph,
+      xml: toBpmnXml(graph),
+      changedIds: [...applied.changedIds],
+      changes: [...applied.changeByNode.entries()],
+      skipped: applied.skipped,
+      cached: true,
+    });
   }
 
   try {
-    const changeSet = await generateChangeSet(parsed.data);
-    const applied = applyChangeSet(parsed.data, changeSet);
+    const changeSet = await generateChangeSet(asIs.data);
+    const applied = applyChangeSet(asIs.data, changeSet);
+    saveProcessGraph({
+      sessionId: session.id,
+      specVersion: spec.version,
+      kind: 'tobe',
+      graph: applied.graph,
+      changeSet,
+    });
     return NextResponse.json({
       changeSet,
       graph: applied.graph,
@@ -49,6 +90,7 @@ export async function POST(req: Request) {
       changedIds: [...applied.changedIds],
       changes: [...applied.changeByNode.entries()],
       skipped: applied.skipped,
+      cached: false,
     });
   } catch (err) {
     if (err instanceof ChangeSetGenerationError || err instanceof ChangeSetApplicationError) {

@@ -19,6 +19,7 @@ import {
   entityMentions,
   findings,
   interviewees,
+  processGraphs,
   projects,
   sessions,
   specs,
@@ -654,6 +655,80 @@ export function markDraftSubmitted(sessionId: string, seq: number, db: DB = getD
     .update(answerDrafts)
     .set({ status: 'submitted' })
     .where(and(eq(answerDrafts.sessionId, sessionId), eq(answerDrafts.seq, seq)))
+    .run();
+}
+
+// ── Process graphs (delta v1.1 R5 — DL.38) ───────────────────────────────────
+// A graph is extracted once per (session, spec version, kind) and reused. Model
+// calls are not deterministic, so regenerating per view would leave two reviewers
+// looking at different diagrams of the same specification.
+
+export function getProcessGraph(
+  sessionId: string,
+  specVersion: number,
+  kind: 'asis' | 'tobe',
+  db: DB = getDb(),
+) {
+  return db
+    .select()
+    .from(processGraphs)
+    .where(
+      and(
+        eq(processGraphs.sessionId, sessionId),
+        eq(processGraphs.specVersion, specVersion),
+        eq(processGraphs.kind, kind),
+      ),
+    )
+    .get();
+}
+
+/**
+ * Store a graph, or return the one already stored. Deliberately not an upsert:
+ * a graph is evidence tied to a spec version, and silently replacing one would
+ * invalidate any change-set or review already keyed to it. A new spec version
+ * gets a new row; regenerating an existing one is a separate, explicit act.
+ */
+export function saveProcessGraph(
+  input: {
+    sessionId: string;
+    specVersion: number;
+    kind: 'asis' | 'tobe';
+    graph: unknown;
+    changeSet?: unknown;
+  },
+  db: DB = getDb(),
+) {
+  const existing = getProcessGraph(input.sessionId, input.specVersion, input.kind, db);
+  if (existing) return existing;
+
+  return db
+    .insert(processGraphs)
+    .values({
+      sessionId: input.sessionId,
+      specVersion: input.specVersion,
+      kind: input.kind,
+      graph: input.graph,
+      changeSet: input.changeSet ?? null,
+    })
+    .returning().get();
+}
+
+/** Discard a stored graph so the next request re-extracts it. */
+export function deleteProcessGraph(
+  sessionId: string,
+  specVersion: number,
+  kind: 'asis' | 'tobe',
+  db: DB = getDb(),
+) {
+  return db
+    .delete(processGraphs)
+    .where(
+      and(
+        eq(processGraphs.sessionId, sessionId),
+        eq(processGraphs.specVersion, specVersion),
+        eq(processGraphs.kind, kind),
+      ),
+    )
     .run();
 }
 
