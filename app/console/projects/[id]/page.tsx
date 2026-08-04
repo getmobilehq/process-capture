@@ -172,8 +172,8 @@ async function Register({ projectId, targetProcesses }: { projectId: string; tar
 }
 
 // ── Findings (FR-1.5) ────────────────────────────────────────────────────────
-function Findings({ projectId }: { projectId: string }) {
-  const findings = [...listFindings(projectId)].sort((a, b) => {
+async function Findings({ projectId }: { projectId: string }) {
+  const findings = [...(await listFindings(projectId))].sort((a, b) => {
     const order = { open: 0, acknowledged: 1, resolved: 2 } as const;
     return order[a.status] - order[b.status];
   });

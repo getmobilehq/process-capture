@@ -490,7 +490,7 @@ export async function processUserTurn(
     exMessages.push({ role: 'assistant', content: resp.assistantContent });
     const toolResults: Anthropic.ToolResultBlockParam[] = [];
     for (const call of resp.toolCalls) {
-      const applied = applyTool(session, call, db);
+      const applied = await applyTool(session, call, db);
       toolResults.push({
         type: 'tool_result',
         tool_use_id: call.id,
@@ -578,7 +578,12 @@ export async function processUserTurn(
     db,
   );
 
-  return await result(await getSession(sessionId, db)!.status === 'review', warnings, agentSeq, agentText);
+  return await result(
+    (await getSession(sessionId, db))!.status === 'review',
+    warnings,
+    agentSeq,
+    agentText,
+  );
 }
 
 // ── Completion (FR-4.2, FR-5) ────────────────────────────────────────────────

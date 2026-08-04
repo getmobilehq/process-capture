@@ -70,13 +70,13 @@ describe('coverage transition legality via setCoverage (P1, P3)', () => {
     expect((await setCoverage(session.id, 1, 'answered', db)).state).toBe('answered');
 
     // answered is terminal → any further move is rejected
-    await expect(await setCoverage(session.id, 1, 'partial', db)).rejects.toThrow(
+    await expect(setCoverage(session.id, 1, 'partial', db)).rejects.toThrow(
       IllegalCoverageTransitionError,
     );
 
     // partial → not_applicable is illegal
     await setCoverage(session.id, 2, 'partial', db);
-    await expect(await setCoverage(session.id, 2, 'not_applicable', db)).rejects.toThrow(
+    await expect(setCoverage(session.id, 2, 'not_applicable', db)).rejects.toThrow(
       IllegalCoverageTransitionError,
     );
 
@@ -105,26 +105,18 @@ describe('invite token uniqueness (§5)', () => {
   });
 
   it('rejects a duplicate invite token at the database (unique index)', async () => {
-    const { db, sqlite } = await makeTestDb();
+    const { db, client } = await makeTestDb();
     const { project, interviewee } = await makeSessionFixture(db);
 
-    // Force a collision by inserting a raw row reusing an existing token.
-    expect(() =>
-      sqlite
-        .prepare(
-          `INSERT INTO interviewees (id, project_id, full_name, email, role, invite_token, status, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, 'invited', ?, ?)`,
-        )
-        .run(
-          'dup-id',
-          project.id,
-          'Dupe',
-          'dupe@example.com',
-          'r',
-          interviewee.inviteToken,
-          Date.now(),
-          Date.now(),
-        ),
-    ).toThrow(/UNIQUE/i);
+    // Force a collision by inserting a raw row reusing an existing token. The
+    // guarantee is the database's, not the application's — so it is asserted
+    // against the database directly.
+    await expect(
+      client.query(
+        `INSERT INTO interviewees (id, project_id, full_name, email, role, invite_token, status, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, 'invited', now(), now())`,
+        ['dup-id', project.id, 'Dupe', 'dupe@example.com', 'r', interviewee.inviteToken],
+      ),
+    ).rejects.toThrow(/duplicate key|unique/i);
   });
 });

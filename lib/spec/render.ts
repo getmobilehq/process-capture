@@ -78,7 +78,7 @@ export async function renderSpec(sessionId: string, db: DB = getDb()): Promise<R
     findingsByFacet.set(f.facetId, list);
   }
 
-  const summary = coverageSummaryQuery(sessionId, db);
+  const summary = await coverageSummaryQuery(sessionId, db);
   const coverageSummary = {
     answered: summary.answered,
     unknown: summary.unknown,

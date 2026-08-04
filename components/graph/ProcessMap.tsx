@@ -22,7 +22,7 @@ const KIND_LABEL: Record<Annotation['kind'], string> = {
   metric: 'Metric',
 };
 
-export async function ProcessMap({
+export function ProcessMap({
   xml,
   graph,
   informant,

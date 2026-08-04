@@ -44,7 +44,10 @@ export interface LedgerEntry {
  * Build the ledger for a session. Ordered by facet so a reader — human or model —
  * can see the shape of what is known at a glance.
  */
-export async function buildLedger(sessionId: string, db: DB = getDb()): LedgerEntry[] {
+export async function buildLedger(
+  sessionId: string,
+  db: DB = getDb(),
+): Promise<LedgerEntry[]> {
   const entries: LedgerEntry[] = [];
 
   // Captured checklist elements: the strongest signal that something is settled.
