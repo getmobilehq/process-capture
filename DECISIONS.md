@@ -396,3 +396,16 @@ decision, why it is the minimal option (§10).
   pinned to their target element they travel with pan and zoom, keep the diagram
   legible, and put the facet citation one tap away in the evidence panel — which is
   what R5.3 asks for.
+- **DL.36 · The map is drawn on request, not on load (R5.6)** — Extraction is a
+  live model call, so opening a spec must not silently spend one. The Process map
+  tab triggers a POST (not a GET — it is not a cheap idempotent read and nothing
+  should prefetch it), and the graph route is console-authenticated: the map is
+  analysis for the architecture team, not something the informant is shown.
+- **DL.37 · Unbuilt sub-views are shown disabled, not hidden (R5.6)** — The delta
+  specifies three sub-views. To-be and Opportunities render as disabled tabs so the
+  shape of what is coming is visible and their absence is legible, rather than the
+  page quietly implying the map is all there is.
+- **DL.38 · The graph is not persisted yet (known gap)** — Every visit to the map
+  tab re-extracts, which is a model call per view. The graph belongs in a table
+  keyed by spec version so a map is drawn once per spec. Deliberately deferred
+  rather than half-done; recorded in STATUS as follow-up.

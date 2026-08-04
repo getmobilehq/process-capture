@@ -78,7 +78,16 @@ test('console: create campaign, issue links, interviews complete, conflict surfa
 
   // Register shows coverage and downloadable specs (FR-1.4).
   await page.goto(`/console/projects/${projectId}?tab=register`);
-  await expect(page.getByRole('link', { name: /Download spec v1/i })).toHaveCount(2);
+  // R5.6 — the register now opens the spec detail page rather than downloading
+  // straight away; the download lives there alongside the process map.
+  const specLinks = page.getByRole('link', { name: /Open spec v1/i });
+  await expect(specLinks).toHaveCount(2);
+
+  await specLinks.first().click();
+  await expect(page).toHaveURL(/\/console\/sessions\//);
+  await expect(page.getByRole('tab', { name: /Specification/i })).toBeVisible();
+  await expect(page.getByRole('tab', { name: /Process map/i })).toBeVisible();
+  await page.goBack();
   await expect(page.getByText(/11 answered/).first()).toBeVisible();
 
   // A candidate conflict surfaces on facet 6 across the two informants (FR-1.6).

@@ -147,8 +147,8 @@ function Register({ projectId, targetProcesses }: { projectId: string; targetPro
                   </td>
                   <td style={{ padding: '12px 16px' }}>
                     {specVersion && session ? (
-                      <a className="pc-btn ghost sm" href={`/api/spec/${session.id}`}>
-                        Download spec v{specVersion}
+                      <a className="pc-btn ghost sm" href={`/console/sessions/${session.id}`}>
+                        Open spec v{specVersion}
                       </a>
                     ) : (
                       <CopyLink url={`${config.baseUrl}/i/${interviewee.inviteToken}`} />
