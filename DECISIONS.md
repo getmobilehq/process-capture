@@ -366,3 +366,15 @@ decision, why it is the minimal option (§10).
   carry their facet citation and evidence panel. Baking them into the exported XML
   as text annotations is available behind `includeAnnotations`, but off by default
   so the ARIS import is process semantics rather than commentary.
+- **DL.31 · The extractor forces the tool and stamps provenance server-side (R5.1)** —
+  `tool_choice` pins `emit_process_graph`, so a prose reply is a failure rather than
+  something to parse. `specRef` and `generatedAt` are applied by the server after
+  the call and override anything proposed: the model does not get to assert which
+  spec a graph came from or when (P4). Invalid proposals are returned with their
+  named validation errors and retried once, then the extraction fails loudly —
+  R5.7's requirement that a corrupted spec never yields a silent bad graph.
+- **DL.32 · The retry refuses to trade honesty for validity** — The correction
+  message tells the model explicitly not to invent steps to satisfy a structural
+  rule: if the specification genuinely lacks an end state or a second branch, the
+  right outcome is a failed extraction, not a graph padded until it validates. A
+  diagram that passes because material was fabricated is worse than no diagram.
