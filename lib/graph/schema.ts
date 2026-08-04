@@ -111,6 +111,21 @@ export const changeSchema = z.object({
    */
   resolvesAnnotationId: z.array(z.string().min(1)).min(1),
   rationale: z.string().min(1),
+  /**
+   * Where the change goes. The delta's Change shape carries position only in the
+   * prose description ("insert between diagnostics and the decision"), which a
+   * mechanical apply cannot act on — so placement is structured alongside it.
+   * Optional: `modify` and `remove` locate themselves from `target`.
+   */
+  placement: z
+    .object({
+      after: z.string().optional(),
+      before: z.string().optional(),
+      laneId: z.string().optional(),
+      /** Display name for an added node; falls back to the description. */
+      name: z.string().optional(),
+    })
+    .optional(),
 });
 
 export const changeSetSchema = z.object({
