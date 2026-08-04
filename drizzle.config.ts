@@ -1,13 +1,11 @@
 import { defineConfig } from 'drizzle-kit';
 
-// DATABASE_URL is a libsql-style URL (file:./data/app.db); drizzle-kit's
-// better-sqlite driver wants a bare filesystem path, so strip the scheme.
-const url = process.env.DATABASE_URL ?? 'file:./data/app.db';
-const dbPath = url.replace(/^file:/, '');
-
+// Postgres (Cloud SQL in deployment, a local container or pglite in development).
 export default defineConfig({
   schema: './lib/db/schema.ts',
   out: './drizzle',
-  dialect: 'sqlite',
-  dbCredentials: { url: dbPath },
+  dialect: 'postgresql',
+  dbCredentials: {
+    url: process.env.DATABASE_URL ?? 'postgres://postgres:magpie@localhost:5434/magpie',
+  },
 });

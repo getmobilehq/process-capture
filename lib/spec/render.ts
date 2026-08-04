@@ -54,15 +54,15 @@ function findingCallout(f: Finding): string {
 }
 
 export async function renderSpec(sessionId: string, db: DB = getDb()): Promise<RenderedSpec> {
-  const session = getSession(sessionId, db);
+  const session = await getSession(sessionId, db);
   if (!session) throw new Error(`No session ${sessionId}`);
-  const interviewee = getInterviewee(session.intervieweeId, db)!;
-  const project = getProject(session.projectId, db)!;
+  const interviewee = (await getInterviewee(session.intervieweeId, db))!;
+  const project = (await getProject(session.projectId, db))!;
 
-  const coverage = getCoverage(sessionId, db);
+  const coverage = await getCoverage(sessionId, db);
   const stateByFacet = new Map<number, CoverageStateValue>(coverage.map((c) => [c.facetId, c.state]));
 
-  const live = listLiveStatements(sessionId, db);
+  const live = await listLiveStatements(sessionId, db);
   const statementsByFacet = new Map<number, DraftStatement[]>();
   for (const s of live) {
     const list = statementsByFacet.get(s.facetId) ?? [];
@@ -70,7 +70,7 @@ export async function renderSpec(sessionId: string, db: DB = getDb()): Promise<R
     statementsByFacet.set(s.facetId, list);
   }
 
-  const findings = listFindingsForSession(sessionId, db);
+  const findings = await listFindingsForSession(sessionId, db);
   const findingsByFacet = new Map<number, Finding[]>();
   for (const f of findings) {
     const list = findingsByFacet.get(f.facetId) ?? [];
@@ -78,7 +78,7 @@ export async function renderSpec(sessionId: string, db: DB = getDb()): Promise<R
     findingsByFacet.set(f.facetId, list);
   }
 
-  const summary = coverageSummaryQuery(sessionId, db);
+  const summary = await coverageSummaryQuery(sessionId, db);
   const coverageSummary = {
     answered: summary.answered,
     unknown: summary.unknown,
@@ -90,13 +90,13 @@ export async function renderSpec(sessionId: string, db: DB = getDb()): Promise<R
   // facets the informant explicitly could not answer.
   const openItems = [
     ...findings.filter((f) => f.type === 'unknown_retarget').map((f) => f.detail || f.title),
-    ...openItemsFromElements(getElements(sessionId, db)),
+    ...openItemsFromElements(await getElements(sessionId, db)),
   ];
 
   // Delta v1.1 R1: element-level coverage, so a reader can see what the checklist
   // actually closed rather than inferring it from twelve facet verdicts. Every N/A
   // carries the reason it was ruled out — an unexplained N/A is a silent gap.
-  const elementRows = getElements(sessionId, db);
+  const elementRows = await getElements(sessionId, db);
   const elementCoverage = {
     captured: elementRows.filter((e) => e.state === 'captured').length,
     outstanding: elementRows.filter((e) => e.state === 'outstanding').length,

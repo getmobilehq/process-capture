@@ -1,40 +1,29 @@
 import { test, expect } from '@playwright/test';
-import Database from 'better-sqlite3';
+import { one, query } from './db';
 
-const DB_PATH = './data/e2e.db';
 
 // Pin to a specific seed interviewee that no other spec touches, to avoid
 // cross-test coupling (entry uses the first; console adds its own).
-function tomToken(): string {
-  const db = new Database(DB_PATH, { readonly: true });
-  try {
-    const row = db
-      .prepare('SELECT invite_token FROM interviewees WHERE email = ?')
-      .get('tom.okafor@example.com') as { invite_token: string } | undefined;
-    if (!row) throw new Error('Seed interviewee tom.okafor@example.com not found');
-    return row.invite_token;
-  } finally {
-    db.close();
-  }
+async function tomToken(): Promise<string> {
+  const row = await one<{ invite_token: string }>(
+    'SELECT invite_token FROM interviewees WHERE email = $1',
+    ['tom.okafor@example.com'],
+  );
+  if (!row) throw new Error('Seed interviewee tom.okafor@example.com not found');
+  return row.invite_token;
 }
 
-function sessionFor(token: string): { id: string; status: string } | undefined {
-  const db = new Database(DB_PATH, { readonly: true });
-  try {
-    return db
-      .prepare(
-        `SELECT s.id, s.status FROM sessions s
-         JOIN interviewees i ON i.id = s.interviewee_id
-         WHERE i.invite_token = ? ORDER BY s.created_at DESC LIMIT 1`,
-      )
-      .get(token) as { id: string; status: string } | undefined;
-  } finally {
-    db.close();
-  }
+async function sessionFor(token: string) {
+  return one<{ id: string; status: string }>(
+    `SELECT s.id, s.status FROM sessions s
+     JOIN interviewees i ON i.id = s.interviewee_id
+     WHERE i.invite_token = $1 ORDER BY s.created_at DESC LIMIT 1`,
+    [token],
+  );
 }
 
 test('golden path: mocked interview reaches review with 11 answered + 1 unknown', async ({ page }) => {
-  const token = tomToken();
+  const token = await tomToken();
 
   // Start the interview.
   await page.goto(`/i/${token}`);
@@ -80,13 +69,13 @@ test('golden path: mocked interview reaches review with 11 answered + 1 unknown'
   // captures every element except facet 9's three, which the informant honestly
   // cannot answer — so 37 of 40, not a bare percentage.
   await expect(page.getByText(/37 of 40 things captured/)).toBeVisible();
-  expect(sessionFor(token)!.status).toBe('review');
+  expect((await sessionFor(token))!.status).toBe('review');
 
   // Confirm the review → interview completes and a spec is generated (FR-4.2, FR-5).
   await page.getByRole('button', { name: /finish/i }).click();
   await expect(page.getByText(/Your interview is complete/i)).toBeVisible();
 
-  const session = sessionFor(token)!;
+  const session = await sessionFor(token)!;
   expect(session.status).toBe('complete');
 
   // The generated spec downloads and honours provenance (P4) and email absence (P7).

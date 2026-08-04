@@ -51,7 +51,7 @@ export function getClient(): Anthropic {
 
 export async function callModel(params: CallParams): Promise<ModelResponse> {
   if (config.mockModel) {
-    return mockRespond(params);
+    return await mockRespond(params);
   }
 
   const resp = await getClient().messages.create({

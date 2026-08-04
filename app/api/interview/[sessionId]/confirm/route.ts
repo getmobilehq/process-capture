@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic';
  * open_items rather than papered over (R9.4).
  */
 export async function POST(_req: Request, { params }: { params: { sessionId: string } }) {
-  const session = getSession(params.sessionId);
+  const session = await getSession(params.sessionId);
   if (!session) return NextResponse.json({ error: 'Unknown session' }, { status: 404 });
 
   try {

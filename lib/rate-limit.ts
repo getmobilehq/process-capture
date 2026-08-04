@@ -1,7 +1,13 @@
 /**
  * Minimal in-memory fixed-window rate limiter (BUILD-REQUIREMENTS §8 Phase 7).
- * Per-process, which is sufficient for a single-instance pilot; swap for a shared
- * store if the deployment ever scales horizontally.
+ *
+ * PER-PROCESS. With N app instances the effective limit becomes N × the value
+ * passed here, and nothing reports that it has happened. The pilot deployment is
+ * therefore pinned to `--max-instances=1` (DL.57, DEPLOY-GCP.md) — that flag is a
+ * correctness constraint for this file, not a capacity choice.
+ *
+ * Before scaling out, move the buckets into a table. P6 rules out Redis, and a
+ * table is sufficient at this volume.
  */
 interface Bucket {
   count: number;

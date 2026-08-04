@@ -15,7 +15,7 @@ import {
 async function runToReview(db: TestDb, sessionId: string) {
   await openInterview(sessionId, db);
   for (let i = 0; i < 20; i += 1) {
-    const seq = nextTurnSeq(sessionId, db);
+    const seq = await nextTurnSeq(sessionId, db);
     const res = await processUserTurn(sessionId, { seq, content: 'answer' }, db);
     if (res.review) break;
   }
@@ -23,15 +23,15 @@ async function runToReview(db: TestDb, sessionId: string) {
 
 describe('specification generation (FR-5) — golden path yields a valid spec', () => {
   it('generates a valid, provenance-tagged spec with email absent and open_items populated', async () => {
-    const { db } = makeTestDb();
-    const { session, interviewee } = makeSessionFixture(db);
+    const { db } = await makeTestDb();
+    const { session, interviewee } = await makeSessionFixture(db);
     expect(interviewee.email).toContain('@'); // sanity: the register does hold an email
 
     await runToReview(db, session.id);
     const { specVersion } = await completeInterview(session.id, db);
     expect(specVersion).toBe(1);
 
-    const spec = getLatestSpec(session.id, db)!;
+    const spec = (await getLatestSpec(session.id, db))!;
     const validation = validateSpec(spec.markdown);
     expect(validation.ok).toBe(true);
 
@@ -45,13 +45,13 @@ describe('specification generation (FR-5) — golden path yields a valid spec', 
     expect(spec.coverageSummary).toEqual({ answered: 11, unknown: 1, not_applicable: 0 });
 
     // Session and interviewee are now complete (FR-4.2).
-    expect(getSession(session.id, db)!.status).toBe('complete');
-    expect(getInterviewee(interviewee.id, db)!.status).toBe('complete');
+    expect((await getSession(session.id, db))!.status).toBe('complete');
+    expect((await getInterviewee(interviewee.id, db))!.status).toBe('complete');
   });
 
   it('is idempotent — completing an already-complete session does not add a version', async () => {
-    const { db } = makeTestDb();
-    const { session } = makeSessionFixture(db);
+    const { db } = await makeTestDb();
+    const { session } = await makeSessionFixture(db);
     await runToReview(db, session.id);
     const first = await completeInterview(session.id, db);
     const second = await completeInterview(session.id, db);
@@ -59,8 +59,8 @@ describe('specification generation (FR-5) — golden path yields a valid spec', 
   });
 
   it('regeneration increments the version, never overwrites (FR-5.4)', async () => {
-    const { db } = makeTestDb();
-    const { session } = makeSessionFixture(db);
+    const { db } = await makeTestDb();
+    const { session } = await makeSessionFixture(db);
     await runToReview(db, session.id);
     await completeInterview(session.id, db);
     const regenerated = await generateAndSaveSpec(session.id, db);
@@ -70,12 +70,12 @@ describe('specification generation (FR-5) — golden path yields a valid spec', 
   // Delta v1.1 R9.3 — an open session may be finished early; the informant is
   // never trapped by their own coverage. R9.4 requires the result to be honest.
   it('finishes an open interview early and writes an honest, valid spec (R9.3)', async () => {
-    const { db } = makeTestDb();
-    const { session } = makeSessionFixture(db);
+    const { db } = await makeTestDb();
+    const { session } = await makeSessionFixture(db);
     await openInterview(session.id, db);
 
     // A couple of elements captured; everything else untouched.
-    setElement(
+    await setElement(
       {
         sessionId: session.id,
         facetId: 1,
@@ -89,7 +89,7 @@ describe('specification generation (FR-5) — golden path yields a valid spec', 
     const { specVersion } = await completeInterview(session.id, db);
     expect(specVersion).toBe(1);
 
-    const spec = getLatestSpec(session.id, db)!;
+    const spec = (await getLatestSpec(session.id, db))!;
     expect(validateSpec(spec.markdown).ok).toBe(true);
 
     // Every element not reached is listed for follow-up, with its facet.
@@ -102,10 +102,10 @@ describe('specification generation (FR-5) — golden path yields a valid spec', 
   });
 
   it('still refuses to complete an abandoned session', async () => {
-    const { db } = makeTestDb();
-    const { session } = makeSessionFixture(db);
+    const { db } = await makeTestDb();
+    const { session } = await makeSessionFixture(db);
     await openInterview(session.id, db);
-    updateSession(session.id, { status: 'abandoned' }, db);
+    await updateSession(session.id, { status: 'abandoned' }, db);
     await expect(completeInterview(session.id, db)).rejects.toThrow(/status abandoned/);
   });
 });

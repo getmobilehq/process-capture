@@ -1,19 +1,13 @@
 import { test, expect, type Page } from '@playwright/test';
-import Database from 'better-sqlite3';
+import { one, query } from './db';
 
-const DB_PATH = './data/e2e.db';
 
-function tokensForProject(projectId: string): string[] {
-  const db = new Database(DB_PATH, { readonly: true });
-  try {
-    return (
-      db
-        .prepare('SELECT invite_token FROM interviewees WHERE project_id = ? ORDER BY created_at')
-        .all(projectId) as { invite_token: string }[]
-    ).map((r) => r.invite_token);
-  } finally {
-    db.close();
-  }
+async function tokensForProject(projectId: string): Promise<string[]> {
+  const rows = await query<{ invite_token: string }>(
+    'SELECT invite_token FROM interviewees WHERE project_id = $1 ORDER BY created_at',
+    [projectId],
+  );
+  return rows.map((r) => r.invite_token);
 }
 
 async function login(page: Page) {
@@ -72,7 +66,7 @@ test('console: create campaign, issue links, interviews complete, conflict surfa
   await expect(page.getByRole('button', { name: /Copy link/i })).toHaveCount(2);
 
   // Run both mocked interviews to completion.
-  const tokens = tokensForProject(projectId);
+  const tokens = await tokensForProject(projectId);
   expect(tokens).toHaveLength(2);
   for (const token of tokens) await runMockedInterview(page, token);
 

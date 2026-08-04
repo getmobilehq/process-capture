@@ -63,7 +63,7 @@ const set = (changes: Partial<Change>[]): ChangeSet => ({
 });
 
 describe('applying a change-set (R5.4)', () => {
-  it('never mutates the as-is graph', () => {
+  it('never mutates the as-is graph', async () => {
     const base = graph();
     const before = JSON.stringify(base);
     applyChangeSet(
@@ -73,7 +73,7 @@ describe('applying a change-set (R5.4)', () => {
     expect(JSON.stringify(base)).toBe(before);
   });
 
-  it('splices an added node into the flow after its anchor', () => {
+  it('splices an added node into the flow after its anchor', async () => {
     const { graph: g, changedIds } = applyChangeSet(
       graph(),
       set([{ op: 'add', target: 'act:outage-gate', placement: { after: 'act:diagnose', name: 'Verify outage' } }]),
@@ -87,7 +87,7 @@ describe('applying a change-set (R5.4)', () => {
     expect(validateGraph(g).ok).toBe(true);
   });
 
-  it('splices before an anchor when asked', () => {
+  it('splices before an anchor when asked', async () => {
     const { graph: g } = applyChangeSet(
       graph(),
       set([{ op: 'add', target: 'act:confirm', resolvesAnnotationId: ['ann:backlog'], placement: { before: 'act:book', name: 'Confirm availability' } }]),
@@ -98,7 +98,7 @@ describe('applying a change-set (R5.4)', () => {
   });
 
   // A proposed step exists because of the evidence, so it inherits its facet.
-  it('gives an added node the facet lineage of the bottleneck it resolves', () => {
+  it('gives an added node the facet lineage of the bottleneck it resolves', async () => {
     const { graph: g } = applyChangeSet(
       graph(),
       set([{ op: 'add', target: 'act:x', resolvesAnnotationId: ['ann:backlog'], placement: { after: 'act:book' } }]),
@@ -106,20 +106,20 @@ describe('applying a change-set (R5.4)', () => {
     expect(g.activities.find((a) => a.id === 'act:x')?.sourceFacet).toBe(11);
   });
 
-  it('heals the flow when a node is removed, leaving no gap', () => {
+  it('heals the flow when a node is removed, leaving no gap', async () => {
     const { graph: g } = applyChangeSet(graph(), set([{ op: 'remove', target: 'act:book' }]));
     expect(g.activities.some((a) => a.id === 'act:book')).toBe(false);
     expect(g.flows.some((f) => f.from === 'gw:nba' && f.to === 'ev:closed')).toBe(true);
     expect(validateGraph(g).ok).toBe(true);
   });
 
-  it('drops an annotation whose node was removed rather than leaving it dangling', () => {
+  it('drops an annotation whose node was removed rather than leaving it dangling', async () => {
     const { graph: g } = applyChangeSet(graph(), set([{ op: 'remove', target: 'act:book' }]));
     expect(g.annotations.some((a) => a.id === 'ann:backlog')).toBe(false);
     expect(g.annotations.some((a) => a.id === 'ann:outage')).toBe(true);
   });
 
-  it('renames on modify and records the node as changed', () => {
+  it('renames on modify and records the node as changed', async () => {
     const { graph: g, changedIds, changeByNode } = applyChangeSet(
       graph(),
       set([{ op: 'modify', target: 'act:book', resolvesAnnotationId: ['ann:backlog'], placement: { name: 'Book by priority' } }]),
@@ -130,7 +130,7 @@ describe('applying a change-set (R5.4)', () => {
     expect(changeByNode.get('act:book')?.resolvesAnnotationId).toEqual(['ann:backlog']);
   });
 
-  it('moves a node on reorder without orphaning it', () => {
+  it('moves a node on reorder without orphaning it', async () => {
     const { graph: g } = applyChangeSet(
       graph(),
       set([{ op: 'reorder', target: 'act:book', resolvesAnnotationId: ['ann:backlog'], placement: { after: 'ev:start' } }]),
@@ -139,7 +139,7 @@ describe('applying a change-set (R5.4)', () => {
     expect(validateGraph(g).ok).toBe(true);
   });
 
-  it('is deterministic — the same set applied twice yields identical graphs', () => {
+  it('is deterministic — the same set applied twice yields identical graphs', async () => {
     const cs = set([{ op: 'add', target: 'act:gate', placement: { after: 'act:diagnose', name: 'Gate' } }]);
     expect(JSON.stringify(applyChangeSet(graph(), cs).graph)).toBe(
       JSON.stringify(applyChangeSet(graph(), cs).graph),
@@ -147,19 +147,19 @@ describe('applying a change-set (R5.4)', () => {
   });
 
   // Skipped changes are reported, never silently dropped.
-  it('reports an add with no usable placement instead of guessing where it goes', () => {
+  it('reports an add with no usable placement instead of guessing where it goes', async () => {
     const { skipped, changedIds } = applyChangeSet(graph(), set([{ op: 'add', target: 'act:nowhere' }]));
     expect(skipped).toHaveLength(1);
     expect(skipped[0].reason).toMatch(/placement\.after or placement\.before/);
     expect(changedIds.size).toBe(0);
   });
 
-  it('reports a change targeting a node that is not there', () => {
+  it('reports a change targeting a node that is not there', async () => {
     const { skipped } = applyChangeSet(graph(), set([{ op: 'modify', target: 'act:ghost' }]));
     expect(skipped[0].reason).toMatch(/no node "act:ghost"/);
   });
 
-  it('applies an empty change-set as a faithful copy', () => {
+  it('applies an empty change-set as a faithful copy', async () => {
     const { graph: g, changedIds } = applyChangeSet(graph(), set([]));
     expect(changedIds.size).toBe(0);
     expect(g.activities).toHaveLength(2);
@@ -167,7 +167,7 @@ describe('applying a change-set (R5.4)', () => {
   });
 
   // A change-set that breaks the process is a failure, not a caveat.
-  it('throws rather than returning an incoherent to-be graph', () => {
+  it('throws rather than returning an incoherent to-be graph', async () => {
     expect(() =>
       applyChangeSet(graph(), set([{ op: 'remove', target: 'ev:start' }])),
     ).toThrow(ChangeSetApplicationError);
@@ -175,7 +175,7 @@ describe('applying a change-set (R5.4)', () => {
 });
 
 describe('placement robustness against a real generator (R5.4)', () => {
-  it('falls back to the anchor lane when the proposed lane does not exist', () => {
+  it('falls back to the anchor lane when the proposed lane does not exist', async () => {
     // Observed against the fraud-resolution spec: the generator named "lane:agent"
     // from the spec's language, while extraction had chosen different lane ids.
     const { graph: g, skipped } = applyChangeSet(

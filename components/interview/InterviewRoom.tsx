@@ -328,7 +328,7 @@ export function InterviewRoom(props: InterviewRoomProps) {
       if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error ?? 'Something went wrong');
       const result = await res.json();
       setTurns((prev) => [...prev, { seq: result.agentTurn.seq, speaker: 'agent', content: result.agentTurn.content }]);
-      setCoverage(result.coverage);
+      await setCoverage(result.coverage);
       if (result.elements) setElements(result.elements);
       originRef.current = 'typed';
       setSavedAt(null);

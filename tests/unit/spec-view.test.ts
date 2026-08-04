@@ -26,7 +26,7 @@ Body text here.
 `;
 
 describe('specification rendering', () => {
-  it('reads the provenance fields the renderer writes', () => {
+  it('reads the provenance fields the renderer writes', async () => {
     const { meta } = parseSpec(sample);
     expect(meta.processName).toBe('Fraud Resolution');
     expect(meta.department).toBe('Customer Support');
@@ -36,29 +36,29 @@ describe('specification rendering', () => {
     expect(meta.provenance).toBe('stated');
   });
 
-  it('breaks the coverage block into readable stats', () => {
+  it('breaks the coverage block into readable stats', async () => {
     const { meta } = parseSpec(sample);
     expect(meta.coverage).toContainEqual({ label: 'answered', value: '12' });
     expect(meta.coverage).toContainEqual({ label: 'elements captured', value: '40' });
   });
 
-  it('lists open items, which are what a reader most needs to see', () => {
+  it('lists open items, which are what a reader most needs to see', async () => {
     const { meta } = parseSpec(sample);
     expect(meta.openItems).toHaveLength(2);
     expect(meta.openItems[0]).toMatch(/manager's manager limit/);
   });
 
-  it('treats an empty list as empty rather than as one blank item', () => {
+  it('treats an empty list as empty rather than as one blank item', async () => {
     expect(parseSpec(sample).meta.notApplicable).toEqual([]);
   });
 
-  it('separates the body from the frontmatter', () => {
+  it('separates the body from the frontmatter', async () => {
     const { body } = parseSpec(sample);
     expect(body).not.toContain('process_name');
     expect(body).toContain('## 1. Process identity & context — answered');
   });
 
-  it('degrades gracefully on markdown with no frontmatter', () => {
+  it('degrades gracefully on markdown with no frontmatter', async () => {
     const { meta, body } = parseSpec('# Just a heading\n\nSome text.');
     expect(meta.coverage).toEqual([]);
     expect(body).toContain('Just a heading');

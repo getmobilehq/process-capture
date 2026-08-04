@@ -21,17 +21,23 @@ import type { Interviewee, Session } from '@/lib/db/schema';
 export interface RegisterRow {
   interviewee: Interviewee;
   session: Session | undefined;
-  coverage: ReturnType<typeof coverageSummary> | null;
+  coverage: Awaited<ReturnType<typeof coverageSummary>> | null;
   specVersion: number | null;
 }
 
-export function buildRegister(projectId: string, db: DB = getDb()): RegisterRow[] {
-  return listInterviewees(projectId, db).map((interviewee) => {
-    const session = getLatestSession(interviewee.id, db);
-    const coverage = session ? coverageSummary(session.id, db) : null;
-    const spec = session ? getLatestSpec(session.id, db) : null;
-    return { interviewee, session, coverage, specVersion: spec?.version ?? null };
-  });
+export async function buildRegister(
+  projectId: string,
+  db: DB = getDb(),
+): Promise<RegisterRow[]> {
+  const interviewees = await listInterviewees(projectId, db);
+  return Promise.all(
+    interviewees.map(async (interviewee) => {
+      const session = await getLatestSession(interviewee.id, db);
+      const coverage = session ? await coverageSummary(session.id, db) : null;
+      const spec = session ? await getLatestSpec(session.id, db) : null;
+      return { interviewee, session, coverage, specVersion: spec?.version ?? null };
+    }),
+  );
 }
 
 export interface ConflictEntry {
@@ -58,13 +64,16 @@ function numericDiffer(entries: ConflictEntry[]): boolean {
   return new Set(sets).size > 1;
 }
 
-export function buildConflicts(projectId: string, db: DB = getDb()): ConflictGroup[] {
+export async function buildConflicts(
+  projectId: string,
+  db: DB = getDb(),
+): Promise<ConflictGroup[]> {
   const byFacet = new Map<number, ConflictEntry[]>();
 
-  for (const session of listSessionsForProject(projectId, db)) {
-    const interviewee = getInterviewee(session.intervieweeId, db);
+  for (const session of await listSessionsForProject(projectId, db)) {
+    const interviewee = await getInterviewee(session.intervieweeId, db);
     if (!interviewee) continue;
-    const live = listLiveStatements(session.id, db).filter(
+    const live = (await listLiveStatements(session.id, db)).filter(
       (s) => s.kind === 'rule' || s.kind === 'metric',
     );
     for (const st of live) {

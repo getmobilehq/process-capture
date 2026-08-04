@@ -98,8 +98,7 @@ describe('spec → graph extraction (R5.1)', () => {
     create.mockResolvedValueOnce(toolReply(proposal({ events: [] }))).mockResolvedValueOnce(
       toolReply(proposal({ events: [] })),
     );
-    await expect(
-      extractProcessGraph({ markdown: '# spec', specRef: 's', now: 'n' }),
+    await expect(extractProcessGraph({ markdown: '# spec', specRef: 's', now: 'n' }),
     ).rejects.toThrow(GraphExtractionError);
     const retry = create.mock.calls[1][0].messages.at(-1).content as string;
     expect(retry).toMatch(/Do not invent steps/i);
@@ -108,8 +107,7 @@ describe('spec → graph extraction (R5.1)', () => {
   // R5.7 — a corrupted spec fails loudly rather than yielding a silent bad graph.
   it('gives up after two attempts and reports why', async () => {
     create.mockResolvedValue(toolReply(proposal({ flows: [] })));
-    await expect(
-      extractProcessGraph({ markdown: '# corrupted', specRef: 's', now: 'n' }),
+    await expect(extractProcessGraph({ markdown: '# corrupted', specRef: 's', now: 'n' }),
     ).rejects.toMatchObject({
       name: 'GraphExtractionError',
       errors: expect.arrayContaining([expect.stringMatching(/orphan|outgoing flow/i)]),
@@ -119,8 +117,7 @@ describe('spec → graph extraction (R5.1)', () => {
 
   it('fails rather than guessing when the model returns no tool call', async () => {
     create.mockResolvedValue({ content: [{ type: 'text', text: 'here is a diagram' }] });
-    await expect(
-      extractProcessGraph({ markdown: '# spec', specRef: 's', now: 'n' }),
+    await expect(extractProcessGraph({ markdown: '# spec', specRef: 's', now: 'n' }),
     ).rejects.toThrow(GraphExtractionError);
   });
 

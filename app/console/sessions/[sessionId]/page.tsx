@@ -4,6 +4,7 @@ import {
   getInterviewee,
   getProject, getLatestSpec, getSession } from '@/lib/db/queries';
 import { SpecDetail } from '@/components/graph/SpecDetail';
+import { config } from '@/lib/config';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,13 +13,13 @@ export const dynamic = 'force-dynamic';
  * The Process map tab lives here because the map is analysis for the architecture
  * team, not something the informant is shown.
  */
-export default function SpecDetailPage({ params }: { params: { sessionId: string } }) {
-  const session = getSession(params.sessionId);
+export default async function SpecDetailPage({ params }: { params: { sessionId: string } }) {
+  const session = await getSession(params.sessionId);
   if (!session) redirect('/console');
 
-  const spec = getLatestSpec(session.id);
-  const interviewee = getInterviewee(session.intervieweeId);
-  const project = getProject(session.projectId);
+  const spec = await getLatestSpec(session.id);
+  const interviewee = await getInterviewee(session.intervieweeId);
+  const project = await getProject(session.projectId);
 
   return (
     <main className="pc-wrap">
@@ -53,6 +54,7 @@ export default function SpecDetailPage({ params }: { params: { sessionId: string
             informant={interviewee?.fullName ?? 'the informant'}
             markdown={spec.markdown}
             specVersion={spec.version}
+            toBeEnabled={config.toBeEnabled}
           />
         </div>
       ) : (
