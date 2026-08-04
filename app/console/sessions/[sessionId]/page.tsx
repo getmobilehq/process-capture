@@ -1,5 +1,8 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { getInterviewee, getLatestSpec, getSession } from '@/lib/db/queries';
+import {
+  getInterviewee,
+  getProject, getLatestSpec, getSession } from '@/lib/db/queries';
 import { SpecDetail } from '@/components/graph/SpecDetail';
 import { config } from '@/lib/config';
 
@@ -16,9 +19,24 @@ export default async function SpecDetailPage({ params }: { params: { sessionId: 
 
   const spec = await getLatestSpec(session.id);
   const interviewee = await getInterviewee(session.intervieweeId);
+  const project = await getProject(session.projectId);
 
   return (
     <main className="pc-wrap">
+      {/* The spec page is reached from a campaign register and previously dead-ended
+          there — no way back without the browser button. */}
+      <nav className="pc-crumbs" aria-label="Breadcrumb">
+        <Link href="/console">Campaigns</Link>
+        <span aria-hidden="true">/</span>
+        {project ? (
+          <Link href={`/console/projects/${project.id}?tab=register`}>{project.name}</Link>
+        ) : (
+          <span>Campaign</span>
+        )}
+        <span aria-hidden="true">/</span>
+        <span aria-current="page">{session.processName ?? 'Unnamed process'}</span>
+      </nav>
+
       <span className="pc-secpill purple">
         Process architect
         <i className="pc-cap" aria-hidden="true" />

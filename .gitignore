@@ -38,3 +38,4 @@ tests/eval/*.log
 
 # large source archive kept out of the repo
 /VMO2 Design System.zip
+.next-e2e/
