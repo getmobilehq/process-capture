@@ -2,13 +2,13 @@
  * Apply pending Drizzle migrations to the configured database.
  * Run via `npm run db:migrate` (part of `npm run setup`).
  */
-import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
+import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import { getDb } from '@/lib/db';
 import { config } from '@/lib/config';
 
-function main() {
+async function main() {
   const db = getDb();
-  migrate(db, { migrationsFolder: './drizzle' });
+  await migrate(db as Parameters<typeof migrate>[0], { migrationsFolder: './drizzle' });
   console.log(`Migrations applied to ${config.databaseUrl}`);
 }
 

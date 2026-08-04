@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { makeTestDb } from '../helpers/db';
+import { makeTestDb, type TestDb } from '../helpers/db';
 import {
   addInterviewee,
   createProject,
@@ -38,7 +38,7 @@ describe('entry resolution (FR-2.1)', () => {
   it('resolves an unknown token to a polite dead-end', async () => {
     const { db } = await makeTestDb();
     await seedProject(db);
-    expect(await resolveEntry('not-a-real-token', db).kind).toBe('invalid');
+    expect((await resolveEntry('not-a-real-token', db)).kind).toBe('invalid');
   });
 
   it('resolves a completed interviewee to used_up', async () => {
@@ -48,7 +48,7 @@ describe('entry resolution (FR-2.1)', () => {
     await startSession({ token: interviewee.inviteToken }, db);
     // Manually mark complete to simulate a finished interview.
     await setIntervieweeStatus(interviewee.id, 'complete', db);
-    expect(await resolveEntry(interviewee.inviteToken, db).kind).toBe('used_up');
+    expect((await resolveEntry(interviewee.inviteToken, db)).kind).toBe('used_up');
   });
 });
 
@@ -66,7 +66,7 @@ describe('starting and resuming a session (FR-2.2, FR-3.8)', () => {
     expect(session.processName).toBe('Billing complaint resolution');
     expect(session.startedAt).toBeInstanceOf(Date);
     expect(await getCoverage(session.id, db)).toHaveLength(12);
-    expect(await getInterviewee(interviewee.id, db)!.status).toBe('in_progress');
+    expect((await getInterviewee(interviewee.id, db))!.status).toBe('in_progress');
     expect(await listSessionsForProject(project.id, db)).toHaveLength(1);
   });
 
@@ -97,12 +97,12 @@ describe('starting and resuming a session (FR-2.2, FR-3.8)', () => {
     const { db } = await makeTestDb();
     const { interviewee } = await seedProject(db);
     await setIntervieweeStatus(interviewee.id, 'complete', db);
-    expect(() => await startSession({ token: interviewee.inviteToken }, db)).toThrow(EntryError);
+    await expect(startSession({ token: interviewee.inviteToken }, db)).rejects.toThrow(EntryError);
   });
 
   it('rejects starting on an unknown token', async () => {
     const { db } = await makeTestDb();
     await seedProject(db);
-    expect(() => await startSession({ token: 'nope' }, db)).toThrow(EntryError);
+    await expect(startSession({ token: 'nope' }, db)).rejects.toThrow(EntryError);
   });
 });

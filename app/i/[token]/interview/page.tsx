@@ -42,7 +42,9 @@ export default async function InterviewPage({ params }: { params: { token: strin
 
   // Pick-list option sets for the four closed-set facets (R2.1/R2.2).
   const options = Object.fromEntries(
-    PICKLIST_FACETS.map((f) => [f.id, await picklistOptions(session.id, f.id)]),
+    await Promise.all(
+      PICKLIST_FACETS.map(async (f) => [f.id, await picklistOptions(session.id, f.id)] as const),
+    ),
   );
 
   // R10.3 — anything unsubmitted when the tab went away comes back with them.

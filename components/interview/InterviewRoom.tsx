@@ -46,7 +46,7 @@ function fmt(elapsedSec: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-export async function InterviewRoom(props: InterviewRoomProps) {
+export function InterviewRoom(props: InterviewRoomProps) {
   const [turns, setTurns] = useState<TurnView[]>(props.initialTurns);
   const [coverage, setCoverage] = useState<CoverageView[]>(props.initialCoverage);
   const [elements, setElements] = useState<ElementRow[]>(props.initialElements);

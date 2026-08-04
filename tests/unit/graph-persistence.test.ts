@@ -34,7 +34,7 @@ describe('process graph persistence (DL.38)', () => {
       db,
     );
     expect((second.graph as { name: string }).name).toBe('first');
-    expect((await getProcessGraph(session.id, 1, 'asis', db)!.graph as { name: string }).name).toBe(
+    expect(((await getProcessGraph(session.id, 1, 'asis', db))!.graph as { name: string }).name).toBe(
       'first',
     );
   });
@@ -53,8 +53,8 @@ describe('process graph persistence (DL.38)', () => {
       },
       db,
     );
-    expect((await getProcessGraph(session.id, 1, 'asis', db)!.graph as { name: string }).name).toBe('a');
-    expect((await getProcessGraph(session.id, 1, 'tobe', db)!.graph as { name: string }).name).toBe('b');
+    expect(((await getProcessGraph(session.id, 1, 'asis', db))!.graph as { name: string }).name).toBe('a');
+    expect(((await getProcessGraph(session.id, 1, 'tobe', db))!.graph as { name: string }).name).toBe('b');
   });
 
   // A new spec is a new graph; the old one stays put as the record of what was
@@ -64,8 +64,8 @@ describe('process graph persistence (DL.38)', () => {
     const { session } = await makeSessionFixture(db);
     await saveProcessGraph({ sessionId: session.id, specVersion: 1, kind: 'asis', graph: graph('v1') }, db);
     await saveProcessGraph({ sessionId: session.id, specVersion: 2, kind: 'asis', graph: graph('v2') }, db);
-    expect((await getProcessGraph(session.id, 1, 'asis', db)!.graph as { name: string }).name).toBe('v1');
-    expect((await getProcessGraph(session.id, 2, 'asis', db)!.graph as { name: string }).name).toBe('v2');
+    expect(((await getProcessGraph(session.id, 1, 'asis', db))!.graph as { name: string }).name).toBe('v1');
+    expect(((await getProcessGraph(session.id, 2, 'asis', db))!.graph as { name: string }).name).toBe('v2');
   });
 
   it('carries the change-set alongside a to-be graph', async () => {
@@ -89,7 +89,7 @@ describe('process graph persistence (DL.38)', () => {
     const { db } = await makeTestDb();
     const { session } = await makeSessionFixture(db);
     await saveProcessGraph({ sessionId: session.id, specVersion: 1, kind: 'asis', graph: graph('a') }, db);
-    expect(await getProcessGraph(session.id, 1, 'asis', db)!.changeSet).toBeNull();
+    expect((await getProcessGraph(session.id, 1, 'asis', db))!.changeSet).toBeNull();
   });
 
   it('allows an explicit discard so a graph can be regenerated', async () => {
@@ -100,7 +100,7 @@ describe('process graph persistence (DL.38)', () => {
     expect(await getProcessGraph(session.id, 1, 'asis', db)).toBeUndefined();
 
     await saveProcessGraph({ sessionId: session.id, specVersion: 1, kind: 'asis', graph: graph('new') }, db);
-    expect((await getProcessGraph(session.id, 1, 'asis', db)!.graph as { name: string }).name).toBe('new');
+    expect(((await getProcessGraph(session.id, 1, 'asis', db))!.graph as { name: string }).name).toBe('new');
   });
 
   it('returns nothing for a spec version that has no graph', async () => {

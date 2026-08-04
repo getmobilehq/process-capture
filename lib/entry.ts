@@ -27,7 +27,10 @@ export type EntryResolution =
     };
 
 /** Resolve a token to what the entry route should render (FR-2.1). */
-export async function resolveEntry(token: string, db: DB = getDb()): EntryResolution {
+export async function resolveEntry(
+  token: string,
+  db: DB = getDb(),
+): Promise<EntryResolution> {
   const interviewee = await getIntervieweeByToken(token, db);
   if (!interviewee) return { kind: 'invalid' };
   if (interviewee.status === 'complete') return { kind: 'used_up', interviewee };

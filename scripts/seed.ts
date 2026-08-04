@@ -20,7 +20,7 @@ const INTERVIEWEES = [
 async function main() {
   const db = getDb();
 
-  let project = db.select().from(projects).where(eq(projects.name, CAMPAIGN_NAME)).get();
+  let project = (await db.select().from(projects).where(eq(projects.name, CAMPAIGN_NAME)))[0];
 
   if (project) {
     console.log(`Campaign "${CAMPAIGN_NAME}" already exists (${project.id}) — skipping create.`);

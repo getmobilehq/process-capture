@@ -52,7 +52,7 @@ describe('data-loss protection (R10.3)', () => {
 
     const restored = await undoDiscard(session.id, db);
     expect(restored?.content).toBe(content);
-    expect(await getActiveDraft(session.id, db)?.content).toBe(content);
+    expect((await getActiveDraft(session.id, db))?.content).toBe(content);
   });
 
   it('never hard-deletes: a discarded draft is still on disk, awaiting Undo', async () => {
@@ -90,7 +90,7 @@ describe('data-loss protection (R10.3)', () => {
     // The worst a pair of taps can do is discard, and that is reversible.
     await discardDraft(session.id, db);
     await discardDraft(session.id, db); // second tap is a no-op, nothing left active
-    expect(await undoDiscard(session.id, db)?.content).toBe(content);
+    expect((await undoDiscard(session.id, db))?.content).toBe(content);
   });
 
   it('keeps exactly one active draft after an undo, so recovery is unambiguous', async () => {
@@ -101,7 +101,7 @@ describe('data-loss protection (R10.3)', () => {
     await saveDraft({ sessionId: session.id, seq: 2, content: 'second' }, db);
 
     await undoDiscard(session.id, db);
-    expect(await getActiveDraft(session.id, db)?.content).toBe('first');
+    expect((await getActiveDraft(session.id, db))?.content).toBe('first');
   });
 
   it('retires the draft once its turn is submitted, so it is not offered for recovery', async () => {

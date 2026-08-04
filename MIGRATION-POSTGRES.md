@@ -21,47 +21,43 @@ merged. Started because SQLite cannot survive Cloud Run's ephemeral filesystem.
   then `create database magpie`. Port 5434 because 5433 is taken by another project.
   `DATABASE_URL=postgres://postgres:magpie@localhost:5434/magpie`
 
-## State: 51 type errors left (was 744), 12 of 21 test files passing
+## State: complete on this branch — 0 type errors, 192/192 tests, build green
 
-### Complete and at zero errors
+`lint` ✓ · `typecheck` ✓ · **192 unit/integration tests, 21/21 files** ✓ · `build` ✓
+
+### What changed
 
 - **`lib/db/schema.ts`** — pg dialect: `timestamptz`, `jsonb`, real `boolean`.
 - **`lib/db/index.ts`** — postgres.js, pool capped at 5 (`DB_POOL_MAX`).
   **`DB` is `PgDatabase<PgQueryResultHKT, typeof schema>`, not the postgres-js
-  type.** That single change took 284 → 113: pinning `DB` to one driver makes the
-  pglite test double structurally incompatible. Do not narrow it again.
-- **`lib/db/queries.ts`** — all 59 queries async, both transactions converted.
-- **`tests/helpers/db.ts`** — pglite per test, migrations applied.
-- **`scripts/eval.ts`** — its throwaway database is pglite too, so the eval harness
-  runs on the same engine as deployment.
-- **`lib/console.ts`** — `buildRegister` rewritten with `Promise.all`; a `.map()`
-  callback cannot await.
+  type.** That one line fixed 171 errors: pinning `DB` to a single driver makes the
+  pglite test double structurally incompatible. **Do not narrow it again.**
+- **`lib/db/queries.ts`** — all 59 queries async; both transactions converted.
+- **`tests/helpers/db.ts`** and **`scripts/eval.ts`** — pglite. Tests and evals run
+  on the same engine as Cloud SQL, with no container needed for `npm test`.
+- **`scripts/migrate.ts`, `scripts/seed.ts`** — pg migrator; `.get()` removed.
+- **`lib/console.ts`, `app/console/page.tsx`, `app/i/[token]/interview/page.tsx`** —
+  `Promise.all` where a `.map()` callback needed to await, which it cannot.
 - **`drizzle/`** — single Postgres baseline. **`drizzle.config.ts`** — `postgresql`.
 
-### Remaining — 51 errors, thinly spread
+### Still to do before this is deployable
 
-`tests/unit/graph-persistence.test.ts` (7), `lib/engine/engine.ts` (6),
-`tests/integration/entry.test.ts` (4), `lib/spec/draft.ts` (4),
-`lib/eval/informant.ts` (4), `lib/eval/assertions.ts` (4), and a long tail of 1–3.
+1. **`lib/rate-limit.ts` is still an in-memory Map.** Correct at
+   `--max-instances=1`, wrong above it: the limit becomes N × instances. Either pin
+   the instance count for the pilot or move the buckets into a table.
+2. **Playwright has not been re-run** — it needs a Postgres for its own database,
+   where it previously used a SQLite file. `playwright.config.ts` still sets
+   `DATABASE_URL=file:./data/e2e.db`.
+3. **The eval harness has not had a live run** on Postgres. This is the one that
+   matters most: the engine's persistence path is where a dropped `await` hides
+   silently, and only the live harness exercises it end to end. Unit tests use a
+   mocked model.
+4. **`data/*.db` and `better-sqlite3`** can be removed once the above pass.
 
-All of one family: **an await inside a callback that is not async**, or property
-access on an un-parenthesised await. `lib/spec/draft.ts` and `lib/eval/*` are the
-only files not yet touched at all.
+### Lesson recorded
 
-### Do not use another broad regex
-
-Four passes were tried. Each plateaued or regressed, and three caused damage that
-had to be repaired: `whisperExt` wrongly marked async; `await expect(x).resolves`
-mangled into `(await expect(x)).resolves`; and synchronous functions
-(`deriveFacetState`, `facetMeter`) given `Promise<>` return types they should never
-have had. The count went 744 → 570 → 574 → 284 → 113 → 88 → 51, and the two rises
-were self-inflicted.
-
-51 is small enough to fix per file with `npx tsc --noEmit` in a tight loop. That is
-now both faster and safer than another pattern match.
-
-### Before merging
-
-`lint`, `typecheck`, `test`, `playwright test`, `build`, **and one live eval run** —
-the engine's persistence path is where a dropped promise hides silently, and only
-the live harness exercises it end to end.
+Seven regex passes; three caused damage needing repair (`whisperExt` wrongly async;
+`await expect(x).resolves` mangled; synchronous functions given `Promise<>` return
+types). The count went 744 → 570 → 574 → 284 → 113 → 88 → 51 → 0, and every rise
+was self-inflicted. The last 51 went quickly precisely because they were fixed
+file-by-file with `tsc` in the loop rather than by another pattern match.

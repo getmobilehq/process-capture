@@ -45,8 +45,8 @@ describe('specification generation (FR-5) — golden path yields a valid spec', 
     expect(spec.coverageSummary).toEqual({ answered: 11, unknown: 1, not_applicable: 0 });
 
     // Session and interviewee are now complete (FR-4.2).
-    expect(await getSession(session.id, db)!.status).toBe('complete');
-    expect(await getInterviewee(interviewee.id, db)!.status).toBe('complete');
+    expect((await getSession(session.id, db))!.status).toBe('complete');
+    expect((await getInterviewee(interviewee.id, db))!.status).toBe('complete');
   });
 
   it('is idempotent — completing an already-complete session does not add a version', async () => {
@@ -106,6 +106,6 @@ describe('specification generation (FR-5) — golden path yields a valid spec', 
     const { session } = await makeSessionFixture(db);
     await openInterview(session.id, db);
     await updateSession(session.id, { status: 'abandoned' }, db);
-    await expect(await completeInterview(session.id, db)).rejects.toThrow(/status abandoned/);
+    await expect(completeInterview(session.id, db)).rejects.toThrow(/status abandoned/);
   });
 });

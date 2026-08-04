@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-export async function CopyLink({ url }: { url: string }) {
+export function CopyLink({ url }: { url: string }) {
   const [copied, setCopied] = useState(false);
 
   async function copy() {

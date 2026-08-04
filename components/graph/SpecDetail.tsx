@@ -25,7 +25,7 @@ interface ToBe {
   skipped: { change: Change; reason: string }[];
 }
 
-export async function SpecDetail({
+export function SpecDetail({
   sessionId,
   processName,
   informant,

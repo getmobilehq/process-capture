@@ -80,7 +80,9 @@ async function runOnce(persona: Persona, runIndex: number, runDir: string) {
 
   const hardCap = persona.turnLimit + 20;
   for (let i = 0; i < hardCap; i += 1) {
-    const lastAgent = [...listTurns(session.id, db)].reverse().find((t) => t.speaker === 'agent');
+    const lastAgent = [...(await listTurns(session.id, db))]
+      .reverse()
+      .find((t) => t.speaker === 'agent');
     if (!lastAgent) break;
     const answer = await informantReply(persona, lastAgent.content);
     const seq = await nextTurnSeq(session.id, db);
@@ -196,7 +198,7 @@ async function main() {
   process.exit(personas.every((p) => personaPasses[p.id] === runs) ? 0 : 1);
 }
 
-(await main()).catch((err) => {
+main().catch((err: unknown) => {
   console.error(err);
   process.exit(1);
 });

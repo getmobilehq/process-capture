@@ -34,7 +34,7 @@ describe('server tool validation (FR-3.2, P1) — every illegal call is rejected
     const { session } = await makeSessionFixture(db);
     const r = await applyTool(session, call('set_coverage', { facetId: 1, state }), db);
     expect(r.isError).toBe(true);
-    expect(await getCoverageState(session.id, 1, db)!.state).toBe('pending');
+    expect((await getCoverageState(session.id, 1, db))!.state).toBe('pending');
   });
 
   it('rejects an illegal coverage transition (terminal → terminal)', async () => {
@@ -97,7 +97,7 @@ describe('server tool validation (FR-3.2, P1) — every illegal call is rejected
       );
       expect(r.isError).toBe(false);
       const expected = i === elements.length - 1 ? 'answered' : 'partial';
-      expect(await getCoverageState(session.id, 3, db)!.state).toBe(expected);
+      expect((await getCoverageState(session.id, 3, db))!.state).toBe(expected);
     }
   });
 
