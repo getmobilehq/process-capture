@@ -542,3 +542,15 @@ decision, why it is the minimal option (§10).
   the one R1 was built to close. The reverse transition stays illegal, so this
   remains a one-way door and terminal states are still immutable in the direction
   that matters.
+- **DL.59 · The E2E server builds to its own directory (`NEXT_DIST_DIR`)** — A
+  `next build`, or a second `next dev`, sharing `.next` with a running dev server
+  overwrites the chunks that server has open. It does not crash: it stays up,
+  serves 500s, then connection-refused, and writes no error to its own log — only
+  a `[?25h` on shutdown, which reads like a clean exit. Diagnosed by reproducing
+  it: healthy server → `npm run build` → same PID alive → `/health` 500. The
+  Playwright webServer now sets `NEXT_DIST_DIR=.next-e2e`, so the suite and a dev
+  server coexist in one working tree.
+- **DL.60 · The spec detail page carries breadcrumbs** — It is only reachable from
+  a campaign register and previously dead-ended there, with no way back but the
+  browser button. Campaigns / campaign / process, with the middle crumb returning
+  to `?tab=register` so the reader lands on the list they came from.
