@@ -486,3 +486,16 @@ decision, why it is the minimal option (§10).
   a failure there returns an empty array rather than losing the graph, and an
   annotation aimed at a node that does not exist is dropped rather than left to
   dangle at render time.
+- **DL.52 · A proposed lane id is a suggestion, not a fact** — Found rendering the
+  real fraud spec: the change-set generator named `lane:agent` from the
+  specification's language while extraction had chosen different lane ids, and
+  `applyChangeSet` trusted it — throwing away the entire to-be over a bad
+  reference. An unknown lane now falls back to the anchor node's own lane. The
+  generator writes in the informant's vocabulary; only the graph knows its ids.
+- **DL.53 · Extraction is a reading, not the reading** — Two runs over the same
+  specification produced 23 activities/13 annotations and 15 activities/14
+  annotations. Both valid, both faithful, neither canonical. This is inherent to a
+  model-driven extraction and is exactly why graphs are persisted (DL.49) rather
+  than regenerated per view — but it means a reviewer is approving *a* reading of
+  the spec, and the pilot should say so rather than implying the diagram is derived
+  mechanically.

@@ -173,3 +173,23 @@ describe('applying a change-set (R5.4)', () => {
     ).toThrow(ChangeSetApplicationError);
   });
 });
+
+describe('placement robustness against a real generator (R5.4)', () => {
+  it('falls back to the anchor lane when the proposed lane does not exist', () => {
+    // Observed against the fraud-resolution spec: the generator named "lane:agent"
+    // from the spec's language, while extraction had chosen different lane ids.
+    const { graph: g, skipped } = applyChangeSet(
+      graph(),
+      set([
+        {
+          op: 'add',
+          target: 'act:check',
+          placement: { after: 'act:book', laneId: 'lane:does-not-exist', name: 'Check' },
+        },
+      ]),
+    );
+    expect(skipped).toHaveLength(0);
+    expect(g.activities.find((a) => a.id === 'act:check')?.laneId).toBe('lane:agent');
+    expect(validateGraph(g).ok).toBe(true);
+  });
+});

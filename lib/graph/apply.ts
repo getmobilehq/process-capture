@@ -128,7 +128,17 @@ export function applyChangeSet(graph: ProcessGraph, changeSet: ChangeSet): Appli
           });
           break;
         }
-        const laneId = place.laneId ?? next.activities.find((a) => a.id === anchor)?.laneId ?? next.lanes[0]?.id;
+        // A proposed lane id is a suggestion, not a fact: the model names lanes
+        // from the spec's language, which need not match the ids extraction chose.
+        // Fall back to the anchor's own lane rather than failing the whole to-be.
+        const laneIds = new Set(next.lanes.map((l) => l.id));
+        const anchorLane = [...next.activities, ...next.gateways, ...next.events].find(
+          (n) => n.id === anchor,
+        )?.laneId;
+        const laneId =
+          (place.laneId && laneIds.has(place.laneId) ? place.laneId : undefined) ??
+          anchorLane ??
+          next.lanes[0]?.id;
         if (!laneId) {
           skipped.push({ change, reason: 'the graph has no lane to place the node in' });
           break;
