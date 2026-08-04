@@ -70,13 +70,13 @@ describe('coverage transition legality via setCoverage (P1, P3)', () => {
     expect((await setCoverage(session.id, 1, 'answered', db)).state).toBe('answered');
 
     // answered is terminal → any further move is rejected
-    await expect(setCoverage(session.id, 1, 'partial', db)).rejects.toThrow(
+    await expect(await setCoverage(session.id, 1, 'partial', db)).rejects.toThrow(
       IllegalCoverageTransitionError,
     );
 
     // partial → not_applicable is illegal
     await setCoverage(session.id, 2, 'partial', db);
-    await expect(setCoverage(session.id, 2, 'not_applicable', db)).rejects.toThrow(
+    await expect(await setCoverage(session.id, 2, 'not_applicable', db)).rejects.toThrow(
       IllegalCoverageTransitionError,
     );
 

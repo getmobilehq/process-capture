@@ -106,6 +106,6 @@ describe('specification generation (FR-5) — golden path yields a valid spec', 
     const { session } = await makeSessionFixture(db);
     await openInterview(session.id, db);
     await updateSession(session.id, { status: 'abandoned' }, db);
-    await expect(completeInterview(session.id, db)).rejects.toThrow(/status abandoned/);
+    await expect(await completeInterview(session.id, db)).rejects.toThrow(/status abandoned/);
   });
 });

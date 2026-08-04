@@ -106,7 +106,7 @@ const PLAYBACK =
   'controls as something for the compliance team, since that is not your area. Does that all sound right, ' +
   'or is there anything you would change before I close?';
 
-export async function mockRespond(params: CallParams): ModelResponse {
+export async function mockRespond(params: CallParams): Promise<ModelResponse> {
   const { sessionId, lastAppliedTool, noTools, db } = params;
   const session = (await getSession(sessionId, db))!;
   const coverage = await getCoverage(sessionId, db);

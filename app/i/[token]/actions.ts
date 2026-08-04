@@ -8,13 +8,13 @@ import { startSession, EntryError } from '@/lib/entry';
  * prefilled identity, then redirect into the interview. Server action invoked by
  * the entry form.
  */
-export function startInterview(formData: FormData): Promise<void> {
+export async function startInterview(formData: FormData): Promise<void> {
   const token = String(formData.get('token') ?? '');
   const processRaw = formData.get('processName');
   const processName = processRaw ? String(processRaw) : null;
 
   try {
-    startSession({
+    await startSession({
       token,
       processName: processName === '__something_else__' ? null : processName,
       fullName: str(formData.get('fullName')),

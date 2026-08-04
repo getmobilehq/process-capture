@@ -21,49 +21,47 @@ merged. Started because SQLite cannot survive Cloud Run's ephemeral filesystem.
   then `create database magpie`. Port 5434 because 5433 is taken by another project.
   `DATABASE_URL=postgres://postgres:magpie@localhost:5434/magpie`
 
-## State: 113 type errors left (was 744)
+## State: 51 type errors left (was 744), 12 of 21 test files passing
 
-### Complete
+### Complete and at zero errors
 
-- **`lib/db/schema.ts`** — pg dialect. `timestamptz`, `jsonb`, real `boolean`.
+- **`lib/db/schema.ts`** — pg dialect: `timestamptz`, `jsonb`, real `boolean`.
 - **`lib/db/index.ts`** — postgres.js, pool capped at 5 (`DB_POOL_MAX`).
-  **`DB` is typed as `PgDatabase<PgQueryResultHKT, typeof schema>`**, not the
-  postgres-js type. That one change took the error count from 284 to 113: pinning
-  `DB` to a single driver makes the pglite test double structurally incompatible,
-  which is what forced 170 cascading errors. Do not narrow it again.
-- **`lib/db/queries.ts`** — all 59 query functions async, both transactions
-  converted. Zero errors.
-- **`tests/helpers/db.ts`** — pglite, migrations applied per instance. Zero errors.
-- **`drizzle/`** — regenerated as a single Postgres baseline (`0000_cute_bucky.sql`).
-  The five SQLite-dialect migrations are gone; there was no production data.
-- **`drizzle.config.ts`** — `dialect: 'postgresql'`.
+  **`DB` is `PgDatabase<PgQueryResultHKT, typeof schema>`, not the postgres-js
+  type.** That single change took 284 → 113: pinning `DB` to one driver makes the
+  pglite test double structurally incompatible. Do not narrow it again.
+- **`lib/db/queries.ts`** — all 59 queries async, both transactions converted.
+- **`tests/helpers/db.ts`** — pglite per test, migrations applied.
+- **`scripts/eval.ts`** — its throwaway database is pglite too, so the eval harness
+  runs on the same engine as deployment.
+- **`lib/console.ts`** — `buildRegister` rewritten with `Promise.all`; a `.map()`
+  callback cannot await.
+- **`drizzle/`** — single Postgres baseline. **`drizzle.config.ts`** — `postgresql`.
 
-### Remaining — 113 errors, all one shape
+### Remaining — 51 errors, thinly spread
 
-Every one is a missing `await` or a missing `async`, concentrated in:
-`lib/engine/engine.ts` (17), `tests/integration/entry.test.ts` (16),
-`scripts/eval.ts` (14), `lib/engine/model.ts` (10),
-`app/console/projects/[id]/page.tsx` (7), `tests/unit/graph-persistence.test.ts` (7).
+`tests/unit/graph-persistence.test.ts` (7), `lib/engine/engine.ts` (6),
+`tests/integration/entry.test.ts` (4), `lib/spec/draft.ts` (4),
+`lib/eval/informant.ts` (4), `lib/eval/assertions.ts` (4), and a long tail of 1–3.
 
-The common survivors are **awaits inside non-async callbacks** — `.map()`,
-`.filter()`, `.find()` bodies that now call an async query — and **property access
-on an un-parenthesised await** inside those callbacks.
+All of one family: **an await inside a callback that is not async**, or property
+access on an un-parenthesised await. `lib/spec/draft.ts` and `lib/eval/*` are the
+only files not yet touched at all.
 
-**Do not use another broad regex.** Three passes were tried and each plateaued or
-regressed (744 → 570 → 574 → 284 → 113, with two rounds of self-inflicted damage:
-`whisperExt` wrongly marked async, and `await expect(x).resolves` mangled into
-`(await expect(x)).resolves`). The remaining set is small enough to fix per file
-with `npx tsc --noEmit` in a tight loop, which is both faster and safer now.
+### Do not use another broad regex
 
-### Test suite
+Four passes were tried. Each plateaued or regressed, and three caused damage that
+had to be repaired: `whisperExt` wrongly marked async; `await expect(x).resolves`
+mangled into `(await expect(x)).resolves`; and synchronous functions
+(`deriveFacetState`, `facetMeter`) given `Promise<>` return types they should never
+have had. The count went 744 → 570 → 574 → 284 → 113 → 88 → 51, and the two rises
+were self-inflicted.
 
-`npm test`: **10 of 21 files passing.** The failures are the files that still have
-type errors, not behavioural failures — pglite itself works, migrations apply, and
-the fixtures build. Once the awaits land, expect the suite to tell the truth about
-the refactor.
+51 is small enough to fix per file with `npx tsc --noEmit` in a tight loop. That is
+now both faster and safer than another pattern match.
 
 ### Before merging
 
 `lint`, `typecheck`, `test`, `playwright test`, `build`, **and one live eval run** —
-the engine's persistence path is where a dropped promise hides, and only the live
-harness exercises it end to end.
+the engine's persistence path is where a dropped promise hides silently, and only
+the live harness exercises it end to end.
