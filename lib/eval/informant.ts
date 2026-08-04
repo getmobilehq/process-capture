@@ -44,7 +44,7 @@ How to answer:
 The facts you know:
 ${factsBlock(persona)}`;
 
-  const resp = await getClient().messages.create({
+  const resp = (await getClient()).messages.create({
     model: config.model,
     max_tokens: 512,
     temperature: config.modelTemperature,

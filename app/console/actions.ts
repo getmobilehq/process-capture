@@ -24,7 +24,7 @@ export async function createProjectAction(formData: FormData): Promise<void> {
   const targetProcesses = parseProcesses(String(formData.get('targetProcesses') ?? ''));
   if (!name || !department) redirect('/console?error=missing');
 
-  const project = createProject({ name, department, description, targetProcesses });
+  const project = await createProject({ name, department, description, targetProcesses });
   redirect(`/console/projects/${project.id}`);
 }
 
@@ -37,7 +37,7 @@ export async function addIntervieweeAction(formData: FormData): Promise<void> {
   if (!projectId || !fullName || !email || !role) {
     redirect(`/console/projects/${projectId}?tab=register&error=missing`);
   }
-  addInterviewee({ projectId, fullName, email, role });
+  await addInterviewee({ projectId, fullName, email, role });
   redirect(`/console/projects/${projectId}?tab=register`);
 }
 
@@ -50,7 +50,7 @@ export async function updateFindingAction(formData: FormData): Promise<void> {
   const patch: { status?: 'open' | 'acknowledged' | 'resolved'; routedTo?: string } = {};
   if (status) patch.status = String(status) as 'open' | 'acknowledged' | 'resolved';
   if (routedTo !== null) patch.routedTo = String(routedTo).trim();
-  if (findingId) updateFinding(findingId, patch);
+  if (findingId) await updateFinding(findingId, patch);
   redirect(`/console/projects/${projectId}?tab=findings`);
 }
 
@@ -61,7 +61,7 @@ export async function raiseConflictAction(formData: FormData): Promise<void> {
   const title = String(formData.get('title') ?? '').trim();
   const detail = String(formData.get('detail') ?? '').trim();
   if (projectId && Number.isInteger(facetId) && title) {
-    raiseFinding({
+    await raiseFinding({
       projectId,
       sessionId: null,
       facetId,

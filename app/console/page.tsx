@@ -8,7 +8,7 @@ export const runtime = 'nodejs';
 
 export default function ConsoleHome() {
   requireAdmin();
-  const projects = listProjects();
+  const projects = await listProjects();
 
   return (
     <main className="pc-wrap">
@@ -51,7 +51,7 @@ export default function ConsoleHome() {
           ) : (
             <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 12 }}>
               {projects.map((p) => {
-                const count = listInterviewees(p.id).length;
+                const count = (await listInterviewees(p.id)).length;
                 return (
                   <li key={p.id}>
                     <Link

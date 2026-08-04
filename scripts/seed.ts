@@ -17,7 +17,7 @@ const INTERVIEWEES = [
   { fullName: 'Sarah Whitfield', email: 'sarah.whitfield@example.com', role: 'Team leader' },
 ];
 
-function main() {
+async function main() {
   const db = getDb();
 
   let project = db.select().from(projects).where(eq(projects.name, CAMPAIGN_NAME)).get();
@@ -25,7 +25,7 @@ function main() {
   if (project) {
     console.log(`Campaign "${CAMPAIGN_NAME}" already exists (${project.id}) — skipping create.`);
   } else {
-    project = createProject(
+    project = await createProject(
       {
         name: CAMPAIGN_NAME,
         department: 'Consumer operations',
@@ -38,7 +38,7 @@ function main() {
     console.log(`Created campaign "${CAMPAIGN_NAME}" (${project.id}).`);
   }
 
-  const existing = listInterviewees(project.id, db);
+  const existing = await listInterviewees(project.id, db);
   const existingEmails = new Set(existing.map((i) => i.email));
 
   for (const person of INTERVIEWEES) {
@@ -46,7 +46,7 @@ function main() {
       console.log(`  interviewee ${person.email} already present — skipping.`);
       continue;
     }
-    const row = addInterviewee({ projectId: project.id, ...person }, db);
+    const row = await addInterviewee({ projectId: project.id, ...person }, db);
     console.log(`  added ${row.fullName} (${row.role}) → ${config.baseUrl}/i/${row.inviteToken}`);
   }
 

@@ -50,7 +50,7 @@ export async function POST(req: Request, { params }: { params: { sessionId: stri
     );
   }
 
-  const session = getSession(params.sessionId);
+  const session = await getSession(params.sessionId);
   if (!session) return NextResponse.json({ error: 'Unknown session' }, { status: 404 });
 
   let body: unknown;
@@ -65,36 +65,36 @@ export async function POST(req: Request, { params }: { params: { sessionId: stri
 
   switch (parsed.data.action) {
     case 'save': {
-      const row = saveDraft({
+      const row = await saveDraft({
         sessionId: session.id,
         seq: parsed.data.seq,
         content: parsed.data.content,
         origin: parsed.data.origin,
       });
-      return NextResponse.json({ draft: view(row), canUndo: Boolean(getUndoableDraft(session.id)) });
+      return NextResponse.json({ draft: view(row), canUndo: Boolean(await getUndoableDraft(session.id)) });
     }
     case 'discard': {
-      discardDraft(session.id);
-      return NextResponse.json({ draft: null, canUndo: Boolean(getUndoableDraft(session.id)) });
+      await discardDraft(session.id);
+      return NextResponse.json({ draft: null, canUndo: Boolean(await getUndoableDraft(session.id)) });
     }
     case 'undo': {
-      const row = undoDiscard(session.id);
+      const row = await undoDiscard(session.id);
       if (!row) return NextResponse.json({ error: 'Nothing to undo.' }, { status: 409 });
-      return NextResponse.json({ draft: view(row), canUndo: Boolean(getUndoableDraft(session.id)) });
+      return NextResponse.json({ draft: view(row), canUndo: Boolean(await getUndoableDraft(session.id)) });
     }
     case 'rerecord': {
-      const row = startNewTake(session.id, parsed.data.seq);
-      return NextResponse.json({ draft: view(row), canUndo: Boolean(getUndoableDraft(session.id)) });
+      const row = await startNewTake(session.id, parsed.data.seq);
+      return NextResponse.json({ draft: view(row), canUndo: Boolean(await getUndoableDraft(session.id)) });
     }
   }
 }
 
 /** Session recovery (R10.3): what was unsubmitted when the tab went away. */
 export async function GET(_req: Request, { params }: { params: { sessionId: string } }) {
-  const session = getSession(params.sessionId);
+  const session = await getSession(params.sessionId);
   if (!session) return NextResponse.json({ error: 'Unknown session' }, { status: 404 });
   return NextResponse.json({
-    draft: view(getActiveDraft(session.id)),
-    canUndo: Boolean(getUndoableDraft(session.id)),
+    draft: view(await getActiveDraft(session.id)),
+    canUndo: Boolean(await getUndoableDraft(session.id)),
   });
 }

@@ -61,7 +61,7 @@ export async function draftFacet(input: {
     .map((s) => `- (${s.kind}${s.verbatim ? ', verbatim' : ''}) ${s.content}`)
     .join('\n');
 
-  const resp = await getClient().messages.create({
+  const resp = (await getClient()).messages.create({
     model: config.model,
     max_tokens: 1024,
     temperature: config.modelTemperature,

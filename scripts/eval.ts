@@ -64,15 +64,15 @@ async function runOnce(persona: Persona, runIndex: number, runDir: string) {
   resetUsage();
   const db = makeDb();
 
-  const project = createProject(
+  const project = await createProject(
     { name: `Eval ${persona.id}`, department: 'Eval', targetProcesses: [persona.processName] },
     db,
   );
-  const interviewee = addInterviewee(
+  const interviewee = await addInterviewee(
     { projectId: project.id, fullName: 'Eval Informant', email: 'eval-informant@example.com', role: persona.role },
     db,
   );
-  const session = createSession(
+  const session = await createSession(
     { intervieweeId: interviewee.id, projectId: project.id, processName: persona.processName },
     db,
   );
@@ -84,7 +84,7 @@ async function runOnce(persona: Persona, runIndex: number, runDir: string) {
     const lastAgent = [...listTurns(session.id, db)].reverse().find((t) => t.speaker === 'agent');
     if (!lastAgent) break;
     const answer = await informantReply(persona, lastAgent.content);
-    const seq = nextTurnSeq(session.id, db);
+    const seq = await nextTurnSeq(session.id, db);
     const res = await processUserTurn(session.id, { seq, content: answer }, db, { maxTurns: hardCap });
     if (res.review) break;
   }
@@ -95,13 +95,13 @@ async function runOnce(persona: Persona, runIndex: number, runDir: string) {
     // Spec generation/validation failed — A8 will record it.
   }
 
-  const spec = getLatestSpec(session.id, db);
-  const turns = listTurns(session.id, db).map((t) => ({ seq: t.seq, speaker: t.speaker, content: t.content }));
+  const spec = await getLatestSpec(session.id, db);
+  const turns = (await listTurns(session.id, db)).map((t) => ({ seq: t.seq, speaker: t.speaker, content: t.content }));
   const data: EvalData = {
     turns,
-    statements: listLiveStatements(session.id, db).map((s) => ({ facetId: s.facetId, content: s.content, kind: s.kind })),
-    coverage: getCoverage(session.id, db).map((c) => ({ facetId: c.facetId, state: c.state })),
-    findings: listFindingsForSession(session.id, db).map((f) => ({ facetId: f.facetId, type: f.type })),
+    statements: (await listLiveStatements(session.id, db)).map((s) => ({ facetId: s.facetId, content: s.content, kind: s.kind })),
+    coverage: (await getCoverage(session.id, db)).map((c) => ({ facetId: c.facetId, state: c.state })),
+    findings: (await listFindingsForSession(session.id, db)).map((f) => ({ facetId: f.facetId, type: f.type })),
     spec: { markdown: spec?.markdown ?? '', openItems: spec?.openItems ?? [] },
     specValidation: spec ? validateSpec(spec.markdown) : { ok: false, errors: ['no spec generated'] },
     userTurnCount: turns.filter((t) => t.speaker === 'user').length,

@@ -21,7 +21,7 @@ export default function ProjectPage({
   searchParams: { tab?: string };
 }) {
   requireAdmin();
-  const project = getProject(params.id);
+  const project = await getProject(params.id);
   if (!project) redirect('/console');
 
   const tab: Tab =
