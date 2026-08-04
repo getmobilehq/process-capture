@@ -34,9 +34,64 @@ Rules, in order of importance:
 2. Transcribe, do not invent. If the specification does not describe a step, it is not in the graph — no matter how obviously it "should" be there. Gaps in the spec are gaps in the graph; someone else's job is to notice them.
 3. Structural rules the server enforces, so build to them: exactly one start event; at least one end event; every flow references nodes that exist; every gateway has at least two outgoing flows; no orphan nodes; a boundary event names the activity it is attached to.
 4. Ids are stable, readable and prefixed by kind: lane:agent, ev:start, act:run-diagnostics, gw:next-best-action, ann:booking-backlog, and plain f1, f2… for flows.
-5. Annotations are for evidenced problems only. A bottleneck annotation must quote or cite the facet that establishes it — a number, a duration, a stated frustration. Do not annotate something you merely suspect.
+5. Return an empty annotations array. A separate pass reads the bottlenecks — your job here is the structure of the process, and nothing else.
 
 Return the graph through the emit_process_graph tool. Do not write prose.`;
+
+/**
+ * Annotations are a second, dedicated pass.
+ *
+ * Asking one call for both structure and evidence produced valid graphs with zero
+ * annotations against a specification whose facet 12 described four separate
+ * bottlenecks — the model spent its attention satisfying the structural rules and
+ * treated the annotations as an afterthought. Asked on its own, with the node list
+ * already fixed, it finds them reliably. One concern per call.
+ */
+const ANNOTATION_SYSTEM = `You read a process specification and a list of the activities already extracted from it, and you record the problems the specification states.
+
+You are not diagnosing the process. You are transcribing what the informant said was wrong with it.
+
+Rules:
+1. Look hardest at facet 12 (bottlenecks and issues), facet 11 (performance) and facet 9 (risk, controls and compliance). That is where stated problems live. Facet 5 and facet 8 often name the friction — rekeying between systems, manual copying, swivel chairing — without calling it a bottleneck; that still counts.
+2. A problem is anything the informant described as slow, manual, repetitive, error-prone, queued, waiting, duplicated, or done by hand where a system could do it. A stated volume that strains the process is a metric worth recording. A control that could fail is a risk.
+3. Attach each one to the specific activity it affects, using an id from the list given to you. If a problem spans several activities, attach it to the one where it bites hardest and say so in the text. Never invent an activity id.
+4. Quote the specification wherever a phrase carries the point — the quote is what makes this evidence rather than opinion.
+5. Do not invent problems, and do not soften them. If the specification says agents copy IMEI numbers by hand across three platforms, that is a bottleneck, not a nuance.
+6. If the specification genuinely describes no problems, return an empty array. That is rare and should feel wrong before you do it.
+
+Return through the emit_annotations tool. Do not write prose.`;
+
+const ANNOTATION_TOOL = {
+  name: 'emit_annotations',
+  description: 'Emit the problems the specification states, each attached to an activity.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      annotations: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', description: 'Stable readable id, e.g. ann:manual-form-entry.' },
+            targetId: { type: 'string', description: 'An id from the activity list given to you.' },
+            kind: { type: 'string', enum: ['bottleneck', 'risk', 'metric'] },
+            text: { type: 'string', description: 'The problem, in one or two plain sentences.' },
+            evidence: {
+              type: 'object',
+              properties: {
+                facet: { type: 'integer', description: 'The facet that establishes it.' },
+                quote: { type: 'string', description: 'A short quote from the specification.' },
+              },
+              required: ['facet'],
+            },
+          },
+          required: ['id', 'targetId', 'kind', 'text', 'evidence'],
+        },
+      },
+    },
+    required: ['annotations'],
+  },
+};
 
 const TOOL = {
   name: 'emit_process_graph',
@@ -131,7 +186,19 @@ const TOOL = {
         },
       },
     },
-    required: ['processId', 'name', 'lanes', 'events', 'activities', 'gateways', 'flows'],
+    // annotations is required: an omitted array was silently accepted as "no
+    // problems found", which is how a spec full of stated bottlenecks produced a
+    // clean diagram and an empty change-set.
+    required: [
+      'processId',
+      'name',
+      'lanes',
+      'events',
+      'activities',
+      'gateways',
+      'flows',
+      'annotations',
+    ],
   },
 };
 
@@ -139,6 +206,52 @@ const TOOL = {
  * Extract a graph from a spec's markdown. `now` is injected rather than read from
  * the clock so the result is reproducible in tests and evals.
  */
+/**
+ * Second pass: the problems the specification states, attached to the activities
+ * already extracted. Failure here is not fatal — a diagram without annotations is
+ * still a useful diagram, whereas losing the structure because the evidence pass
+ * stumbled would not be.
+ */
+export async function extractAnnotations(
+  markdown: string,
+  graph: ProcessGraph,
+): Promise<ProcessGraph['annotations']> {
+  const nodeList = [...graph.activities, ...graph.gateways]
+    .map((n) => `- ${n.id} — ${n.name}`)
+    .join('\n');
+
+  try {
+    const resp = await getClient().messages.create({
+      model: config.model,
+      max_tokens: config.modelMaxTokens,
+      temperature: config.modelTemperature,
+      system: ANNOTATION_SYSTEM,
+      tools: [ANNOTATION_TOOL],
+      tool_choice: { type: 'tool', name: ANNOTATION_TOOL.name },
+      messages: [
+        {
+          role: 'user',
+          content: `Activities and decisions already extracted — attach each problem to one of these ids:
+${nodeList}
+
+The specification:
+---
+${markdown}
+---`,
+        },
+      ],
+    });
+
+    const call = resp.content.find(
+      (b): b is Extract<typeof b, { type: 'tool_use' }> => b.type === 'tool_use',
+    );
+    const proposed = (call?.input as { annotations?: unknown[] })?.annotations ?? [];
+    return proposed as ProcessGraph['annotations'];
+  } catch {
+    return [];
+  }
+}
+
 export async function extractProcessGraph(input: {
   markdown: string;
   specRef: string;
@@ -182,7 +295,24 @@ export async function extractProcessGraph(input: {
     };
 
     const result = validateGraph(candidate);
-    if (result.ok) return candidate as ProcessGraph;
+    if (result.ok) {
+      const graph = candidate as ProcessGraph;
+      graph.annotations = await extractAnnotations(input.markdown, graph);
+      // Re-validate: an annotation pointing at a node that is not there would
+      // dangle on the diagram, so it is caught here rather than at render time.
+      const withNotes = validateGraph(graph);
+      if (!withNotes.ok) {
+        // Drop the offending annotations rather than lose the whole graph — the
+        // structure is sound and is the more valuable artefact.
+        const ids = new Set([
+          ...graph.events.map((n) => n.id),
+          ...graph.activities.map((n) => n.id),
+          ...graph.gateways.map((n) => n.id),
+        ]);
+        graph.annotations = graph.annotations.filter((a) => ids.has(a.targetId));
+      }
+      return graph;
+    }
 
     lastErrors = result.errors;
     if (attempt < MAX_ATTEMPTS) {

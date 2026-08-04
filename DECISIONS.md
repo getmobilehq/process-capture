@@ -473,3 +473,16 @@ decision, why it is the minimal option (§10).
   graph nobody else can see. Both the change-set and the derived graph are
   persisted, so a reviewer returns to the same proposal they left rather than a
   freshly generated one.
+- **DL.51 · Annotations are a second, dedicated extraction pass** — Found by running
+  the chain against a real spec (`spec-fraud-resolution-v1.md`, 12/12 facets
+  answered). A single call asked for both structure and evidence returned a **valid
+  graph with zero annotations**, against a specification whose facet 12 described
+  four separate bottlenecks in detail. A direct probe confirmed the model reads them
+  easily when that is its only job — it was spending its attention satisfying the
+  structural rules and treating annotations as an afterthought. Splitting them into
+  `extractAnnotations`, run after the node list is fixed, took the same spec from
+  0 to 14 annotations and from 0 to 3 generated changes. One concern per call.
+  The annotation pass is non-fatal: the structure is the more valuable artefact, so
+  a failure there returns an empty array rather than losing the graph, and an
+  annotation aimed at a node that does not exist is dropped rather than left to
+  dangle at render time.
