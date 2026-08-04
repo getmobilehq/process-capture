@@ -49,7 +49,7 @@ function graph(): ProcessGraph {
 }
 
 describe('BPMN 2.0 serialisation (R5.2)', () => {
-  it('serialises a valid graph to a well-formed document', () => {
+  it('serialises a valid graph to a well-formed document', async () => {
     expect(validateGraph(graph()).ok).toBe(true);
     const xml = toBpmnXml(graph());
     expect(xml.startsWith('<?xml version="1.0" encoding="UTF-8"?>')).toBe(true);
@@ -60,18 +60,18 @@ describe('BPMN 2.0 serialisation (R5.2)', () => {
 
   // Colons are namespace separators — an unsanitised id yields a file no BPMN
   // tool will open, which is the failure mode that matters for the ARIS path.
-  it('sanitises ids into valid XML names', () => {
+  it('sanitises ids into valid XML names', async () => {
     expect(xmlId('act:diagnose')).toBe('act_diagnose');
     expect(xmlId('9lives')).toBe('_9lives');
     expect(toBpmnXml(graph())).not.toMatch(/id="[^"]*:[^"]*"/);
   });
 
-  it('is deterministic — the same graph always yields identical XML', () => {
+  it('is deterministic — the same graph always yields identical XML', async () => {
     expect(toBpmnXml(graph())).toBe(toBpmnXml(graph()));
   });
 
   // The round-trip assertion R5.2 asks for.
-  it('round-trips: re-extracting the elements matches the graph', () => {
+  it('round-trips: re-extracting the elements matches the graph', async () => {
     const g = graph();
     const got = extractFromXml(toBpmnXml(g));
 
@@ -90,7 +90,7 @@ describe('BPMN 2.0 serialisation (R5.2)', () => {
     }
   });
 
-  it('gives every node a DI shape and every flow a DI edge', () => {
+  it('gives every node a DI shape and every flow a DI edge', async () => {
     const g = graph();
     const got = extractFromXml(toBpmnXml(g));
     const nodeCount = g.events.length + g.activities.length + g.gateways.length;
@@ -99,22 +99,22 @@ describe('BPMN 2.0 serialisation (R5.2)', () => {
     expect(got.edges).toHaveLength(g.flows.length);
   });
 
-  it('attaches a boundary event to its activity', () => {
+  it('attaches a boundary event to its activity', async () => {
     expect(toBpmnXml(graph())).toContain('attachedToRef="act_visit"');
   });
 
-  it('names conditional flows so a branch is readable', () => {
+  it('names conditional flows so a branch is readable', async () => {
     const xml = toBpmnXml(graph());
     expect(xml).toContain('name="remote fix"');
     expect(xml).toContain('name="engineer needed"');
   });
 
-  it('assigns every node to its lane', () => {
+  it('assigns every node to its lane', async () => {
     const xml = toBpmnXml(graph());
     expect(xml).toMatch(/<bpmn:lane id="lane_agent"[\s\S]*?act_diagnose[\s\S]*?<\/bpmn:lane>/);
   });
 
-  it('escapes characters that would otherwise break the document', () => {
+  it('escapes characters that would otherwise break the document', async () => {
     const g = graph();
     g.activities[0].name = 'Check "billing" & <notes>';
     const xml = toBpmnXml(g);
@@ -122,7 +122,7 @@ describe('BPMN 2.0 serialisation (R5.2)', () => {
     expect(xml).not.toContain('<notes>');
   });
 
-  it('leaves annotations out by default and includes them on request', () => {
+  it('leaves annotations out by default and includes them on request', async () => {
     expect(toBpmnXml(graph())).not.toContain('textAnnotation');
     const withNotes = toBpmnXml(graph(), { includeAnnotations: true });
     expect(withNotes).toContain('<bpmn:textAnnotation');
@@ -132,7 +132,7 @@ describe('BPMN 2.0 serialisation (R5.2)', () => {
 });
 
 describe('layered layout (R5.2)', () => {
-  it('places every node left of what follows it', () => {
+  it('places every node left of what follows it', async () => {
     const g = graph();
     const { nodes } = layoutGraph(g);
     const start = nodes.get('ev:start')!;
@@ -142,13 +142,13 @@ describe('layered layout (R5.2)', () => {
     expect(diag.x).toBeLessThan(gw.x);
   });
 
-  it('separates lanes vertically so the result reads as swimlanes', () => {
+  it('separates lanes vertically so the result reads as swimlanes', async () => {
     const { nodes } = layoutGraph(graph());
     expect(nodes.get('ev:start')!.y).not.toBe(nodes.get('act:diagnose')!.y);
     expect(nodes.get('act:visit')!.y).toBeGreaterThan(nodes.get('act:diagnose')!.y);
   });
 
-  it('attaches a boundary event to its activity edge, not floating in a column', () => {
+  it('attaches a boundary event to its activity edge, not floating in a column', async () => {
     const { nodes } = layoutGraph(graph());
     const host = nodes.get('act:visit')!;
     const boundary = nodes.get('ev:not-home')!;
@@ -157,7 +157,7 @@ describe('layered layout (R5.2)', () => {
     expect(boundary.y).toBe(host.y + host.height - boundary.height / 2);
   });
 
-  it('terminates on a rework loop rather than hanging', () => {
+  it('terminates on a rework loop rather than hanging', async () => {
     const g = graph();
     g.flows.push({ id: 'f7', from: 'act:visit', to: 'act:diagnose', condition: 'rework' });
     const { nodes } = layoutGraph(g);

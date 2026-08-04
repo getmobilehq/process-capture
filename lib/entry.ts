@@ -52,7 +52,7 @@ export class EntryError extends Error {
  * interviewee to in_progress. `processName` is the picked target process (FR-2.3)
  * or null for "something else" / open elicitation.
  */
-export function startSession(
+export async function startSession(
   input: {
     token: string;
     processName?: string | null;
@@ -61,7 +61,7 @@ export function startSession(
     role?: string;
   },
   db: DB = getDb(),
-): Session {
+): Promise<Session> {
   const interviewee = await getIntervieweeByToken(input.token, db);
   if (!interviewee) throw new EntryError('invalid');
   if (interviewee.status === 'complete') throw new EntryError('used_up');

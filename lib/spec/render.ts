@@ -56,8 +56,8 @@ function findingCallout(f: Finding): string {
 export async function renderSpec(sessionId: string, db: DB = getDb()): Promise<RenderedSpec> {
   const session = await getSession(sessionId, db);
   if (!session) throw new Error(`No session ${sessionId}`);
-  const interviewee = await getInterviewee(session.intervieweeId, db)!;
-  const project = await getProject(session.projectId, db)!;
+  const interviewee = (await getInterviewee(session.intervieweeId, db))!;
+  const project = (await getProject(session.projectId, db))!;
 
   const coverage = await getCoverage(sessionId, db);
   const stateByFacet = new Map<number, CoverageStateValue>(coverage.map((c) => [c.facetId, c.state]));

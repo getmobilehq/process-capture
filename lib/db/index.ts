@@ -10,11 +10,18 @@
  */
 
 import postgres from 'postgres';
-import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
 import { config } from '@/lib/config';
 import * as schema from './schema';
 
-export type DB = PostgresJsDatabase<typeof schema>;
+/**
+ * Widened to the common Drizzle Postgres type rather than the postgres-js one, so
+ * the pglite instance the tests build is structurally assignable. Pinning DB to a
+ * single driver would force the suite to run against a real server — the thing
+ * pglite exists to avoid.
+ */
+export type DB = PgDatabase<PgQueryResultHKT, typeof schema>;
 
 let sql: ReturnType<typeof postgres> | null = null;
 let db: DB | null = null;

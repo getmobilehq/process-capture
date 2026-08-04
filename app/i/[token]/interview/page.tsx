@@ -29,7 +29,7 @@ export default async function InterviewPage({ params }: { params: { token: strin
     await openInterview(latest.id);
   }
 
-  const session = await getSession(latest.id)!;
+  const session = (await getSession(latest.id))!;
   const turns = (await listTurns(session.id)).map((t) => ({ seq: t.seq, speaker: t.speaker, content: t.content }));
   const coverage = (await getCoverage(session.id)).map((c) => ({ facetId: c.facetId, state: c.state }));
   const elements = (await getElements(session.id)).map((e) => ({

@@ -212,7 +212,7 @@ const TOOL = {
  * still a useful diagram, whereas losing the structure because the evidence pass
  * stumbled would not be.
  */
-export function extractAnnotations(
+export async function extractAnnotations(
   markdown: string,
   graph: ProcessGraph,
 ): Promise<ProcessGraph['annotations']> {
