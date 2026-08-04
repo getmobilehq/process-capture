@@ -409,3 +409,21 @@ decision, why it is the minimal option (§10).
   tab re-extracts, which is a model call per view. The graph belongs in a table
   keyed by spec version so a map is drawn once per spec. Deliberately deferred
   rather than half-done; recorded in STATUS as follow-up.
+- **DL.39 · The generator is offered only the evidenced bottlenecks (R5.4)** — The
+  prompt carries the annotations and the flow, and says "these, and only these, are
+  what a change may resolve". Nothing else about the process is offered as raw
+  material, because the failure mode to design against is a plausible improvement
+  attached to a bottleneck it does not actually address.
+- **DL.40 · No evidence means an empty set, and no model call** — A graph with no
+  annotations returns `{ changes: [] }` without calling the model at all. Inviting
+  a model to propose improvements for a process with no evidenced problems is
+  inviting it to invent one.
+- **DL.41 · The retry tells the model to return fewer changes** — When validation
+  fails, the correction explicitly says not to attach a change to an unrelated
+  annotation to get it through, and that returning fewer changes is a correct
+  answer. Without that, the cheapest way to satisfy "every change resolves a
+  bottleneck" is to mislabel, which would defeat the constraint while passing it.
+- **DL.42 · `verified` is false by construction (R5.4 gate)** — The server stamps
+  `provenance: 'proposed'` and `verified: false` after the call, overriding anything
+  proposed. The generator cannot mark its own work verified; only a human reviewer
+  can, and that path is not built yet.
