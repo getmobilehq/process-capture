@@ -448,3 +448,14 @@ decision, why it is the minimal option (§10).
   cannot be applied (no usable placement, a target that is not there) comes back in
   `skipped` with its reason. A to-be diagram missing a change the reviewer was told
   about is worse than one that says which change it could not place.
+- **DL.47 · The to-be is generated against the graph on screen, not a fresh
+  extraction (R5.4)** — The to-be route takes the as-is graph in the request body.
+  Re-extracting would risk proposing changes against a different graph than the one
+  the reviewer is looking at, since extraction is not deterministic. Once graphs are
+  persisted (DL.38) this should take a graph id instead — the body is a stand-in for
+  the missing persistence, not the intended shape.
+- **DL.48 · Provenance styling is structural, per Appendix A point 3** — Changed
+  elements get a bpmn-js marker driving a dashed, tinted treatment, plus a badge
+  naming the bottleneck the change resolves. A legend states both states in words.
+  A reader can tell changed from unchanged before reading a label, which is what the
+  reference renderings make normative.
