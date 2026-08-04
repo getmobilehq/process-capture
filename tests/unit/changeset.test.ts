@@ -90,7 +90,7 @@ describe('to-be change-set generation (R5.4)', () => {
   it('rejects a change attached to an annotation that does not exist', async () => {
     const bogus = { ...goodChange, resolvesAnnotationId: ['ann:imaginary'] };
     create.mockResolvedValue(reply({ changes: [bogus] }));
-    await expect(generateChangeSet(graph())).rejects.toMatchObject({
+    await expect(await generateChangeSet(graph())).rejects.toMatchObject({
       name: 'ChangeSetGenerationError',
       errors: expect.arrayContaining([expect.stringMatching(/unknown annotation "ann:imaginary"/)]),
     });
@@ -131,6 +131,6 @@ describe('to-be change-set generation (R5.4)', () => {
 
   it('fails rather than guessing when the model returns no tool call', async () => {
     create.mockResolvedValue({ content: [{ type: 'text', text: 'I would suggest…' }] });
-    await expect(generateChangeSet(graph())).rejects.toThrow(ChangeSetGenerationError);
+    await expect(await generateChangeSet(graph())).rejects.toThrow(ChangeSetGenerationError);
   });
 });

@@ -6,8 +6,8 @@ import { DeadEnd } from '@/components/entry/DeadEnd';
 // Entry always reflects live DB state (token may have been used up).
 export const dynamic = 'force-dynamic';
 
-export default function EntryPage({ params }: { params: { token: string } }) {
-  const resolution = resolveEntry(params.token);
+export default async function EntryPage({ params }: { params: { token: string } }) {
+  const resolution = await resolveEntry(params.token);
 
   if (resolution.kind !== 'ok') {
     return (

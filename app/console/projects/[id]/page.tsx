@@ -67,8 +67,8 @@ export default async function ProjectPage({
 }
 
 // ── Register (FR-1.4) ────────────────────────────────────────────────────────
-function Register({ projectId, targetProcesses }: { projectId: string; targetProcesses: string[] }) {
-  const rows = buildRegister(projectId);
+async function Register({ projectId, targetProcesses }: { projectId: string; targetProcesses: string[] }) {
+  const rows = await buildRegister(projectId);
 
   return (
     <>
@@ -228,8 +228,8 @@ function Findings({ projectId }: { projectId: string }) {
 }
 
 // ── Candidate conflicts (FR-1.6) ─────────────────────────────────────────────
-function Conflicts({ projectId }: { projectId: string }) {
-  const groups = buildConflicts(projectId);
+async function Conflicts({ projectId }: { projectId: string }) {
+  const groups = await buildConflicts(projectId);
 
   if (groups.length === 0) {
     return (

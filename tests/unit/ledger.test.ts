@@ -22,7 +22,7 @@ describe('claims ledger (R4.3)', () => {
       db,
     );
 
-    const ledger = buildLedger(session.id, db);
+    const ledger = await buildLedger(session.id, db);
     const entry = ledger.find((e) => e.elementId === 'triggers.initiating');
     expect(entry?.claim).toBe('A customer ringing in about a wrong charge.');
     expect(entry?.provenance).toBe('stated');
@@ -36,7 +36,7 @@ describe('claims ledger (R4.3)', () => {
       { sessionId: session.id, facetId: 6, kind: 'rule', content: 'Advisors can credit up to £25.' },
       db,
     );
-    const entry = buildLedger(session.id, db).find((e) => e.claim.includes('£25'));
+    const entry = (await buildLedger(session.id, db)).find((e) => e.claim.includes('£25'));
     expect(entry?.turnRef).toBeDefined();
     expect(entry?.facetId).toBe(6);
   });
@@ -54,7 +54,7 @@ describe('claims ledger (R4.3)', () => {
       },
       db,
     );
-    const block = ledgerBlock(buildLedger(session.id, db));
+    const block = ledgerBlock(await buildLedger(session.id, db));
     expect(block).toMatch(/never ask for any of this again/i);
     expect(block).toContain('Putting wrong charges right. [stated]');
   });
@@ -62,7 +62,7 @@ describe('claims ledger (R4.3)', () => {
   it('is empty for a fresh session, so it never fabricates prior knowledge', async () => {
     const { db } = await makeTestDb();
     const { session } = await makeSessionFixture(db);
-    expect(buildLedger(session.id, db)).toEqual([]);
+    expect(await buildLedger(session.id, db)).toEqual([]);
     expect(ledgerBlock([])).toBe('');
   });
 
@@ -79,7 +79,7 @@ describe('claims ledger (R4.3)', () => {
       },
       db,
     );
-    const ledger = buildLedger(session.id, db);
+    const ledger = await buildLedger(session.id, db);
     expect(facetHasClaims(ledger, 1)).toBe(true);
     expect(facetHasClaims(ledger, 12)).toBe(false);
   });
@@ -101,7 +101,7 @@ describe('claims ledger (R4.3)', () => {
       },
       db,
     );
-    const claims = buildLedger(session.id, db).map((e) => e.claim);
+    const claims = (await buildLedger(session.id, db)).map((e) => e.claim);
     expect(claims).toContain('Sorry — about forty a day.');
     expect(claims).not.toContain('About twenty a day.');
   });

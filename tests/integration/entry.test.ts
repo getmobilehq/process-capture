@@ -10,7 +10,7 @@ import {
 } from '@/lib/db/queries';
 import { resolveEntry, startSession, EntryError } from '@/lib/entry';
 
-async function seedProject(db: ReturnType<typeof makeTestDb>['db']) {
+async function seedProject(db: TestDb) {
   const project = await createProject(
     { name: 'Consumer operations', department: 'Consumer operations', targetProcesses: ['Billing complaint resolution'] },
     db,
@@ -25,8 +25,8 @@ async function seedProject(db: ReturnType<typeof makeTestDb>['db']) {
 describe('entry resolution (FR-2.1)', () => {
   it('resolves a valid token to an entry screen', async () => {
     const { db } = await makeTestDb();
-    const { interviewee } = seedProject(db);
-    const res = resolveEntry(interviewee.inviteToken, db);
+    const { interviewee } = await seedProject(db);
+    const res = await resolveEntry(interviewee.inviteToken, db);
     expect(res.kind).toBe('ok');
     if (res.kind === 'ok') {
       expect(res.interviewee.id).toBe(interviewee.id);
@@ -37,27 +37,27 @@ describe('entry resolution (FR-2.1)', () => {
 
   it('resolves an unknown token to a polite dead-end', async () => {
     const { db } = await makeTestDb();
-    seedProject(db);
-    expect(resolveEntry('not-a-real-token', db).kind).toBe('invalid');
+    await seedProject(db);
+    expect(await resolveEntry('not-a-real-token', db).kind).toBe('invalid');
   });
 
   it('resolves a completed interviewee to used_up', async () => {
     const { db } = await makeTestDb();
-    const { interviewee } = seedProject(db);
+    const { interviewee } = await seedProject(db);
     // Complete the interview by finishing a started session flow.
-    startSession({ token: interviewee.inviteToken }, db);
+    await startSession({ token: interviewee.inviteToken }, db);
     // Manually mark complete to simulate a finished interview.
     await setIntervieweeStatus(interviewee.id, 'complete', db);
-    expect(resolveEntry(interviewee.inviteToken, db).kind).toBe('used_up');
+    expect(await resolveEntry(interviewee.inviteToken, db).kind).toBe('used_up');
   });
 });
 
 describe('starting and resuming a session (FR-2.2, FR-3.8)', () => {
   it('creates a session, seeds 12 coverage rows, and moves interviewee to in_progress', async () => {
     const { db } = await makeTestDb();
-    const { project, interviewee } = seedProject(db);
+    const { project, interviewee } = await seedProject(db);
 
-    const session = startSession(
+    const session = await startSession(
       { token: interviewee.inviteToken, processName: 'Billing complaint resolution' },
       db,
     );
@@ -72,10 +72,10 @@ describe('starting and resuming a session (FR-2.2, FR-3.8)', () => {
 
   it('resumes the same open session instead of creating a second (FR-3.8)', async () => {
     const { db } = await makeTestDb();
-    const { project, interviewee } = seedProject(db);
+    const { project, interviewee } = await seedProject(db);
 
-    const first = startSession({ token: interviewee.inviteToken }, db);
-    const second = startSession({ token: interviewee.inviteToken }, db);
+    const first = await startSession({ token: interviewee.inviteToken }, db);
+    const second = await startSession({ token: interviewee.inviteToken }, db);
 
     expect(second.id).toBe(first.id);
     expect(await listSessionsForProject(project.id, db)).toHaveLength(1);
@@ -83,8 +83,8 @@ describe('starting and resuming a session (FR-2.2, FR-3.8)', () => {
 
   it('persists edits to the prefilled identity', async () => {
     const { db } = await makeTestDb();
-    const { interviewee } = seedProject(db);
-    startSession(
+    const { interviewee } = await seedProject(db);
+    await startSession(
       { token: interviewee.inviteToken, fullName: 'Priya S. Nair', role: 'Senior complaints advisor' },
       db,
     );
@@ -95,14 +95,14 @@ describe('starting and resuming a session (FR-2.2, FR-3.8)', () => {
 
   it('rejects starting on a used-up (complete) token', async () => {
     const { db } = await makeTestDb();
-    const { interviewee } = seedProject(db);
+    const { interviewee } = await seedProject(db);
     await setIntervieweeStatus(interviewee.id, 'complete', db);
-    expect(() => startSession({ token: interviewee.inviteToken }, db)).toThrow(EntryError);
+    expect(() => await startSession({ token: interviewee.inviteToken }, db)).toThrow(EntryError);
   });
 
   it('rejects starting on an unknown token', async () => {
     const { db } = await makeTestDb();
-    seedProject(db);
-    expect(() => startSession({ token: 'nope' }, db)).toThrow(EntryError);
+    await seedProject(db);
+    expect(() => await startSession({ token: 'nope' }, db)).toThrow(EntryError);
   });
 });

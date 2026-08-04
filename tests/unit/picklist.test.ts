@@ -93,7 +93,7 @@ describe('option-set seeding (R2.2)', () => {
   it('creates an entity named by the informant as pending, not confirmed', async () => {
     const { db } = await makeTestDb();
     const { session } = await makeSessionFixture(db);
-    const r = applyTool(
+    const r = await applyTool(
       session,
       call('record_entity', { facetId: 8, kind: 'system', name: 'Some Local Tracker' }),
       db,
@@ -115,7 +115,7 @@ describe('option-set seeding (R2.2)', () => {
     expect(before.some((o) => o.selected)).toBe(false);
 
     // Named while talking about inputs and outputs, well before facet 8 comes up.
-    applyTool(session, call('record_entity', { facetId: 4, kind: 'system', name: 'Xenia' }), db);
+    await applyTool(session, call('record_entity', { facetId: 4, kind: 'system', name: 'Xenia' }), db);
 
     const after = await picklistOptions(session.id, 8, db);
     const xenia = after.find((o) => o.name === 'Xenia');

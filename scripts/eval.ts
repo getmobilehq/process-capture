@@ -9,9 +9,9 @@
 import './load-env';
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import Database from 'better-sqlite3';
-import { drizzle } from 'drizzle-orm/better-sqlite3';
-import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
+import { PGlite } from '@electric-sql/pglite';
+import { drizzle } from 'drizzle-orm/pglite';
+import { migrate } from 'drizzle-orm/pglite/migrator';
 import * as schema from '@/lib/db/schema';
 import {
   addInterviewee,
@@ -52,17 +52,16 @@ function loadPersonas(filter: string | null): Persona[] {
     .filter((p) => !filter || p.id === filter);
 }
 
-function makeDb() {
-  const sqlite = new Database(':memory:');
-  sqlite.pragma('foreign_keys = ON');
-  const db = drizzle(sqlite, { schema });
-  migrate(db, { migrationsFolder: './drizzle' });
+/** A throwaway in-process Postgres per eval run, same engine as deployment. */
+async function makeDb() {
+  const db = drizzle(new PGlite(), { schema });
+  await migrate(db, { migrationsFolder: './drizzle' });
   return db;
 }
 
 async function runOnce(persona: Persona, runIndex: number, runDir: string) {
   resetUsage();
-  const db = makeDb();
+  const db = await makeDb();
 
   const project = await createProject(
     { name: `Eval ${persona.id}`, department: 'Eval', targetProcesses: [persona.processName] },
@@ -197,7 +196,7 @@ async function main() {
   process.exit(personas.every((p) => personaPasses[p.id] === runs) ? 0 : 1);
 }
 
-main().catch((err) => {
+(await main()).catch((err) => {
   console.error(err);
   process.exit(1);
 });
