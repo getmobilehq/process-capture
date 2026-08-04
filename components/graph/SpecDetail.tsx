@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { ProcessMap } from './ProcessMap';
-import type { ProcessGraph } from '@/lib/graph/schema';
+import type { Change, ProcessGraph } from '@/lib/graph/schema';
 
 /**
  * Spec detail with a Process map tab (delta v1.1 R5.6, partial).
@@ -14,7 +14,15 @@ import type { ProcessGraph } from '@/lib/graph/schema';
  * To-be and Opportunities are declared but not built — showing the tabs disabled
  * is more honest than hiding them, since the delta specifies all three sub-views.
  */
-type Tab = 'spec' | 'map';
+type Tab = 'spec' | 'map' | 'tobe';
+
+interface ToBe {
+  graph: ProcessGraph;
+  xml: string;
+  changedIds: Set<string>;
+  changeByNode: Map<string, Change>;
+  skipped: { change: Change; reason: string }[];
+}
 
 export function SpecDetail({
   sessionId,
@@ -34,9 +42,12 @@ export function SpecDetail({
   const [error, setError] = useState<string | null>(null);
   const [details, setDetails] = useState<string[]>([]);
   const [map, setMap] = useState<{ graph: ProcessGraph; xml: string } | null>(null);
+  const [tobe, setTobe] = useState<ToBe | null>(null);
 
-  async function drawMap() {
-    if (map || loading) return;
+  /** Returns the map as well as storing it — React state is stale to callers. */
+  async function drawMap(): Promise<{ graph: ProcessGraph; xml: string } | null> {
+    if (map) return map;
+    if (loading) return null;
     setLoading(true);
     setError(null);
     setDetails([]);
@@ -47,9 +58,45 @@ export function SpecDetail({
         setDetails(Array.isArray(data.details) ? data.details : []);
         throw new Error(data.error ?? 'The process map could not be built.');
       }
-      setMap({ graph: data.graph, xml: data.xml });
+      const built = { graph: data.graph as ProcessGraph, xml: data.xml as string };
+      setMap(built);
+      return built;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'The process map could not be built.');
+    } finally {
+      setLoading(false);
+    }
+    return null;
+  }
+
+  /** To-be needs the as-is map first — changes are proposed against that graph. */
+  async function drawToBe() {
+    if (tobe || loading) return;
+    const base = map ?? (await drawMap());
+    if (!base) return;
+    setLoading(true);
+    setError(null);
+    setDetails([]);
+    try {
+      const res = await fetch(`/api/spec/${sessionId}/tobe`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ graph: base.graph }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setDetails(Array.isArray(data.details) ? data.details : []);
+        throw new Error(data.error ?? 'The to-be map could not be built.');
+      }
+      setTobe({
+        graph: data.graph,
+        xml: data.xml,
+        changedIds: new Set<string>(data.changedIds ?? []),
+        changeByNode: new Map<string, Change>(data.changes ?? []),
+        skipped: data.skipped ?? [],
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'The to-be map could not be built.');
     } finally {
       setLoading(false);
     }
@@ -90,7 +137,16 @@ export function SpecDetail({
         >
           Process map
         </button>
-        <button type="button" role="tab" className="pc-tab" disabled title="Not built yet">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'tobe'}
+          className={`pc-tab ${tab === 'tobe' ? 'active' : ''}`}
+          onClick={() => {
+            setTab('tobe');
+            void drawToBe();
+          }}
+        >
           To-be
         </button>
         <button type="button" role="tab" className="pc-tab" disabled title="Not built yet">
@@ -104,6 +160,58 @@ export function SpecDetail({
             {processName} · {informant} · specification v{specVersion}
           </p>
           <pre className="pc-specbody">{markdown}</pre>
+        </div>
+      )}
+
+      {tab === 'tobe' && (
+        <div>
+          {loading && <p className="pc-map-status">Proposing changes against the evidence…</p>}
+
+          {error && (
+            <div className="pc-card" style={{ padding: 'var(--space-6)' }}>
+              <p style={{ marginTop: 0, color: 'var(--vm-red)', fontWeight: 700 }}>{error}</p>
+              {details.length > 0 && (
+                <ul className="t-body-s">
+                  {details.map((d) => (
+                    <li key={d}>{d}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {tobe && (
+            <>
+              <ProcessMap
+                xml={tobe.xml}
+                graph={tobe.graph}
+                informant={informant}
+                variant="tobe"
+                changedIds={tobe.changedIds}
+                changeByNode={tobe.changeByNode}
+              />
+              {tobe.changedIds.size === 0 && (
+                <p className="t-body-s" style={{ marginTop: 'var(--space-3)' }}>
+                  No changes were proposed — the as-is map carries no evidenced bottlenecks to
+                  resolve.
+                </p>
+              )}
+              {tobe.skipped.length > 0 && (
+                <div className="pc-card" style={{ padding: 'var(--space-5)', marginTop: 'var(--space-4)' }}>
+                  <p className="t-caption" style={{ marginTop: 0 }}>
+                    Proposed but not placed on the diagram:
+                  </p>
+                  <ul className="t-body-s">
+                    {tobe.skipped.map((s) => (
+                      <li key={s.change.target}>
+                        {s.change.description} — {s.reason}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
 

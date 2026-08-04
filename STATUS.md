@@ -375,8 +375,13 @@ Each requirement is one commit, gates run before every commit.
 
 ### Not started
 
-- **R5.4 / R5.5** — the to-be change-set view and the opportunity overlay. Their
-  schemas and validators exist (R5.1); the generators and views do not.
+- **R5.4 (3 of 4 parts)** — generator `d3b48ad`, `applyChangeSet` `ab215df`, and
+  the dashed to-be view with its route and tab. **The verification gate is NOT
+  built**: R5.4 says to-be output may not reach a handover report until a human has
+  approved, edited or rejected each change, with reviewer and timestamp stored per
+  change. Until that exists, treat the To-be tab as analysis only.
+- **R5.5** — the opportunity overlay. Schema and validator exist; the classifier
+  and view do not.
 - **Graph persistence** — the map re-extracts on every view (DL.38). Wants a table
   keyed by spec version.
 - **Runtime verification of the map** — the component compiles and the tab renders,

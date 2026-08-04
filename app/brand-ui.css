@@ -832,3 +832,43 @@
   font: 400 12.5px / 1.6 var(--font-mono);
   color: var(--ink-900);
 }
+
+/* ── To-be view (R5.4) — proposed reads as proposed, without labels ─────── */
+/* Appendix A, point 3: provenance styling is structural. A changed element is
+   dashed and tinted, so changed is legible before a word is read. */
+.djs-element.pc-changed .djs-visual > :first-child {
+  stroke-dasharray: 6 4 !important;
+  stroke-width: 2.5px !important;
+  stroke: var(--brand-mark) !important;
+  fill: var(--magpie-50) !important;
+}
+.pc-badge.change {
+  background: var(--brand-mark);
+}
+.pc-evidence-kind.change {
+  background: var(--brand-mark);
+}
+.pc-map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 10px;
+  font: 400 12px / 1.4 var(--font-sans);
+  color: var(--ink-500);
+}
+.pc-map-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.pc-legend-key {
+  width: 22px;
+  height: 12px;
+  border-radius: 3px;
+  border: 2px solid var(--ink-300);
+}
+.pc-legend-key.changed {
+  border-style: dashed;
+  border-color: var(--brand-mark);
+  background: var(--magpie-50);
+}
