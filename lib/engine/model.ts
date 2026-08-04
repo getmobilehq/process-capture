@@ -39,7 +39,8 @@ export interface CallParams {
 }
 
 let client: Anthropic | null = null;
-function getClient(): Anthropic {
+/** Shared client, so extraction passes inherit the same retry posture (R5.1). */
+export function getClient(): Anthropic {
   // Extra retries + a generous timeout ride out transient connection blips
   // (EHOSTUNREACH / fetch failed), which otherwise abort a turn or an eval run.
   if (!client) {
