@@ -31,12 +31,15 @@ export function SpecDetail({
   informant,
   markdown,
   specVersion,
+  toBeEnabled,
 }: {
   sessionId: string;
   processName: string;
   informant: string;
   markdown: string;
   specVersion: number;
+  /** R5.4's verification gate is unbuilt, so to-be is off unless enabled. */
+  toBeEnabled: boolean;
 }) {
   const [tab, setTab] = useState<Tab>('spec');
   const [loading, setLoading] = useState(false);
@@ -146,18 +149,30 @@ export function SpecDetail({
         >
           Process map
         </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'tobe'}
-          className={`pc-tab ${tab === 'tobe' ? 'active' : ''}`}
-          onClick={() => {
-            setTab('tobe');
-            void drawToBe();
-          }}
-        >
-          To-be
-        </button>
+        {toBeEnabled ? (
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'tobe'}
+            className={`pc-tab ${tab === 'tobe' ? 'active' : ''}`}
+            onClick={() => {
+              setTab('tobe');
+              void drawToBe();
+            }}
+          >
+            To-be
+          </button>
+        ) : (
+          <button
+            type="button"
+            role="tab"
+            className="pc-tab"
+            disabled
+            title="Not available until each proposed change can be reviewed and approved"
+          >
+            To-be
+          </button>
+        )}
         <button type="button" role="tab" className="pc-tab" disabled title="Not built yet">
           Opportunities
         </button>
