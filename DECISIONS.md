@@ -427,3 +427,24 @@ decision, why it is the minimal option (§10).
   `provenance: 'proposed'` and `verified: false` after the call, overriding anything
   proposed. The generator cannot mark its own work verified; only a human reviewer
   can, and that path is not built yet.
+- **DL.43 · Placement is structured, because prose is not a position (R5.4)** — The
+  delta's `Change` shape carries where a change goes only in the description
+  ("insert between diagnostics and the next-best-action decision"). A mechanical
+  apply cannot act on a sentence, so `placement { after, before, laneId, name }` is
+  added alongside it and the generator is told to supply it for `add` and
+  `reorder`. The description stays — it is what a human reads — but the diagram is
+  built from the structure.
+- **DL.44 · The to-be graph is derived, never authored** — `applyChangeSet` is pure
+  and deterministic and never mutates the as-is graph, so the to-be cannot drift
+  from what the change-set says. `changedIds` and `changeByNode` are returned
+  *alongside* the graph rather than flagged inside it, keeping the result a plain
+  `ProcessGraph` that `validateGraph` still applies to, and letting a change badge
+  name the bottleneck it resolves (Appendix A, point 4).
+- **DL.45 · An invalid to-be is a failure, not a diagram with a caveat** — Applying
+  a change-set re-runs `validateGraph` and throws if the result is incoherent.
+  Removing the start event, say, does not produce a diagram rendered with a warning
+  — it produces nothing, for the same reason a corrupted spec produces no map.
+- **DL.46 · Skipped changes are reported, never silently dropped** — A change that
+  cannot be applied (no usable placement, a target that is not there) comes back in
+  `skipped` with its reason. A to-be diagram missing a change the reviewer was told
+  about is worse than one that says which change it could not place.

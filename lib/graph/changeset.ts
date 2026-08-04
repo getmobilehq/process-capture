@@ -37,6 +37,7 @@ Rules:
 3. Every change carries a rationale that cites the facets the evidence came from, and is honest about its limits. If a change relieves a symptom rather than the cause — a backlog that is really a supply-and-demand mismatch, say — the rationale must say so. An overclaimed benefit is worse than a modest one.
 4. Prefer few, load-bearing changes over many small ones. Three changes that each resolve a real bottleneck is a better answer than ten that gesture at one.
 5. You may target an existing node id, or name a new one you are proposing to add (activity:some-new-step). Use the same id style as the graph.
+6. For an add or a reorder, give placement.after or placement.before naming an existing node, plus placement.laneId and a short placement.name. A description alone cannot be applied to a diagram — "between diagnostics and the decision" is a sentence, not a position.
 
 Return the set through the emit_change_set tool. Do not write prose.`;
 
@@ -72,6 +73,17 @@ const TOOL = {
               type: 'string',
               description:
                 'Why this follows from the evidence, citing facets — and honest about what it does not fix.',
+            },
+            placement: {
+              type: 'object',
+              description:
+                'Where the change goes. Required for add and reorder — a description alone cannot be applied mechanically.',
+              properties: {
+                after: { type: 'string', description: 'Existing node id this sits immediately after.' },
+                before: { type: 'string', description: 'Existing node id this sits immediately before.' },
+                laneId: { type: 'string', description: 'Lane the node belongs in.' },
+                name: { type: 'string', description: 'Short display name for an added node.' },
+              },
             },
           },
           required: ['op', 'target', 'description', 'resolvesAnnotationId', 'rationale'],
