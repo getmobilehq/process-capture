@@ -797,3 +797,38 @@
   font: 500 12px / 1.4 var(--font-sans);
   color: var(--ink-500);
 }
+
+/* ── Spec detail tabs (R5.6) ─────────────────────────────────────────────── */
+.pc-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
+}
+.pc-tab {
+  padding: 9px 18px;
+  background: transparent;
+  border: 1px solid var(--ink-200);
+  border-radius: var(--radius-pill);
+  font: 500 13px / 1 var(--font-sans);
+  color: var(--ink-700);
+  cursor: pointer;
+}
+.pc-tab.active {
+  background: var(--brand-mark);
+  border-color: var(--brand-mark);
+  color: #fff;
+  font-weight: 700;
+}
+.pc-tab:disabled {
+  color: var(--ink-300);
+  border-style: dashed;
+  cursor: not-allowed;
+}
+.pc-specbody {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font: 400 12.5px / 1.6 var(--font-mono);
+  color: var(--ink-900);
+}

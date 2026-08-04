@@ -365,10 +365,23 @@ Each requirement is one commit, gates run before every commit.
 - **R5.1 extraction pass.** `0df52e9`. Forced tool call, server-stamped provenance,
   one validation retry that refuses to invent structure (DL.31–DL.32).
 
+- **R5.3 — as-is map with evidence overlays.** `24c14fd`. bpmn-js in viewer mode,
+  annotation badges pinned to their target, evidence panel with the facet citation,
+  provenance banner.
+- **R5.6 (partial) — spec detail page with the Process map tab.** New
+  `/console/sessions/[sessionId]`, reached from the register. Map drawn on request
+  (DL.36); BPMN export named as the ARIS path. To-be and Opportunities are visible
+  but disabled (DL.37).
+
 ### Not started
 
-- **R5.3–R5.6** — bpmn-js rendering, the as-is / to-be / opportunity views and the
-  Process map tab. Needs bpmn-js, wanting a P6 justification in DECISIONS.md.
+- **R5.4 / R5.5** — the to-be change-set view and the opportunity overlay. Their
+  schemas and validators exist (R5.1); the generators and views do not.
+- **Graph persistence** — the map re-extracts on every view (DL.38). Wants a table
+  keyed by spec version.
+- **Runtime verification of the map** — the component compiles and the tab renders,
+  but no diagram has been drawn end-to-end: that needs a completed spec plus a live
+  model call. E2E covers the tab, not the render.
 - **R5.7** — eval fixtures, still without the fault-management ground truth.
 - **R8 — Suggested responses (answer chips).** The pieces it needs exist: entity
   sourcing (R2) and the ranking module (R9.2/R4.2). Note R8.1's rule that chips
