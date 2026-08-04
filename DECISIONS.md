@@ -521,3 +521,12 @@ decision, why it is the minimal option (§10).
   disabled with a tooltip saying why, and the route itself returns 404. Hiding a
   tab does not stop a POST, and on a deployed URL the difference matters. Remove
   the flag when the gate lands, not before.
+- **DL.57 · The pilot runs on exactly one instance, for correctness not capacity** —
+  `lib/rate-limit.ts` keeps its buckets in a per-process Map, so with N instances
+  every limit silently becomes N × its intended value — and nothing reports it.
+  Cloud Run is therefore pinned `--min-instances=1 --max-instances=1`: one instance
+  makes the limiter correct, removes cold starts in front of a waiting informant,
+  and costs a few pounds a month. Interviews are not concurrent at pilot scale, so
+  nothing is given up. **Raising max-instances without first moving the buckets
+  into a table is a silent regression** — the note now sits in the file itself, not
+  only in the deployment plan.

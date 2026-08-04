@@ -21,14 +21,16 @@ deployable"), Firestore (the schema is relational and the joins are real).
 ## Pre-flight — must be true before the first deploy
 
 1. **Merge `migrate/postgres`.** SQLite cannot survive Cloud Run's ephemeral
-   filesystem; the database file goes with the container on every cold start.
-   Blockers on that branch: Playwright still points at `file:./data/e2e.db`, and
-   `better-sqlite3` + `data/*.db` want removing once it does.
-2. **Decide the rate-limit question.** `lib/rate-limit.ts` is an in-memory Map, so
-   with N instances the limit becomes N × the intended value. Either pin
-   `--max-instances=1` for the pilot (fine — interviews are not concurrent at this
-   scale, and it removes cold starts too) or move the buckets into a table. Pinning
-   is the honest pilot answer; the table is the answer before wider rollout.
+   filesystem; the database file goes with the container on every cold start. The
+   branch is green on Postgres — lint, typecheck, 192 unit/integration, 10 E2E,
+   build — and the §9 eval gate. Tidy-up left: remove `better-sqlite3` and
+   `data/*.db`, which nothing references now.
+2. ~~Decide the rate-limit question.~~ **Decided: pinned to one instance for the
+   pilot** (DL.57). `lib/rate-limit.ts` is an in-memory Map, so with N instances
+   the limit silently becomes N × the intended value. `--max-instances=1` makes it
+   correct, and interviews are not concurrent at pilot scale. **This is a
+   correctness constraint, not a capacity choice — raising max-instances without
+   first moving the buckets into a table breaks rate limiting silently.**
 3. **Set `SESSION_MAX_TURNS` and `QUESTION_BUDGET` for the pilot**, and confirm
    `MODEL`. All are env, per P5 — no redeploy of code to change them.
 
@@ -87,7 +89,7 @@ workstation, or a one-shot Cloud Run Job).
   run past the 300s default. Interview turns are 10–30s; extraction is the outlier.
 - `--min-instances=1` — no cold start in front of a waiting informant, and it makes
   the in-memory rate limiter correct. A few pounds a month.
-- `--max-instances=1` — see the rate-limit note. Lift it when the buckets move.
+- `--max-instances=1` — **required**, not tuning: the rate limiter is per-process (DL.57). Do not raise this until the buckets live in a table.
 - `--no-allow-unauthenticated` — then put the interview routes behind a load
   balancer, or flip to public once you are satisfied the console gate is enough.
   **Note the asymmetry: `/i/{token}` must be publicly reachable for informants,
@@ -96,11 +98,10 @@ workstation, or a one-shot Cloud Run Job).
 
 ## What I would hold back from the pilot
 
-- **The To-be tab.** R5.4's verification gate is not built: machine-generated
-  process recommendations are reachable with nothing preventing them reaching a
-  handover report, and the delta locks that decision. A local dev server makes that
-  theoretical; a deployed URL an architect can reach makes it real. Either finish
-  the gate or hide the tab behind an env flag before this is shared.
+- **The To-be tab — already handled.** Ships disabled behind `ENABLE_TOBE`
+  (DL.56), gated in two places: the tab renders disabled, and the route returns
+  404. Leave the variable unset. Remove the flag when R5.4's verification gate
+  lands, not before.
 - **Voice input**, unless the privacy notice has been re-approved. `OPENAI_API_KEY`
   set means informant audio goes to a third party (DV.1). Leave it unset and the
   mic button does not render.
@@ -126,10 +127,19 @@ Tests and evals run on pglite, so the pipeline needs no database service:
 - run: npm run lint && npm run typecheck && npm test && npm run build
 ```
 
-Playwright will want a Postgres once it is migrated off the SQLite file — or pglite
-again, which keeps the pipeline dependency-free. The live eval should stay
-**manual**: it costs real money per run and should be a deliberate act before a
-release, not something a push triggers.
+Playwright needs a real Postgres — it drives a separate Next server, which pglite
+cannot serve. Point `E2E_DATABASE_URL` at a service container:
+
+```yaml
+services:
+  postgres:
+    image: postgres:16
+    env: { POSTGRES_PASSWORD: magpie }
+    ports: ['5432:5432']
+```
+
+The live eval should stay **manual**: it costs real money per run and belongs
+before a release, not on every push.
 
 ## Rough monthly cost
 
