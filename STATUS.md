@@ -359,11 +359,17 @@ Each requirement is one commit, gates run before every commit.
   "every change resolves a bottleneck" and R5.5's "no label without evidence" are
   both enforced.
 
+- **R5.2 — deterministic BPMN 2.0 serialisation.** `3ad6301`. Pure
+  `ProcessGraph → BPMN 2.0 XML` with DI layout, rolled rather than elkjs (DL.28).
+  Round-trip verified; ids sanitised into valid XML names (DL.29).
+- **R5.1 extraction pass.** `0df52e9`. Forced tool call, server-stamped provenance,
+  one validation retry that refuses to invent structure (DL.31–DL.32).
+
 ### Not started
 
-- **R5.2–R5.7** — BPMN 2.0 serialisation, bpmn-js rendering, the three views and
-  the UI tab. R5.1 gives them a validated artefact to build on. Needs new
-  dependencies (bpmn-js, elkjs), each wanting a P6 justification in DECISIONS.md.
+- **R5.3–R5.6** — bpmn-js rendering, the as-is / to-be / opportunity views and the
+  Process map tab. Needs bpmn-js, wanting a P6 justification in DECISIONS.md.
+- **R5.7** — eval fixtures, still without the fault-management ground truth.
 - **R8 — Suggested responses (answer chips).** The pieces it needs exist: entity
   sourcing (R2) and the ranking module (R9.2/R4.2). Note R8.1's rule that chips
   never appear on facets 10 or 12.
@@ -377,14 +383,14 @@ Each requirement is one commit, gates run before every commit.
 `lint` ✓, `typecheck` ✓, **129 unit/integration** ✓, **10 E2E** ✓ (was 5).
 Migrations 0001–0003 generated and applied.
 
-**§9 eval gate: NOT MET.** Full 3×3 run attempted (`tests/eval/runs/2026-08-01T07-11-27-673Z`):
-cooperative 3/3 PASS; rambling FAIL, PASS, PASS; terse FAIL then the run aborted on
-`credit balance is too low`. 7 of 9 runs completed. Needs credits topped up and a
-clean re-run.
+**§9 eval gate: PASS (2026-08-04).** All three personas passed A1–A9 on three
+consecutive runs: cooperative 3/3, rambling 3/3, terse 3/3. A3 — the threshold
+regression R1 introduced — did not fail once across ten runs after the DL.24 fix,
+confirmed against the live model.
 
 ### Known gaps and deviations
 
-1. **A3 regression, diagnosed and fixed — needs re-running to confirm.** Both eval
+1. **A3 regression — diagnosed, fixed and confirmed (closed).** Both eval
    failures were A3 (facet 6 numeric thresholds): `missing: 500`, then
    `missing: 100,500`. Cause was mine: V1's facet rubric said "probe to £ bands and
    governance tiers", but the R1 element rubric said thresholds are captured when
@@ -392,8 +398,8 @@ clean re-run.
    the element after the first number and stopped climbing the ladder.
    `rules.thresholds` and `rules.approvals` now require every band up to the top of
    the ladder, and the scoring section carries a worked contrastive example of the
-   partial-ladder mistake. **Unverified against the live model** — the credit
-   exhaustion stopped the re-run.
+   partial-ladder mistake. Verified: rambling went 1 failure → 3/3, and the terse
+   run that previously failed with `missing: 100,500` now passes.
 2. **Live transcription is chunked, not streaming (DL.14).** R10.2 asks for text
    appearing as the informant speaks; Whisper has no streaming interface. Needs a
    realtime ASR — a provider decision, so flagged rather than assumed.
@@ -409,7 +415,5 @@ clean re-run.
 
 ### Suggested next session
 
-1. Top up API credits and re-run `npm run eval -- --runs 3`. The A3 fix is in but
-   unproven against the live model; the §9 gate cannot be claimed until it passes.
-2. Then R5.2–R5.6 — the largest remaining block, now with a validated artefact
-   under it.
+R5.3–R5.6 — the bpmn-js rendering block. Everything below it is now built and
+gated: the graph, its validators, the extractor and the serialiser.
