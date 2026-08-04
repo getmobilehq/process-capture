@@ -1,40 +1,50 @@
 /**
- * SQLite connection (WAL mode) + Drizzle client.
+ * PostgreSQL connection + Drizzle client.
  *
- * A single better-sqlite3 handle is reused across the process. WAL is enabled for
- * crash-consistency and concurrent reads (FR-3.8 relies on replaying persisted
- * state, not an in-memory store).
+ * One pool per process, reused across requests. The pool is deliberately small:
+ * Cloud Run multiplies instances and Cloud SQL caps total connections — a
+ * generous per-instance pool is how three containers exhaust the server's limit.
+ *
+ * FR-3.8 relies on replaying persisted state rather than an in-memory session
+ * store, which is what lets the app scale horizontally at all.
  */
 
-import { existsSync, mkdirSync } from 'node:fs';
-import { dirname } from 'node:path';
-import Database from 'better-sqlite3';
-import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import { config, dbFilePath } from '@/lib/config';
+import postgres from 'postgres';
+import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+import { config } from '@/lib/config';
 import * as schema from './schema';
 
-export type DB = BetterSQLite3Database<typeof schema>;
+export type DB = PostgresJsDatabase<typeof schema>;
 
-let sqlite: Database.Database | null = null;
+let sql: ReturnType<typeof postgres> | null = null;
 let db: DB | null = null;
 
-export function getSqlite(url: string = config.databaseUrl): Database.Database {
-  if (sqlite) return sqlite;
-  const path = dbFilePath(url);
-  const dir = dirname(path);
-  if (dir && dir !== '.' && !existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
-  }
-  sqlite = new Database(path);
-  sqlite.pragma('journal_mode = WAL');
-  sqlite.pragma('foreign_keys = ON');
-  return sqlite;
+/** Connections per instance. Small on purpose — see the note above. */
+const POOL_MAX = Number(process.env.DB_POOL_MAX ?? 5);
+
+export function getSql(url: string = config.databaseUrl) {
+  if (sql) return sql;
+  sql = postgres(url, {
+    max: POOL_MAX,
+    // Cloud SQL closes idle connections; reconnect rather than surfacing an error.
+    idle_timeout: 30,
+    connect_timeout: 10,
+    onnotice: () => {},
+  });
+  return sql;
 }
 
-export function getDb(): DB {
+export function getDb(url: string = config.databaseUrl): DB {
   if (db) return db;
-  db = drizzle(getSqlite(), { schema });
+  db = drizzle(getSql(url), { schema });
   return db;
+}
+
+/** Close the pool. Used by scripts and tests; the server holds it for its life. */
+export async function closeDb(): Promise<void> {
+  if (sql) await sql.end({ timeout: 5 });
+  sql = null;
+  db = null;
 }
 
 export { schema };
