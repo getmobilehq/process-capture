@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { ProcessMap } from './ProcessMap';
+import { SpecView } from './SpecView';
 import type { Change, ProcessGraph } from '@/lib/graph/schema';
 
 /**
@@ -99,6 +100,17 @@ export function SpecDetail({
     }
   }
 
+  /** The rendered view is for reading; the .md remains the artefact to hand on. */
+  function downloadMarkdown() {
+    const blob = new Blob([markdown], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `spec-${processName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-v${specVersion}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   function download() {
     if (!map) return;
     const blob = new Blob([map.xml], { type: 'application/xml' });
@@ -152,11 +164,15 @@ export function SpecDetail({
       </nav>
 
       {tab === 'spec' && (
-        <div className="pc-card" style={{ padding: 'var(--space-6)' }}>
-          <p className="t-caption" style={{ marginTop: 0 }}>
-            {processName} · {informant} · specification v{specVersion}
-          </p>
-          <pre className="pc-specbody">{markdown}</pre>
+        <div>
+          <div className="pc-card" style={{ padding: 'var(--space-6)' }}>
+            <SpecView markdown={markdown} />
+          </div>
+          <div style={{ marginTop: 'var(--space-4)' }}>
+            <button type="button" className="pc-btn ghost sm" onClick={downloadMarkdown}>
+              Download specification (.md)
+            </button>
+          </div>
         </div>
       )}
 
