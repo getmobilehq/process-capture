@@ -28,13 +28,13 @@ function validSpec(): string {
 }
 
 describe('spec validator — valid spec', () => {
-  it('accepts a well-formed spec', () => {
+  it('accepts a well-formed spec', async () => {
     const r = validateSpec(validSpec());
     expect(r.ok).toBe(true);
     expect(r.errors).toEqual([]);
   });
 
-  it('splits frontmatter and reads top-level keys', () => {
+  it('splits frontmatter and reads top-level keys', async () => {
     const split = splitFrontmatter(validSpec())!;
     expect(split).not.toBeNull();
     expect(topLevelKeys(split.frontmatter)).toContain('provenance');
@@ -43,34 +43,34 @@ describe('spec validator — valid spec', () => {
 });
 
 describe('spec validator — failure cases (FR-5.5)', () => {
-  it('rejects a spec with no frontmatter', () => {
+  it('rejects a spec with no frontmatter', async () => {
     const r = validateSpec('# just a body\n\n## 1. x — answered\n');
     expect(r.ok).toBe(false);
     expect(r.errors[0]).toMatch(/frontmatter/i);
   });
 
-  it('rejects a missing required key', () => {
+  it('rejects a missing required key', async () => {
     const bad = validSpec().replace(/^duration_min: 32\n/m, '');
     const r = validateSpec(bad);
     expect(r.ok).toBe(false);
     expect(r.errors.join(' ')).toMatch(/duration_min/);
   });
 
-  it('rejects an unexpected frontmatter key', () => {
+  it('rejects an unexpected frontmatter key', async () => {
     const bad = validSpec().replace('provenance: stated', 'provenance: stated\nsecret_owner: "x"');
     const r = validateSpec(bad);
     expect(r.ok).toBe(false);
     expect(r.errors.join(' ')).toMatch(/unexpected key: secret_owner/);
   });
 
-  it('rejects provenance other than stated (P4)', () => {
+  it('rejects provenance other than stated (P4)', async () => {
     const bad = validSpec().replace('provenance: stated', 'provenance: actual');
     const r = validateSpec(bad);
     expect(r.ok).toBe(false);
     expect(r.errors.join(' ')).toMatch(/provenance: stated/);
   });
 
-  it('rejects any email address (P7)', () => {
+  it('rejects any email address (P7)', async () => {
     const bad = validSpec().replace(
       'Some faithful prose about facet 1.',
       'The owner is priya.nair@example.com.',
@@ -80,21 +80,21 @@ describe('spec validator — failure cases (FR-5.5)', () => {
     expect(r.errors.join(' ')).toMatch(/email/i);
   });
 
-  it('rejects a bad interviewed date', () => {
+  it('rejects a bad interviewed date', async () => {
     const bad = validSpec().replace('interviewed: 2026-07-17', 'interviewed: 17 July 2026');
     const r = validateSpec(bad);
     expect(r.ok).toBe(false);
     expect(r.errors.join(' ')).toMatch(/YYYY-MM-DD/);
   });
 
-  it('rejects a non-integer duration', () => {
+  it('rejects a non-integer duration', async () => {
     const bad = validSpec().replace('duration_min: 32', 'duration_min: about 30');
     const r = validateSpec(bad);
     expect(r.ok).toBe(false);
     expect(r.errors.join(' ')).toMatch(/duration_min/);
   });
 
-  it('rejects coverage missing a count', () => {
+  it('rejects coverage missing a count', async () => {
     const bad = validSpec().replace(
       'coverage: {answered: 11, unknown: 1, not_applicable: 0, elements_captured: 37, elements_outstanding: 0, elements_not_applicable: 3}',
       'coverage: {answered: 11, unknown: 1}',
@@ -104,14 +104,14 @@ describe('spec validator — failure cases (FR-5.5)', () => {
     expect(r.errors.join(' ')).toMatch(/not_applicable/);
   });
 
-  it('rejects fewer than twelve ordered sections', () => {
+  it('rejects fewer than twelve ordered sections', async () => {
     const bad = validSpec().replace(/## 12\. Facet 12 — answered\n\nSome faithful prose about facet 12\./, '');
     const r = validateSpec(bad);
     expect(r.ok).toBe(false);
     expect(r.errors.join(' ')).toMatch(/twelve facet sections/);
   });
 
-  it('rejects an answered facet 5 with no ordered list (FR-5.1)', () => {
+  it('rejects an answered facet 5 with no ordered list (FR-5.1)', async () => {
     const bad = validSpec().replace(
       '## 5. Workflow & activities — answered\n\n1. Advisor reads the case in the CRM.\n2. Advisor raises a credit.',
       '## 5. Workflow & activities — answered\n\nThe advisor reads the case then raises a credit.',

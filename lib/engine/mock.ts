@@ -108,7 +108,7 @@ const PLAYBACK =
 
 export async function mockRespond(params: CallParams): ModelResponse {
   const { sessionId, lastAppliedTool, noTools, db } = params;
-  const session = await getSession(sessionId, db)!;
+  const session = (await getSession(sessionId, db))!;
   const coverage = await getCoverage(sessionId, db);
   const lowest = coverage.find((c) => c.state === 'pending' || c.state === 'partial')?.facetId ?? null;
 
@@ -131,7 +131,7 @@ export async function mockRespond(params: CallParams): ModelResponse {
   }
   // Fresh answer: resolve the lowest facet, or end if everything is terminal.
   if (lowest === null) return toolResponse([{ name: 'end_interview', input: {} }]);
-  const role = await getInterviewee(session.intervieweeId, db)?.role ?? 'process user';
+  const role = (await getInterviewee(session.intervieweeId, db))?.role ?? 'process user';
   return toolResponse(resolveFacet(lowest, role));
 }
 

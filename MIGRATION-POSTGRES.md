@@ -21,56 +21,49 @@ merged. Started because SQLite cannot survive Cloud Run's ephemeral filesystem.
   then `create database magpie`. Port 5434 because 5433 is taken by another project.
   `DATABASE_URL=postgres://postgres:magpie@localhost:5434/magpie`
 
-## Data layer complete
+## State: 113 type errors left (was 744)
 
-`lib/db/schema.ts`, `lib/db/index.ts` and `lib/db/queries.ts` all typecheck at
-**zero errors**. All 59 query functions are async, return types wrapped, awaits
-placed, and both transactions (`createSession`, `setElement`) converted to
-`async (tx) => {}`. This was the load-bearing piece.
+### Complete
 
-## Not done — ~574 type errors remain
+- **`lib/db/schema.ts`** — pg dialect. `timestamptz`, `jsonb`, real `boolean`.
+- **`lib/db/index.ts`** — postgres.js, pool capped at 5 (`DB_POOL_MAX`).
+  **`DB` is typed as `PgDatabase<PgQueryResultHKT, typeof schema>`**, not the
+  postgres-js type. That one change took the error count from 284 to 113: pinning
+  `DB` to a single driver makes the pglite test double structurally incompatible,
+  which is what forced 170 cascading errors. Do not narrow it again.
+- **`lib/db/queries.ts`** — all 59 query functions async, both transactions
+  converted. Zero errors.
+- **`tests/helpers/db.ts`** — pglite, migrations applied per instance. Zero errors.
+- **`drizzle/`** — regenerated as a single Postgres baseline (`0000_cute_bucky.sql`).
+  The five SQLite-dialect migrations are gone; there was no production data.
+- **`drizzle.config.ts`** — `dialect: 'postgresql'`.
 
-Roughly 430 of them are in test files and **gated behind the test helper** — they
-cannot be meaningfully fixed until it is converted. The app-code remainder is about
-80, concentrated in `lib/engine/engine.ts` (56), `scripts/eval.ts` (14) and
-`lib/engine/model.ts` (10).
+### Remaining — 113 errors, all one shape
 
-**Regex passes have plateaued.** Successive blind transforms went 728 → 570 → 574:
-each fixed some call sites and broke others, and one pass wrongly marked every
-function in a file async merely because the file contained an await somewhere
-(`whisperExt` in the transcribe route was collateral; it has been reverted). The
-rest wants file-by-file work with the compiler in the loop, not more pattern
-matching.
+Every one is a missing `await` or a missing `async`, concentrated in:
+`lib/engine/engine.ts` (17), `tests/integration/entry.test.ts` (16),
+`scripts/eval.ts` (14), `lib/engine/model.ts` (10),
+`app/console/projects/[id]/page.tsx` (7), `tests/unit/graph-persistence.test.ts` (7).
 
-1. **`tests/helpers/db.ts` first — it gates ~430 errors.** Currently an in-memory
-   SQLite per test. Two options, and this is a decision worth taking deliberately:
-   **pglite** (in-process Postgres, no Docker needed for `npm test`, but a new
-   dependency wanting a P6 entry) or **a unique schema per test file** against the
-   local container (no new dependency, but the suite then requires Docker running).
-   I would take pglite: a test suite that needs a running container is a test suite
-   people stop running.
-2. **Then `lib/engine/engine.ts`.** It is the largest app-code surface and the one
-   where a missing `await` is most dangerous — a discarded promise there stops a
-   turn persisting without raising anything.
-3. **`drizzle.config.ts` + migrations.** Set `dialect: 'postgresql'`, delete
-   `drizzle/0000`–`0004` (SQLite-dialect SQL) and regenerate as a single baseline —
-   there is no production data to preserve.
-4. **`tests/helpers/db.ts`.** Currently an in-memory SQLite per test. Options: a
-   throwaway schema per test file against the local Postgres, or `pglite`. The
-   suite is the safety net for this whole refactor, so it needs to work before the
-   rest can be trusted.
-5. **`lib/rate-limit.ts`.** Still an in-memory Map — fine at
-   `--max-instances=1`, wrong above it. Either pin the instance count for the pilot
-   or move the buckets into a table.
+The common survivors are **awaits inside non-async callbacks** — `.map()`,
+`.filter()`, `.find()` bodies that now call an async query — and **property access
+on an un-parenthesised await** inside those callbacks.
 
-## Order I would take it
+**Do not use another broad regex.** Three passes were tried and each plateaued or
+regressed (744 → 570 → 574 → 284 → 113, with two rounds of self-inflicted damage:
+`whisperExt` wrongly marked async, and `await expect(x).resolves` mangled into
+`(await expect(x)).resolves`). The remaining set is small enough to fix per file
+with `npx tsc --noEmit` in a tight loop, which is both faster and safer now.
 
-Fix `queries.ts` until it typechecks in isolation, then the test helper, then run
-the suite — 192 tests and 10 E2E are what will tell you the refactor is faithful.
-Only then chase the app-layer callers.
+### Test suite
 
-## Do not merge until
+`npm test`: **10 of 21 files passing.** The failures are the files that still have
+type errors, not behavioural failures — pglite itself works, migrations apply, and
+the fixtures build. Once the awaits land, expect the suite to tell the truth about
+the refactor.
 
-`npm run lint`, `npm run typecheck`, `npm test`, `npx playwright test` and
-`npm run build` all pass, and the eval harness has had at least one live run — the
-engine's persistence path is the part most likely to break silently under async.
+### Before merging
+
+`lint`, `typecheck`, `test`, `playwright test`, `build`, **and one live eval run** —
+the engine's persistence path is where a dropped promise hides, and only the live
+harness exercises it end to end.

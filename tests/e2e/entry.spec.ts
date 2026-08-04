@@ -24,14 +24,14 @@ function firstToken(): string {
 
 test('unknown token shows a polite dead-end', async ({ page }) => {
   await page.goto('/i/definitely-not-a-real-token');
-  await expect(page.getByText(/don’t recognise this link/i)).toBeVisible();
+  await expect(page.getByText(/don’t recognise this link/i))).toBeVisible();
 });
 
 test('valid token renders the entry screen', async ({ page }) => {
   await page.goto(`/i/${firstToken()}`);
-  await expect(page.getByRole('heading', { name: /Before you start\./ })).toBeVisible();
-  await expect(page.getByText(/No screen recording, no monitoring/)).toBeVisible();
-  await expect(page.getByRole('button', { name: /Start interview/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Before you start\./ }))).toBeVisible();
+  await expect(page.getByText(/No screen recording, no monitoring/))).toBeVisible();
+  await expect(page.getByRole('button', { name: /Start interview/i }))).toBeVisible();
 });
 
 test('starting creates a session row and lands on the interview', async ({ page }) => {
@@ -53,8 +53,8 @@ test('starting creates a session row and lands on the interview', async ({ page 
   await page.goto(`/i/${token}`);
   await page.getByRole('button', { name: /Start interview/i }).click();
 
-  await expect(page).toHaveURL(new RegExp(`/i/${token}/interview$`));
-  await expect(page.getByLabel('Coverage')).toBeVisible();
+  await expect(page)).toHaveURL(new RegExp(`/i/${token}/interview$`));
+  await expect(page.getByLabel('Coverage'))).toBeVisible();
 
   const after = readDb(
     (db) =>

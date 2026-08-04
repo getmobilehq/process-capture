@@ -8,10 +8,10 @@ import { recordStatement, setElement } from '@/lib/db/queries';
  * tests assert the ledger actually carries what would otherwise be re-asked.
  */
 describe('claims ledger (R4.3)', () => {
-  it('carries a captured element as a claim against its facet', () => {
-    const { db } = makeTestDb();
-    const { session } = makeSessionFixture(db);
-    setElement(
+  it('carries a captured element as a claim against its facet', async () => {
+    const { db } = await makeTestDb();
+    const { session } = await makeSessionFixture(db);
+    await setElement(
       {
         sessionId: session.id,
         facetId: 3,
@@ -29,10 +29,10 @@ describe('claims ledger (R4.3)', () => {
     expect(entry?.facetName).toBe('Triggers & events');
   });
 
-  it('carries recorded statements with a turn reference', () => {
-    const { db } = makeTestDb();
-    const { session } = makeSessionFixture(db);
-    recordStatement(
+  it('carries recorded statements with a turn reference', async () => {
+    const { db } = await makeTestDb();
+    const { session } = await makeSessionFixture(db);
+    await recordStatement(
       { sessionId: session.id, facetId: 6, kind: 'rule', content: 'Advisors can credit up to £25.' },
       db,
     );
@@ -41,10 +41,10 @@ describe('claims ledger (R4.3)', () => {
     expect(entry?.facetId).toBe(6);
   });
 
-  it('renders a compact block that names each claim and its provenance', () => {
-    const { db } = makeTestDb();
-    const { session } = makeSessionFixture(db);
-    setElement(
+  it('renders a compact block that names each claim and its provenance', async () => {
+    const { db } = await makeTestDb();
+    const { session } = await makeSessionFixture(db);
+    await setElement(
       {
         sessionId: session.id,
         facetId: 1,
@@ -59,17 +59,17 @@ describe('claims ledger (R4.3)', () => {
     expect(block).toContain('Putting wrong charges right. [stated]');
   });
 
-  it('is empty for a fresh session, so it never fabricates prior knowledge', () => {
-    const { db } = makeTestDb();
-    const { session } = makeSessionFixture(db);
+  it('is empty for a fresh session, so it never fabricates prior knowledge', async () => {
+    const { db } = await makeTestDb();
+    const { session } = await makeSessionFixture(db);
     expect(buildLedger(session.id, db)).toEqual([]);
     expect(ledgerBlock([])).toBe('');
   });
 
-  it('does not report a claim for a facet that only has outstanding elements', () => {
-    const { db } = makeTestDb();
-    const { session } = makeSessionFixture(db);
-    setElement(
+  it('does not report a claim for a facet that only has outstanding elements', async () => {
+    const { db } = await makeTestDb();
+    const { session } = await makeSessionFixture(db);
+    await setElement(
       {
         sessionId: session.id,
         facetId: 1,
@@ -84,14 +84,14 @@ describe('claims ledger (R4.3)', () => {
     expect(facetHasClaims(ledger, 12)).toBe(false);
   });
 
-  it('excludes a superseded statement — the ledger reflects what they settled on (P2)', () => {
-    const { db } = makeTestDb();
-    const { session } = makeSessionFixture(db);
-    const first = recordStatement(
+  it('excludes a superseded statement — the ledger reflects what they settled on (P2)', async () => {
+    const { db } = await makeTestDb();
+    const { session } = await makeSessionFixture(db);
+    const first = await recordStatement(
       { sessionId: session.id, facetId: 11, kind: 'metric', content: 'About twenty a day.' },
       db,
     );
-    recordStatement(
+    await recordStatement(
       {
         sessionId: session.id,
         facetId: 11,

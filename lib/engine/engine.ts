@@ -114,15 +114,18 @@ function coverageView(rows: CoverageState[]): { facetId: number; state: Coverage
 }
 
 /** Pick-list options for the prompt, across every pick-list facet (R2). */
-async function optionView(sessionId: string, db: DB): OptionView[] {
-  return PICKLIST_FACETS.flatMap((f) =>
-    (await picklistOptions(sessionId, f.id, db)).map((o) => ({
-      facetId: f.id,
-      name: o.name,
-      source: o.source,
-      selected: o.selected,
-    })),
+async function optionView(sessionId: string, db: DB): Promise<OptionView[]> {
+  const perFacet = await Promise.all(
+    PICKLIST_FACETS.map(async (f) =>
+      (await picklistOptions(sessionId, f.id, db)).map((o) => ({
+        facetId: f.id,
+        name: o.name,
+        source: o.source,
+        selected: o.selected,
+      })),
+    ),
   );
+  return perFacet.flat();
 }
 
 /** Checklist state for the prompt's live coverage block (R1.1). */
@@ -167,7 +170,7 @@ export async function openInterview(sessionId: string, db: DB = getDb()): Promis
   if (config.mockModel) {
     text = OPENING_MOCK;
   } else {
-    const interviewee = await getInterviewee(session.intervieweeId, db)!;
+    const interviewee = (await getInterviewee(session.intervieweeId, db))!;
     const system = buildSystemPrompt({
       role: interviewee.role,
       processName: session.processName,
@@ -391,7 +394,7 @@ const TRUNCATION_MESSAGE =
   'Thank you for your time — does the summary so far look right to you?';
 
 // ── Process a user turn ──────────────────────────────────────────────────────
-export function processUserTurn(
+export async function processUserTurn(
   sessionId: string,
   input: { seq: number; content: string },
   db: DB = getDb(),
@@ -401,12 +404,17 @@ export function processUserTurn(
   const session = await getSession(sessionId, db);
   if (!session) throw new Error(`No session ${sessionId}`);
 
-  const result = (review: boolean, warnings: string[], agentSeq: number, agentText: string): TurnResult => ({
+  const result = async (
+    review: boolean,
+    warnings: string[],
+    agentSeq: number,
+    agentText: string,
+  ): Promise<TurnResult> => ({
     agentTurn: { seq: agentSeq, content: agentText },
     coverage: coverageView(await getCoverage(sessionId, db)),
     elements: elementView(await getElements(sessionId, db)),
-    budget: budgetState(agentQuestionsAsked(sessionId, db), config.questionBudget),
-    status: await getSession(sessionId, db)!.status,
+    budget: budgetState(await agentQuestionsAsked(sessionId, db), config.questionBudget),
+    status: (await getSession(sessionId, db))!.status,
     review,
     warnings,
   });
@@ -415,7 +423,7 @@ export function processUserTurn(
   // Completed/abandoned sessions do not.
   if (session.status === 'complete' || session.status === 'abandoned') {
     const lastAgent = [...listTurns(sessionId, db)].reverse().find((t) => t.speaker === 'agent');
-    return result(false, [], lastAgent?.seq ?? 0, lastAgent?.content ?? '');
+    return await result(false, [], lastAgent?.seq ?? 0, lastAgent?.content ?? '');
   }
 
   // Idempotency (FR-3.9): dedupe the user turn; if its agent reply already exists,
@@ -423,7 +431,7 @@ export function processUserTurn(
   await appendTurn({ sessionId, seq: input.seq, speaker: 'user', content: input.content }, db);
   const cachedReply = turnAt(sessionId, input.seq + 1, db);
   if (cachedReply && cachedReply.speaker === 'agent') {
-    return result(await getSession(sessionId, db)!.status === 'review', [], cachedReply.seq, cachedReply.content);
+    return await result(await getSession(sessionId, db)!.status === 'review', [], cachedReply.seq, cachedReply.content);
   }
 
   const userTurnCount = (await listTurns(sessionId, db)).filter((t) => t.speaker === 'user').length;
@@ -435,7 +443,7 @@ export function processUserTurn(
     forceReview(session, db);
     const agentSeq = nextAgentSeq(sessionId, input.seq, db);
     await appendTurn({ sessionId, seq: agentSeq, speaker: 'agent', content: BUDGET_MESSAGE }, db);
-    return result(true, ['budget: reached QUESTION_BUDGET'], agentSeq, BUDGET_MESSAGE);
+    return await result(true, ['budget: reached QUESTION_BUDGET'], agentSeq, BUDGET_MESSAGE);
   }
 
   // Hard stop before spending a model call (open interviews only).
@@ -443,18 +451,18 @@ export function processUserTurn(
     forceReview(session, db);
     const agentSeq = nextAgentSeq(sessionId, input.seq, db);
     await appendTurn({ sessionId, seq: agentSeq, speaker: 'agent', content: TRUNCATION_MESSAGE }, db);
-    return result(true, ['hard-stop: reached SESSION_MAX_TURNS'], agentSeq, TRUNCATION_MESSAGE);
+    return await result(true, ['hard-stop: reached SESSION_MAX_TURNS'], agentSeq, TRUNCATION_MESSAGE);
   }
 
-  const interviewee = await getInterviewee(session.intervieweeId, db)!;
+  const interviewee = (await getInterviewee(session.intervieweeId, db))!;
   const warnings: string[] = [];
-  const systemNow = () =>
+  const systemNow = async () =>
     buildSystemPrompt({
       role: interviewee.role,
       processName: session.processName,
       coverage: coverageView(await getCoverage(sessionId, db)),
       elements: elementView(await getElements(sessionId, db)),
-      options: optionView(sessionId, db),
+      options: await optionView(sessionId, db),
     });
 
   // ── Phase A — extraction (tools only). A dedicated bookkeeping step, so the
@@ -466,7 +474,7 @@ export function processUserTurn(
   for (let hop = 0; hop < MAX_TOOL_HOPS; hop += 1) {
     const resp = await callModel({
       sessionId,
-      system: systemNow(),
+      system: await systemNow(),
       messages: exMessages,
       lastAppliedTool,
       toolChoice: hop === 0 ? 'any' : 'auto',
@@ -490,7 +498,7 @@ export function processUserTurn(
     exMessages.push({ role: 'user', content: toolResults });
   }
 
-  const nowReview = await getSession(sessionId, db)!.status === 'review';
+  const nowReview = (await getSession(sessionId, db))!.status === 'review';
 
   // ── Phase B — the agent's message (no tools): one question, or the playback
   //    once every facet is terminal (FR-3.3, FR-4.1).
@@ -516,7 +524,7 @@ export function processUserTurn(
   });
   const qResp = await callModel({
     sessionId,
-    system: systemNow(),
+    system: await systemNow(),
     messages: qMessages,
     lastAppliedTool,
     noTools: true,
@@ -536,7 +544,7 @@ export function processUserTurn(
       });
       const retry = await callModel({
         sessionId,
-        system: systemNow(),
+        system: await systemNow(),
         messages: qMessages,
         lastAppliedTool,
         noTools: true,
@@ -565,7 +573,7 @@ export function processUserTurn(
     db,
   );
 
-  return result(await getSession(sessionId, db)!.status === 'review', warnings, agentSeq, agentText);
+  return await result(await getSession(sessionId, db)!.status === 'review', warnings, agentSeq, agentText);
 }
 
 // ── Completion (FR-4.2, FR-5) ────────────────────────────────────────────────
@@ -574,14 +582,14 @@ export function processUserTurn(
  * spec, then set session and interviewee to complete. An invalid spec throws and
  * blocks completion (FR-5.5). Idempotent once complete.
  */
-export function completeInterview(
+export async function completeInterview(
   sessionId: string,
   db: DB = getDb(),
 ): Promise<{ specVersion: number }> {
   const session = await getSession(sessionId, db);
   if (!session) throw new Error(`No session ${sessionId}`);
   if (session.status === 'complete') {
-    return { specVersion: await getLatestSpec(sessionId, db)?.version ?? 0 };
+    return { specVersion: (await getLatestSpec(sessionId, db))?.version ?? 0 };
   }
   // Delta v1.1 R9.3: an open session may be finished early. The informant is
   // never trapped by their own coverage — the spec is generated regardless of

@@ -43,7 +43,7 @@ export async function POST(req: Request, { params }: { params: { sessionId: stri
     );
   }
 
-  const informant = await getInterviewee(session.intervieweeId)?.fullName ?? 'the informant';
+  const informant = (await getInterviewee(session.intervieweeId))?.fullName ?? 'the informant';
 
   if (new URL(req.url).searchParams.get('refresh') === '1') {
     await deleteProcessGraph(session.id, spec.version, 'asis');

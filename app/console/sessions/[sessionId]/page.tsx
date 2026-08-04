@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
  * The Process map tab lives here because the map is analysis for the architecture
  * team, not something the informant is shown.
  */
-export default function SpecDetailPage({ params }: { params: { sessionId: string } }) {
+export default async function SpecDetailPage({ params }: { params: { sessionId: string } }) {
   const session = await getSession(params.sessionId);
   if (!session) redirect('/console');
 

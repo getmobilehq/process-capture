@@ -6,7 +6,7 @@ import { createProjectAction } from './actions';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-export default function ConsoleHome() {
+export default async function ConsoleHome() {
   requireAdmin();
   const projects = await listProjects();
 

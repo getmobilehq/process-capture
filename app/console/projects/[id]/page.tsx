@@ -13,7 +13,7 @@ export const runtime = 'nodejs';
 
 type Tab = 'register' | 'findings' | 'conflicts';
 
-export default function ProjectPage({
+export default async function ProjectPage({
   params,
   searchParams,
 }: {

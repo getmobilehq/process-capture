@@ -39,10 +39,10 @@ test('golden path: mocked interview reaches review with 11 answered + 1 unknown'
   // Start the interview.
   await page.goto(`/i/${token}`);
   await page.getByRole('button', { name: /Start interview/i }).click();
-  await expect(page).toHaveURL(new RegExp(`/i/${token}/interview$`));
+  await expect(page)).toHaveURL(new RegExp(`/i/${token}/interview$`));
 
   // The opening question is present before any input.
-  await expect(page.locator('.pc-msg.agent').first()).toBeVisible();
+  await expect(page.locator('.pc-msg.agent').first())).toBeVisible();
 
   const textarea = page.getByLabel('Your reply', { exact: true });
   const send = page.getByRole('button', { name: /Submit answer/i });
@@ -79,12 +79,12 @@ test('golden path: mocked interview reaches review with 11 answered + 1 unknown'
   // UI reflects review and the checklist-derived count (delta R1.1). The mock
   // captures every element except facet 9's three, which the informant honestly
   // cannot answer — so 37 of 40, not a bare percentage.
-  await expect(page.getByText(/37 of 40 things captured/)).toBeVisible();
+  await expect(page.getByText(/37 of 40 things captured/))).toBeVisible();
   expect(sessionFor(token)!.status).toBe('review');
 
   // Confirm the review → interview completes and a spec is generated (FR-4.2, FR-5).
   await page.getByRole('button', { name: /finish/i }).click();
-  await expect(page.getByText(/Your interview is complete/i)).toBeVisible();
+  await expect(page.getByText(/Your interview is complete/i))).toBeVisible();
 
   const session = sessionFor(token)!;
   expect(session.status).toBe('complete');

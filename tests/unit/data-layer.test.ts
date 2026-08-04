@@ -13,16 +13,16 @@ import {
 import { IllegalCoverageTransitionError } from '@/lib/engine/coverage';
 
 describe('append-only statements (P2, §5)', () => {
-  it('supersede adds a new row and never mutates the original', () => {
-    const { db } = makeTestDb();
-    const { session } = makeSessionFixture(db);
+  it('supersede adds a new row and never mutates the original', async () => {
+    const { db } = await makeTestDb();
+    const { session } = await makeSessionFixture(db);
 
-    const original = recordStatement(
+    const original = await recordStatement(
       { sessionId: session.id, facetId: 6, kind: 'rule', content: 'Advisor credits up to £25.' },
       db,
     );
 
-    const correction = supersedeStatement(
+    const correction = await supersedeStatement(
       {
         supersedesId: original.id,
         sessionId: session.id,
@@ -33,7 +33,7 @@ describe('append-only statements (P2, §5)', () => {
       db,
     );
 
-    const all = listStatements(session.id, db);
+    const all = await listStatements(session.id, db);
     expect(all).toHaveLength(2);
 
     // Original is untouched.
@@ -45,56 +45,56 @@ describe('append-only statements (P2, §5)', () => {
     expect(correction.supersedesId).toBe(original.id);
 
     // Live set excludes the superseded original.
-    const live = listLiveStatements(session.id, db);
+    const live = await listLiveStatements(session.id, db);
     expect(live).toHaveLength(1);
     expect(live[0].id).toBe(correction.id);
   });
 });
 
 describe('coverage transition legality via setCoverage (P1, P3)', () => {
-  it('seeds 12 pending rows on session creation', () => {
-    const { db } = makeTestDb();
-    const { session } = makeSessionFixture(db);
-    const rows = getCoverage(session.id, db);
+  it('seeds 12 pending rows on session creation', async () => {
+    const { db } = await makeTestDb();
+    const { session } = await makeSessionFixture(db);
+    const rows = await getCoverage(session.id, db);
     expect(rows).toHaveLength(12);
     expect(rows.every((r) => r.state === 'pending')).toBe(true);
     expect(rows.map((r) => r.facetId)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
   });
 
-  it('applies legal transitions and rejects illegal ones', () => {
-    const { db } = makeTestDb();
-    const { session } = makeSessionFixture(db);
+  it('applies legal transitions and rejects illegal ones', async () => {
+    const { db } = await makeTestDb();
+    const { session } = await makeSessionFixture(db);
 
     // pending → partial → answered is legal
-    expect(setCoverage(session.id, 1, 'partial', db).state).toBe('partial');
-    expect(setCoverage(session.id, 1, 'answered', db).state).toBe('answered');
+    expect((await setCoverage(session.id, 1, 'partial', db)).state).toBe('partial');
+    expect((await setCoverage(session.id, 1, 'answered', db)).state).toBe('answered');
 
     // answered is terminal → any further move is rejected
-    expect(() => setCoverage(session.id, 1, 'partial', db)).toThrow(
+    await expect(setCoverage(session.id, 1, 'partial', db)).rejects.toThrow(
       IllegalCoverageTransitionError,
     );
 
     // partial → not_applicable is illegal
-    setCoverage(session.id, 2, 'partial', db);
-    expect(() => setCoverage(session.id, 2, 'not_applicable', db)).toThrow(
+    await setCoverage(session.id, 2, 'partial', db);
+    await expect(setCoverage(session.id, 2, 'not_applicable', db)).rejects.toThrow(
       IllegalCoverageTransitionError,
     );
 
     // pending → not_applicable is legal
-    expect(setCoverage(session.id, 3, 'not_applicable', db).state).toBe('not_applicable');
+    expect((await setCoverage(session.id, 3, 'not_applicable', db)).state).toBe('not_applicable');
   });
 });
 
 describe('invite token uniqueness (§5)', () => {
-  it('generates distinct, ≥24-char tokens per interviewee', () => {
-    const { db } = makeTestDb();
-    const { project } = makeSessionFixture(db);
+  it('generates distinct, ≥24-char tokens per interviewee', async () => {
+    const { db } = await makeTestDb();
+    const { project } = await makeSessionFixture(db);
 
-    const a = addInterviewee(
+    const a = await addInterviewee(
       { projectId: project.id, fullName: 'A', email: 'a@example.com', role: 'r' },
       db,
     );
-    const b = addInterviewee(
+    const b = await addInterviewee(
       { projectId: project.id, fullName: 'B', email: 'b@example.com', role: 'r' },
       db,
     );
@@ -104,9 +104,9 @@ describe('invite token uniqueness (§5)', () => {
     expect(b.inviteToken.length).toBeGreaterThanOrEqual(24);
   });
 
-  it('rejects a duplicate invite token at the database (unique index)', () => {
-    const { db, sqlite } = makeTestDb();
-    const { project, interviewee } = makeSessionFixture(db);
+  it('rejects a duplicate invite token at the database (unique index)', async () => {
+    const { db, sqlite } = await makeTestDb();
+    const { project, interviewee } = await makeSessionFixture(db);
 
     // Force a collision by inserting a raw row reusing an existing token.
     expect(() =>

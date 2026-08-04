@@ -10,7 +10,7 @@ import {
 } from '@/lib/engine/coverage';
 
 describe('coverage state machine (FR-3.2, P3)', () => {
-  it('permits every legal transition from pending', () => {
+  it('permits every legal transition from pending', async () => {
     for (const to of [
       'partial',
       'answered',
@@ -21,7 +21,7 @@ describe('coverage state machine (FR-3.2, P3)', () => {
     }
   });
 
-  it('permits partial → answered and partial → unknown_to_informant only', () => {
+  it('permits partial → answered and partial → unknown_to_informant only', async () => {
     expect(canTransition('partial', 'answered')).toBe(true);
     expect(canTransition('partial', 'unknown_to_informant')).toBe(true);
     // partial may NOT go to not_applicable or back to pending
@@ -29,7 +29,7 @@ describe('coverage state machine (FR-3.2, P3)', () => {
     expect(canTransition('partial', 'pending')).toBe(false);
   });
 
-  it('treats answered / unknown_to_informant / not_applicable as terminal (immutable)', () => {
+  it('treats answered / unknown_to_informant / not_applicable as terminal (immutable)', async () => {
     for (const from of [
       'answered',
       'unknown_to_informant',
@@ -48,12 +48,12 @@ describe('coverage state machine (FR-3.2, P3)', () => {
     }
   });
 
-  it('assertTransition throws IllegalCoverageTransitionError on an illegal move', () => {
+  it('assertTransition throws IllegalCoverageTransitionError on an illegal move', async () => {
     expect(() => assertTransition('answered', 'partial')).toThrow(IllegalCoverageTransitionError);
     expect(() => assertTransition('pending', 'answered')).not.toThrow();
   });
 
-  it('isResolved / allResolved reflect terminal states (no silent gaps)', () => {
+  it('isResolved / allResolved reflect terminal states (no silent gaps)', async () => {
     expect(isResolved('pending')).toBe(false);
     expect(isResolved('partial')).toBe(false);
     expect(isResolved('answered')).toBe(true);
