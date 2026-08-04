@@ -212,7 +212,7 @@ const TOOL = {
  * still a useful diagram, whereas losing the structure because the evidence pass
  * stumbled would not be.
  */
-export async function extractAnnotations(
+export function extractAnnotations(
   markdown: string,
   graph: ProcessGraph,
 ): Promise<ProcessGraph['annotations']> {
@@ -221,7 +221,7 @@ export async function extractAnnotations(
     .join('\n');
 
   try {
-    const resp = await getClient().messages.create({
+    const resp = (await getClient()).messages.create({
       model: config.model,
       max_tokens: config.modelMaxTokens,
       temperature: config.modelTemperature,
@@ -267,7 +267,7 @@ export async function extractProcessGraph(input: {
   let lastErrors: string[] = ['no proposal was returned'];
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
-    const resp = await getClient().messages.create({
+    const resp = (await getClient()).messages.create({
       model: config.model,
       max_tokens: config.modelMaxTokens,
       temperature: config.modelTemperature,

@@ -18,10 +18,10 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export default async function InterviewPage({ params }: { params: { token: string } }) {
-  const interviewee = getIntervieweeByToken(params.token);
+  const interviewee = await getIntervieweeByToken(params.token);
   if (!interviewee) redirect(`/i/${params.token}`);
 
-  const latest = getLatestSession(interviewee.id);
+  const latest = await getLatestSession(interviewee.id);
   if (!latest || latest.status === 'abandoned') redirect(`/i/${params.token}`);
 
   // Ensure the opening agent turn exists (idempotent). No-op once opened.
@@ -29,10 +29,10 @@ export default async function InterviewPage({ params }: { params: { token: strin
     await openInterview(latest.id);
   }
 
-  const session = getSession(latest.id)!;
-  const turns = listTurns(session.id).map((t) => ({ seq: t.seq, speaker: t.speaker, content: t.content }));
-  const coverage = getCoverage(session.id).map((c) => ({ facetId: c.facetId, state: c.state }));
-  const elements = getElements(session.id).map((e) => ({
+  const session = await getSession(latest.id)!;
+  const turns = (await listTurns(session.id)).map((t) => ({ seq: t.seq, speaker: t.speaker, content: t.content }));
+  const coverage = (await getCoverage(session.id)).map((c) => ({ facetId: c.facetId, state: c.state }));
+  const elements = (await getElements(session.id)).map((e) => ({
     facetId: e.facetId,
     elementId: e.elementId,
     state: e.state,
@@ -42,7 +42,7 @@ export default async function InterviewPage({ params }: { params: { token: strin
 
   // Pick-list option sets for the four closed-set facets (R2.1/R2.2).
   const options = Object.fromEntries(
-    PICKLIST_FACETS.map((f) => [f.id, picklistOptions(session.id, f.id)]),
+    PICKLIST_FACETS.map((f) => [f.id, await picklistOptions(session.id, f.id)]),
   );
 
   // R10.3 — anything unsubmitted when the tab went away comes back with them.
@@ -54,7 +54,7 @@ export default async function InterviewPage({ params }: { params: { token: strin
     exhausted: asked >= config.questionBudget,
   };
 
-  const active = getActiveDraft(session.id);
+  const active = await getActiveDraft(session.id);
   const draft = active ? { content: active.content, seq: active.seq, take: active.take } : null;
 
   return (

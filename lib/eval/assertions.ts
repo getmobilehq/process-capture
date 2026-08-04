@@ -58,7 +58,7 @@ function getClient(): Anthropic {
 
 async function judgePresent(concept: string, statements: string): Promise<boolean> {
   if (!statements.trim()) return false;
-  const resp = await getClient().messages.create({
+  const resp = (await getClient()).messages.create({
     model: config.model,
     max_tokens: 8,
     temperature: 0,

@@ -10,11 +10,11 @@ export const dynamic = 'force-dynamic';
  * team, not something the informant is shown.
  */
 export default function SpecDetailPage({ params }: { params: { sessionId: string } }) {
-  const session = getSession(params.sessionId);
+  const session = await getSession(params.sessionId);
   if (!session) redirect('/console');
 
-  const spec = getLatestSpec(session.id);
-  const interviewee = getInterviewee(session.intervieweeId);
+  const spec = await getLatestSpec(session.id);
+  const interviewee = await getInterviewee(session.intervieweeId);
 
   return (
     <main className="pc-wrap">

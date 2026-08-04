@@ -51,7 +51,7 @@ import {
 } from '@/lib/engine/coverage';
 
 // Invite tokens: unguessable, ≥ 24 chars (§5). nanoid(32) → 32-char url-safe.
-export async function generateInviteToken(): string {
+export async function generateInviteToken(): Promise<string> {
   return nanoid(32);
 }
 
@@ -61,7 +61,7 @@ export async function createProject(
     Partial<Pick<NewProject, 'description' | 'targetProcesses'>>,
   db: DB = getDb(),
 ) {
-  const row = db
+  const row = await db
     .insert(projects)
     .values({
       name: input.name,
@@ -88,7 +88,8 @@ export async function updateProject(
   patch: Partial<Pick<NewProject, 'name' | 'department' | 'description' | 'status' | 'targetProcesses'>>,
   db: DB = getDb(),
 ) {
-  const row = db.update(projects).set(patch).where(eq(projects.id, id)).returning().then((r) => r[0]);
+  const row = await db
+.update(projects).set(patch).where(eq(projects.id, id)).returning().then((r) => r[0]);
   return row;
 }
 
@@ -97,7 +98,7 @@ export async function addInterviewee(
   input: { projectId: string; fullName: string; email: string; role: string },
   db: DB = getDb(),
 ) {
-  const row = db
+  const row = await db
     .insert(interviewees)
     .values({
       projectId: input.projectId,
@@ -132,7 +133,8 @@ export async function updateInterviewee(
   patch: Partial<{ fullName: string; email: string; role: string }>,
   db: DB = getDb(),
 ) {
-  const row = db.update(interviewees).set(patch).where(eq(interviewees.id, id)).returning().then((r) => r[0]);
+  const row = await db
+.update(interviewees).set(patch).where(eq(interviewees.id, id)).returning().then((r) => r[0]);
   return row;
 }
 
@@ -141,7 +143,7 @@ export async function setIntervieweeStatus(
   status: 'invited' | 'in_progress' | 'complete',
   db: DB = getDb(),
 ) {
-  const row = db
+  const row = await db
     .update(interviewees)
     .set({ status })
     .where(eq(interviewees.id, id))
@@ -159,7 +161,7 @@ export async function createSession(
   db: DB = getDb(),
 ): Promise<Session> {
   return db.transaction(async (tx) => {
-    const session = tx
+    const session = await tx
       .insert(sessions)
       .values({
         intervieweeId: input.intervieweeId,
@@ -170,13 +172,13 @@ export async function createSession(
       })
       .returning().then((r) => r[0]);
 
-    tx.insert(coverageStates)
+    await tx.insert(coverageStates)
       .values(FACET_IDS.map((facetId) => ({ sessionId: session.id, facetId, state: 'pending' as const })))
       ;
 
     // Seed the checklist too (R1.1) — every element starts outstanding, so the
     // interviewee can see the full shape of what is wanted from turn one.
-    tx.insert(elementStates)
+    await tx.insert(elementStates)
       .values(
         ALL_ELEMENTS.map((e) => ({
           sessionId: session.id,
@@ -231,13 +233,14 @@ export async function updateSession(
   >,
   db: DB = getDb(),
 ) {
-  const row = db.update(sessions).set(patch).where(eq(sessions.id, id)).returning().then((r) => r[0]);
+  const row = await db
+.update(sessions).set(patch).where(eq(sessions.id, id)).returning().then((r) => r[0]);
   return row;
 }
 
 // ── Turns (append-only, idempotent) ──────────────────────────────────────────
-export async function nextTurnSeq(sessionId: string, db: DB = getDb()): number {
-  const last = db
+export async function nextTurnSeq(sessionId: string, db: DB = getDb()): Promise<number> {
+  const last = await db
     .select({ seq: turns.seq })
     .from(turns)
     .where(eq(turns.sessionId, sessionId))
@@ -254,14 +257,14 @@ export async function appendTurn(
   input: { sessionId: string; seq: number; speaker: 'agent' | 'user' | 'system'; content: string },
   db: DB = getDb(),
 ) {
-  const existing = db
+  const existing = await db
     .select()
     .from(turns)
     .where(and(eq(turns.sessionId, input.sessionId), eq(turns.seq, input.seq)))
     .then((r) => r[0]);
   if (existing) return existing;
 
-  const row = db
+  const row = await db
     .insert(turns)
     .values({
       sessionId: input.sessionId,
@@ -293,8 +296,8 @@ export async function recordStatement(
     supersedesId?: string | null;
   },
   db: DB = getDb(),
-): Statement {
-  const row = db
+): Promise<Statement> {
+  const row = await db
     .insert(statements)
     .values({
       sessionId: input.sessionId,
@@ -322,7 +325,7 @@ export async function supersedeStatement(
     verbatim?: boolean;
   },
   db: DB = getDb(),
-): Statement {
+): Promise<Statement> {
   return await recordStatement({ ...input, supersedesId: input.supersedesId }, db);
 }
 
@@ -383,7 +386,7 @@ export async function setCoverage(
   const current = await getCoverageState(sessionId, facetId, db);
   if (!current) throw new Error(`No coverage row for session ${sessionId} facet ${facetId}`);
   assertTransition(current.state, toState);
-  const row = db
+  const row = await db
     .update(coverageStates)
     .set({ state: toState })
     .where(and(eq(coverageStates.sessionId, sessionId), eq(coverageStates.facetId, facetId)))
@@ -423,7 +426,7 @@ export async function reconcileFacetCoverage(sessionId: string, facetId: number,
   if (isTerminal(current.state)) return current;
 
   const derived = deriveFacetState(
-    await getElementsForFacet(sessionId, facetId, db).map((r) => ({
+    await (await getElementsForFacet(sessionId, facetId, db)).map((r) => ({
       elementId: r.elementId,
       state: r.state,
     })),
@@ -459,7 +462,7 @@ export async function setElement(
   }
 
   return db.transaction(async (tx) => {
-    const current = tx
+    const current = await tx
       .select()
       .from(elementStates)
       .where(
@@ -473,7 +476,7 @@ export async function setElement(
       throw new Error(`No element row for session ${input.sessionId} element ${input.elementId}`);
     }
 
-    const row = tx
+    const row = await tx
       .update(elementStates)
       .set({
         state: input.state,
@@ -496,7 +499,7 @@ export async function setElement(
 
 /** Outstanding elements, in plain language — what the interview still wants (R1.1). */
 export async function outstandingElements(sessionId: string, db: DB = getDb()) {
-  return await getElements(sessionId, db)
+  return (await getElements(sessionId, db))
     .filter((r) => r.state === 'outstanding')
     .map((r) => ({
       facetId: r.facetId,
@@ -554,10 +557,10 @@ export async function saveDraft(
 
   // A draft for a different seq means the previous answer was submitted; retire it.
   if (active) {
-    db.update(answerDrafts).set({ status: 'submitted' }).where(eq(answerDrafts.id, active.id));
+    await db.update(answerDrafts).set({ status: 'submitted' }).where(eq(answerDrafts.id, active.id));
   }
 
-  const lastTake = db
+  const lastTake = await db
     .select()
     .from(answerDrafts)
     .where(and(eq(answerDrafts.sessionId, input.sessionId), eq(answerDrafts.seq, input.seq)))
@@ -595,7 +598,7 @@ export async function undoDiscard(sessionId: string, db: DB = getDb()) {
   // Retire anything currently live so there is exactly one active draft.
   const active = await getActiveDraft(sessionId, db);
   if (active) {
-    db.update(answerDrafts).set({ status: 'archived' }).where(eq(answerDrafts.id, active.id));
+    await db.update(answerDrafts).set({ status: 'archived' }).where(eq(answerDrafts.id, active.id));
   }
   return db
     .update(answerDrafts)
@@ -611,9 +614,9 @@ export async function undoDiscard(sessionId: string, db: DB = getDb()) {
 export async function startNewTake(sessionId: string, seq: number, db: DB = getDb()) {
   const active = await getActiveDraft(sessionId, db);
   if (active) {
-    db.update(answerDrafts).set({ status: 'archived' }).where(eq(answerDrafts.id, active.id));
+    await db.update(answerDrafts).set({ status: 'archived' }).where(eq(answerDrafts.id, active.id));
   }
-  const lastTake = db
+  const lastTake = await db
     .select()
     .from(answerDrafts)
     .where(and(eq(answerDrafts.sessionId, sessionId), eq(answerDrafts.seq, seq)))
@@ -753,7 +756,7 @@ export async function upsertEntity(
   const key = canonicalKey(input.name);
   if (key === '') throw new Error(`Entity name has no canonical form: "${input.name}"`);
 
-  const existing = db
+  const existing = await db
     .select()
     .from(entities)
     .where(
@@ -783,16 +786,16 @@ export async function upsertEntity(
  * Seed a project's taxonomy with the house vocabulary (R2.2). Idempotent — safe on
  * every project creation and re-runnable after the seed list grows.
  */
-export async function seedTaxonomy(projectId: string, db: DB = getDb()): number {
+export async function seedTaxonomy(projectId: string, db: DB = getDb()): Promise<number> {
   let created = 0;
   for (const group of TAXONOMY_SEED) {
     for (const name of group.names) {
-      const before = await listEntities(projectId, group.kind, db).length;
+      const before = (await listEntities(projectId, group.kind, db)).length;
       await upsertEntity(
         { projectId, kind: group.kind, name, status: 'confirmed', origin: 'taxonomy' },
         db,
       );
-      if (await listEntities(projectId, group.kind, db).length > before) created += 1;
+      if ((await listEntities(projectId, group.kind, db)).length > before) created += 1;
     }
   }
   return created;
@@ -802,7 +805,7 @@ export async function listEntities(
   projectId: string,
   kind: EntityKind | null = null,
   db: DB = getDb(),
-): Entity[] {
+): Promise<Entity[]> {
   const where = kind
     ? and(eq(entities.projectId, projectId), eq(entities.kind, kind))
     : eq(entities.projectId, projectId);
@@ -819,7 +822,7 @@ export async function recordEntityMention(
   },
   db: DB = getDb(),
 ) {
-  const existing = db
+  const existing = await db
     .select()
     .from(entityMentions)
     .where(
@@ -880,7 +883,7 @@ export async function picklistOptions(
   if (!session) return [];
 
   const all = await listEntities(session.projectId, kind, db);
-  const mentions = db
+  const mentions = await db
     .select()
     .from(entityMentions)
     .innerJoin(sessions, eq(entityMentions.sessionId, sessions.id))
@@ -930,8 +933,9 @@ export async function coverageSummary(sessionId: string, db: DB = getDb()) {
 }
 
 // ── Findings ─────────────────────────────────────────────────────────────────
-export async function raiseFinding(input: Omit<NewFinding, 'id' | 'createdAt' | 'updatedAt'>, db: DB = getDb()): Finding {
-  const row = db.insert(findings).values(input).returning().then((r) => r[0]);
+export async function raiseFinding(input: Omit<NewFinding, 'id' | 'createdAt' | 'updatedAt'>, db: DB = getDb()): Promise<Finding> {
+  const row = await db
+.insert(findings).values(input).returning().then((r) => r[0]);
   return row;
 }
 
@@ -958,13 +962,14 @@ export async function updateFinding(
   patch: Partial<Pick<Finding, 'status' | 'routedTo' | 'title' | 'detail'>>,
   db: DB = getDb(),
 ) {
-  const row = db.update(findings).set(patch).where(eq(findings.id, id)).returning().then((r) => r[0]);
+  const row = await db
+.update(findings).set(patch).where(eq(findings.id, id)).returning().then((r) => r[0]);
   return row;
 }
 
 // ── Specs (versioned) ────────────────────────────────────────────────────────
-export async function nextSpecVersion(sessionId: string, db: DB = getDb()): number {
-  const last = db
+export async function nextSpecVersion(sessionId: string, db: DB = getDb()): Promise<number> {
+  const last = await db
     .select({ version: specs.version })
     .from(specs)
     .where(eq(specs.sessionId, sessionId))
@@ -983,7 +988,7 @@ export async function saveSpec(
   db: DB = getDb(),
 ) {
   const version = await nextSpecVersion(input.sessionId, db);
-  const row = db
+  const row = await db
     .insert(specs)
     .values({
       sessionId: input.sessionId,

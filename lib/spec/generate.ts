@@ -21,7 +21,7 @@ export async function generateAndSaveSpec(sessionId: string, db: DB = getDb()): 
   const rendered = await renderSpec(sessionId, db);
   const result = validateSpec(rendered.markdown);
   if (!result.ok) throw new SpecValidationError(result.errors);
-  return saveSpec(
+  return await saveSpec(
     {
       sessionId,
       markdown: rendered.markdown,

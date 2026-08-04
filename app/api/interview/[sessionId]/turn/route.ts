@@ -18,7 +18,7 @@ export async function POST(req: Request, { params }: { params: { sessionId: stri
     );
   }
 
-  const session = getSession(params.sessionId);
+  const session = await getSession(params.sessionId);
   if (!session) {
     return NextResponse.json({ error: 'Unknown session' }, { status: 404 });
   }

@@ -44,11 +44,11 @@ export interface LedgerEntry {
  * Build the ledger for a session. Ordered by facet so a reader — human or model —
  * can see the shape of what is known at a glance.
  */
-export function buildLedger(sessionId: string, db: DB = getDb()): LedgerEntry[] {
+export async function buildLedger(sessionId: string, db: DB = getDb()): LedgerEntry[] {
   const entries: LedgerEntry[] = [];
 
   // Captured checklist elements: the strongest signal that something is settled.
-  for (const e of getElements(sessionId, db)) {
+  for (const e of await getElements(sessionId, db)) {
     if (e.state !== 'captured') continue;
     const element = getElement(e.elementId);
     entries.push({
@@ -62,7 +62,7 @@ export function buildLedger(sessionId: string, db: DB = getDb()): LedgerEntry[] 
   }
 
   // Statements not tied to a specific element still count as things they told us.
-  for (const s of listLiveStatements(sessionId, db)) {
+  for (const s of await listLiveStatements(sessionId, db)) {
     entries.push({
       facetId: s.facetId,
       facetName: getFacet(s.facetId).name,
@@ -73,7 +73,7 @@ export function buildLedger(sessionId: string, db: DB = getDb()): LedgerEntry[] 
   }
 
   // Entities the informant named or ticked (R2) are claims too.
-  for (const m of listEntityMentions(sessionId, db)) {
+  for (const m of await listEntityMentions(sessionId, db)) {
     entries.push({
       facetId: m.facetId,
       facetName: getFacet(m.facetId).name,

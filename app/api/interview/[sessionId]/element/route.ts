@@ -32,7 +32,7 @@ export async function POST(req: Request, { params }: { params: { sessionId: stri
     );
   }
 
-  const session = getSession(params.sessionId);
+  const session = await getSession(params.sessionId);
   if (!session) return NextResponse.json({ error: 'Unknown session' }, { status: 404 });
   if (session.status === 'complete' || session.status === 'abandoned') {
     return NextResponse.json({ error: 'This interview is closed.' }, { status: 409 });
@@ -55,7 +55,7 @@ export async function POST(req: Request, { params }: { params: { sessionId: stri
     return NextResponse.json({ error: 'Unknown element' }, { status: 400 });
   }
 
-  setElement({
+  await setElement({
     sessionId: session.id,
     facetId: element.facetId,
     elementId: element.id,
@@ -64,7 +64,7 @@ export async function POST(req: Request, { params }: { params: { sessionId: stri
   });
 
   return NextResponse.json({
-    elements: getElements(session.id).map((r) => ({
+    elements: (await getElements(session.id)).map((r) => ({
       facetId: r.facetId,
       elementId: r.elementId,
       state: r.state,

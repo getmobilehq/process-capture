@@ -114,9 +114,9 @@ function coverageView(rows: CoverageState[]): { facetId: number; state: Coverage
 }
 
 /** Pick-list options for the prompt, across every pick-list facet (R2). */
-function optionView(sessionId: string, db: DB): OptionView[] {
+async function optionView(sessionId: string, db: DB): OptionView[] {
   return PICKLIST_FACETS.flatMap((f) =>
-    picklistOptions(sessionId, f.id, db).map((o) => ({
+    (await picklistOptions(sessionId, f.id, db)).map((o) => ({
       facetId: f.id,
       name: o.name,
       source: o.source,
@@ -137,17 +137,17 @@ function elementView(rows: ElementState[]): ElementView[] {
 }
 
 /** How many questions the agent has actually put to the informant (R9.1). */
-function agentQuestionsAsked(sessionId: string, db: DB): number {
-  return listTurns(sessionId, db).filter((t) => t.speaker === 'agent').length;
+async function agentQuestionsAsked(sessionId: string, db: DB): number {
+  return (await listTurns(sessionId, db)).filter((t) => t.speaker === 'agent').length;
 }
 
-function turnAt(sessionId: string, seq: number, db: DB) {
-  return listTurns(sessionId, db).find((t) => t.seq === seq);
+async function turnAt(sessionId: string, seq: number, db: DB) {
+  return (await listTurns(sessionId, db)).find((t) => t.seq === seq);
 }
 
 /** Map the persisted transcript to Anthropic messages (agent/user only). */
-function buildMessages(sessionId: string, db: DB): Anthropic.MessageParam[] {
-  return listTurns(sessionId, db)
+async function buildMessages(sessionId: string, db: DB): Anthropic.MessageParam[] {
+  return await listTurns(sessionId, db)
     .filter((t) => t.speaker === 'agent' || t.speaker === 'user')
     .map((t) => ({
       role: t.speaker === 'agent' ? ('assistant' as const) : ('user' as const),
@@ -158,21 +158,21 @@ function buildMessages(sessionId: string, db: DB): Anthropic.MessageParam[] {
 // ── Opening (FR-2.3) ─────────────────────────────────────────────────────────
 /** Ensure the opening agent turn exists. Idempotent — safe to call on every load. */
 export async function openInterview(sessionId: string, db: DB = getDb()): Promise<void> {
-  const session = getSession(sessionId, db);
+  const session = await getSession(sessionId, db);
   if (!session) throw new Error(`No session ${sessionId}`);
-  const existing = listTurns(sessionId, db);
+  const existing = await listTurns(sessionId, db);
   if (existing.some((t) => t.speaker === 'agent')) return; // already opened
 
   let text: string;
   if (config.mockModel) {
     text = OPENING_MOCK;
   } else {
-    const interviewee = getInterviewee(session.intervieweeId, db)!;
+    const interviewee = await getInterviewee(session.intervieweeId, db)!;
     const system = buildSystemPrompt({
       role: interviewee.role,
       processName: session.processName,
-      coverage: coverageView(getCoverage(sessionId, db)),
-      elements: elementView(getElements(sessionId, db)),
+      coverage: coverageView(await getCoverage(sessionId, db)),
+      elements: elementView(await getElements(sessionId, db)),
       options: optionView(sessionId, db),
     });
     const resp = await callModel({
@@ -186,7 +186,7 @@ export async function openInterview(sessionId: string, db: DB = getDb()): Promis
     text = resp.text || 'Thanks for making the time. To start, which process shall we talk about?';
   }
 
-  appendTurn({ sessionId, seq: 1, speaker: 'agent', content: text }, db);
+  await appendTurn({ sessionId, seq: 1, speaker: 'agent', content: text }, db);
 }
 
 // ── Tool application (P1) ────────────────────────────────────────────────────
@@ -197,12 +197,12 @@ interface ApplyResult {
   ended?: boolean;
 }
 
-export function applyTool(session: Session, call: ModelToolCall, db: DB): ApplyResult {
+export async function applyTool(session: Session, call: ModelToolCall, db: DB): ApplyResult {
   try {
     switch (call.name) {
       case 'record_statement': {
         const input = recordStatementSchema.parse(call.input);
-        recordStatement(
+        await recordStatement(
           { sessionId: session.id, facetId: input.facetId, kind: input.kind, content: input.content, verbatim: input.verbatim },
           db,
         );
@@ -211,7 +211,7 @@ export function applyTool(session: Session, call: ModelToolCall, db: DB): ApplyR
       case 'set_coverage': {
         const input = setCoverageSchema.parse(call.input);
         try {
-          setCoverage(session.id, input.facetId, input.state, db);
+          await setCoverage(session.id, input.facetId, input.state, db);
           // An honest unknown is always surfaced for a human (P2/P3): if the model
           // moved a facet to unknown_to_informant without raising the paired
           // retarget finding, the server creates it. No silent gaps.
@@ -254,7 +254,7 @@ export function applyTool(session: Session, call: ModelToolCall, db: DB): ApplyR
             isError: true,
           };
         }
-        setElement(
+        await setElement(
           {
             sessionId: session.id,
             facetId: input.facetId,
@@ -271,11 +271,11 @@ export function applyTool(session: Session, call: ModelToolCall, db: DB): ApplyR
         const input = recordEntitySchema.parse(call.input);
         // The server canonicalises and de-duplicates (P1, R2.3). A name first heard
         // in an interview is pending — a candidate for the taxonomy, not yet in it.
-        const entity = upsertEntity(
+        const entity = await upsertEntity(
           { projectId: session.projectId, kind: input.kind, name: input.name },
           db,
         );
-        recordEntityMention(
+        await recordEntityMention(
           {
             sessionId: session.id,
             entityId: entity.id,
@@ -297,7 +297,7 @@ export function applyTool(session: Session, call: ModelToolCall, db: DB): ApplyR
         if (input.type === 'unknown_retarget') {
           ensureRetargetFinding(session, input.facetId, input.detail || input.title, db);
         } else {
-          raiseFinding(
+          await raiseFinding(
             {
               projectId: session.projectId,
               sessionId: session.id,
@@ -315,7 +315,7 @@ export function applyTool(session: Session, call: ModelToolCall, db: DB): ApplyR
       }
       case 'end_interview': {
         endInterviewSchema.parse(call.input);
-        const rows = getCoverage(session.id, db);
+        const rows = await getCoverage(session.id, db);
         const unresolved = rows.filter((r) => r.state === 'pending' || r.state === 'partial');
         if (unresolved.length > 0) {
           const names = unresolved.map((r) => `${r.facetId}. ${getFacet(r.facetId).name} (${r.state})`);
@@ -336,12 +336,12 @@ export function applyTool(session: Session, call: ModelToolCall, db: DB): ApplyR
 }
 
 /** Create the unknown_retarget finding for a facet if one does not already exist. */
-function ensureRetargetFinding(session: Session, facetId: number, detail: string, db: DB): void {
-  const already = listFindingsForSession(session.id, db).some(
+async function ensureRetargetFinding(session: Session, facetId: number, detail: string, db: DB): void {
+  const already = (await listFindingsForSession(session.id, db)).some(
     (f) => f.facetId === facetId && f.type === 'unknown_retarget',
   );
   if (already) return;
-  raiseFinding(
+  await raiseFinding(
     {
       projectId: session.projectId,
       sessionId: session.id,
@@ -356,18 +356,18 @@ function ensureRetargetFinding(session: Session, facetId: number, detail: string
   );
 }
 
-function moveToReview(session: Session, db: DB): void {
+async function moveToReview(session: Session, db: DB): void {
   const startedAt = session.startedAt ?? new Date();
   const durationSec = Math.max(0, Math.round((Date.now() - startedAt.getTime()) / 1000));
-  updateSession(session.id, { status: 'review', durationSec }, db);
+  await updateSession(session.id, { status: 'review', durationSec }, db);
 }
 
 // ── Hard stop (FR-3.7) ───────────────────────────────────────────────────────
-function forceReview(session: Session, db: DB): void {
-  for (const row of getCoverage(session.id, db)) {
+async function forceReview(session: Session, db: DB): void {
+  for (const row of await getCoverage(session.id, db)) {
     if (row.state === 'pending' || row.state === 'partial') {
-      setCoverage(session.id, row.facetId, 'unknown_to_informant', db);
-      raiseFinding(
+      await setCoverage(session.id, row.facetId, 'unknown_to_informant', db);
+      await raiseFinding(
         {
           projectId: session.projectId,
           sessionId: session.id,
@@ -391,22 +391,22 @@ const TRUNCATION_MESSAGE =
   'Thank you for your time — does the summary so far look right to you?';
 
 // ── Process a user turn ──────────────────────────────────────────────────────
-export async function processUserTurn(
+export function processUserTurn(
   sessionId: string,
   input: { seq: number; content: string },
   db: DB = getDb(),
   opts: { maxTurns?: number } = {},
 ): Promise<TurnResult> {
   const maxTurns = opts.maxTurns ?? config.sessionMaxTurns;
-  const session = getSession(sessionId, db);
+  const session = await getSession(sessionId, db);
   if (!session) throw new Error(`No session ${sessionId}`);
 
   const result = (review: boolean, warnings: string[], agentSeq: number, agentText: string): TurnResult => ({
     agentTurn: { seq: agentSeq, content: agentText },
-    coverage: coverageView(getCoverage(sessionId, db)),
-    elements: elementView(getElements(sessionId, db)),
+    coverage: coverageView(await getCoverage(sessionId, db)),
+    elements: elementView(await getElements(sessionId, db)),
     budget: budgetState(agentQuestionsAsked(sessionId, db), config.questionBudget),
-    status: getSession(sessionId, db)!.status,
+    status: await getSession(sessionId, db)!.status,
     review,
     warnings,
   });
@@ -420,13 +420,13 @@ export async function processUserTurn(
 
   // Idempotency (FR-3.9): dedupe the user turn; if its agent reply already exists,
   // return it without re-running the model.
-  appendTurn({ sessionId, seq: input.seq, speaker: 'user', content: input.content }, db);
+  await appendTurn({ sessionId, seq: input.seq, speaker: 'user', content: input.content }, db);
   const cachedReply = turnAt(sessionId, input.seq + 1, db);
   if (cachedReply && cachedReply.speaker === 'agent') {
-    return result(getSession(sessionId, db)!.status === 'review', [], cachedReply.seq, cachedReply.content);
+    return result(await getSession(sessionId, db)!.status === 'review', [], cachedReply.seq, cachedReply.content);
   }
 
-  const userTurnCount = listTurns(sessionId, db).filter((t) => t.speaker === 'user').length;
+  const userTurnCount = (await listTurns(sessionId, db)).filter((t) => t.speaker === 'user').length;
 
   // Delta v1.1 R9.1 — the question budget is spent. Move to the playback rather
   // than grinding on: budget exhaustion truncates from the least important end,
@@ -434,7 +434,7 @@ export async function processUserTurn(
   if (session.status === 'open' && agentQuestionsAsked(sessionId, db) >= config.questionBudget) {
     forceReview(session, db);
     const agentSeq = nextAgentSeq(sessionId, input.seq, db);
-    appendTurn({ sessionId, seq: agentSeq, speaker: 'agent', content: BUDGET_MESSAGE }, db);
+    await appendTurn({ sessionId, seq: agentSeq, speaker: 'agent', content: BUDGET_MESSAGE }, db);
     return result(true, ['budget: reached QUESTION_BUDGET'], agentSeq, BUDGET_MESSAGE);
   }
 
@@ -442,18 +442,18 @@ export async function processUserTurn(
   if (session.status === 'open' && userTurnCount >= maxTurns) {
     forceReview(session, db);
     const agentSeq = nextAgentSeq(sessionId, input.seq, db);
-    appendTurn({ sessionId, seq: agentSeq, speaker: 'agent', content: TRUNCATION_MESSAGE }, db);
+    await appendTurn({ sessionId, seq: agentSeq, speaker: 'agent', content: TRUNCATION_MESSAGE }, db);
     return result(true, ['hard-stop: reached SESSION_MAX_TURNS'], agentSeq, TRUNCATION_MESSAGE);
   }
 
-  const interviewee = getInterviewee(session.intervieweeId, db)!;
+  const interviewee = await getInterviewee(session.intervieweeId, db)!;
   const warnings: string[] = [];
   const systemNow = () =>
     buildSystemPrompt({
       role: interviewee.role,
       processName: session.processName,
-      coverage: coverageView(getCoverage(sessionId, db)),
-      elements: elementView(getElements(sessionId, db)),
+      coverage: coverageView(await getCoverage(sessionId, db)),
+      elements: elementView(await getElements(sessionId, db)),
       options: optionView(sessionId, db),
     });
 
@@ -490,7 +490,7 @@ export async function processUserTurn(
     exMessages.push({ role: 'user', content: toolResults });
   }
 
-  const nowReview = getSession(sessionId, db)!.status === 'review';
+  const nowReview = await getSession(sessionId, db)!.status === 'review';
 
   // ── Phase B — the agent's message (no tools): one question, or the playback
   //    once every facet is terminal (FR-3.3, FR-4.1).
@@ -499,8 +499,8 @@ export async function processUserTurn(
   const shortlist = nowReview
     ? []
     : selectFollowUps({
-        coverage: coverageView(getCoverage(sessionId, db)),
-        elements: getElements(sessionId, db).map((e) => ({
+        coverage: coverageView(await getCoverage(sessionId, db)),
+        elements: (await getElements(sessionId, db)).map((e) => ({
           facetId: e.facetId,
           elementId: e.elementId,
           state: e.state,
@@ -555,17 +555,17 @@ export async function processUserTurn(
   }
 
   const agentSeq = nextAgentSeq(sessionId, input.seq, db);
-  appendTurn({ sessionId, seq: agentSeq, speaker: 'agent', content: agentText }, db);
+  await appendTurn({ sessionId, seq: agentSeq, speaker: 'agent', content: agentText }, db);
 
-  const finalUserCount = listTurns(sessionId, db).filter((t) => t.speaker === 'user').length;
+  const finalUserCount = (await listTurns(sessionId, db)).filter((t) => t.speaker === 'user').length;
   const startedAt = session.startedAt ?? new Date();
-  updateSession(
+  await updateSession(
     session.id,
     { turnCount: finalUserCount, durationSec: Math.max(0, Math.round((Date.now() - startedAt.getTime()) / 1000)) },
     db,
   );
 
-  return result(getSession(sessionId, db)!.status === 'review', warnings, agentSeq, agentText);
+  return result(await getSession(sessionId, db)!.status === 'review', warnings, agentSeq, agentText);
 }
 
 // ── Completion (FR-4.2, FR-5) ────────────────────────────────────────────────
@@ -574,14 +574,14 @@ export async function processUserTurn(
  * spec, then set session and interviewee to complete. An invalid spec throws and
  * blocks completion (FR-5.5). Idempotent once complete.
  */
-export async function completeInterview(
+export function completeInterview(
   sessionId: string,
   db: DB = getDb(),
 ): Promise<{ specVersion: number }> {
-  const session = getSession(sessionId, db);
+  const session = await getSession(sessionId, db);
   if (!session) throw new Error(`No session ${sessionId}`);
   if (session.status === 'complete') {
-    return { specVersion: getLatestSpec(sessionId, db)?.version ?? 0 };
+    return { specVersion: await getLatestSpec(sessionId, db)?.version ?? 0 };
   }
   // Delta v1.1 R9.3: an open session may be finished early. The informant is
   // never trapped by their own coverage — the spec is generated regardless of
@@ -594,20 +594,20 @@ export async function completeInterview(
   const durationSec = Math.max(0, Math.round((Date.now() - startedAt.getTime()) / 1000));
   // Persist timing first so the spec reflects completion, but keep status 'review'
   // until the spec validates — an invalid spec must block completion.
-  updateSession(sessionId, { completedAt: new Date(), durationSec }, db);
+  await updateSession(sessionId, { completedAt: new Date(), durationSec }, db);
 
   const spec = await generateAndSaveSpec(sessionId, db); // throws on invalid → completion blocked
 
-  updateSession(sessionId, { status: 'complete' }, db);
-  setIntervieweeStatus(session.intervieweeId, 'complete', db);
+  await updateSession(sessionId, { status: 'complete' }, db);
+  await setIntervieweeStatus(session.intervieweeId, 'complete', db);
   return { specVersion: spec.version };
 }
 
 /** The agent reply seq: userSeq+1 unless taken, else next free seq. */
-function nextAgentSeq(sessionId: string, userSeq: number, db: DB): number {
+async function nextAgentSeq(sessionId: string, userSeq: number, db: DB): number {
   const desired = userSeq + 1;
   const taken = turnAt(sessionId, desired, db);
   if (!taken) return desired;
-  const max = listTurns(sessionId, db).reduce((m, t) => Math.max(m, t.seq), 0);
+  const max = (await listTurns(sessionId, db)).reduce((m, t) => Math.max(m, t.seq), 0);
   return max + 1;
 }

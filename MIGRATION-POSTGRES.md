@@ -21,18 +21,37 @@ merged. Started because SQLite cannot survive Cloud Run's ephemeral filesystem.
   then `create database magpie`. Port 5434 because 5433 is taken by another project.
   `DATABASE_URL=postgres://postgres:magpie@localhost:5434/magpie`
 
-## Not done — ~744 type errors remain
+## Data layer complete
 
-The mechanical pass made every exported query `async`, but **awaits need per-call
-judgement** and a blind regex cannot supply it. The remaining work:
+`lib/db/schema.ts`, `lib/db/index.ts` and `lib/db/queries.ts` all typecheck at
+**zero errors**. All 59 query functions are async, return types wrapped, awaits
+placed, and both transactions (`createSession`, `setElement`) converted to
+`async (tx) => {}`. This was the load-bearing piece.
 
-1. **`queries.ts` internals.** Functions that call other query functions need
-   `await` on those calls, and the annotated return types need wrapping in
-   `Promise<>`. `createSession` and `setElement` use `db.transaction` — postgres.js
-   supports `async (tx) => {}`, and every statement inside must be awaited.
-2. **Every caller.** The engine, the spec renderer, the API routes and the server
-   components all call these synchronously today. Typecheck lists them; work
-   outward from `lib/db/queries.ts` and the list shrinks fast.
+## Not done — ~574 type errors remain
+
+Roughly 430 of them are in test files and **gated behind the test helper** — they
+cannot be meaningfully fixed until it is converted. The app-code remainder is about
+80, concentrated in `lib/engine/engine.ts` (56), `scripts/eval.ts` (14) and
+`lib/engine/model.ts` (10).
+
+**Regex passes have plateaued.** Successive blind transforms went 728 → 570 → 574:
+each fixed some call sites and broke others, and one pass wrongly marked every
+function in a file async merely because the file contained an await somewhere
+(`whisperExt` in the transcribe route was collateral; it has been reverted). The
+rest wants file-by-file work with the compiler in the loop, not more pattern
+matching.
+
+1. **`tests/helpers/db.ts` first — it gates ~430 errors.** Currently an in-memory
+   SQLite per test. Two options, and this is a decision worth taking deliberately:
+   **pglite** (in-process Postgres, no Docker needed for `npm test`, but a new
+   dependency wanting a P6 entry) or **a unique schema per test file** against the
+   local container (no new dependency, but the suite then requires Docker running).
+   I would take pglite: a test suite that needs a running container is a test suite
+   people stop running.
+2. **Then `lib/engine/engine.ts`.** It is the largest app-code surface and the one
+   where a missing `await` is most dangerous — a discarded promise there stops a
+   turn persisting without raising anything.
 3. **`drizzle.config.ts` + migrations.** Set `dialect: 'postgresql'`, delete
    `drizzle/0000`–`0004` (SQLite-dialect SQL) and regenerate as a single baseline —
    there is no production data to preserve.

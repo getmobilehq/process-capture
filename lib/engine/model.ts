@@ -54,7 +54,7 @@ export async function callModel(params: CallParams): Promise<ModelResponse> {
     return mockRespond(params);
   }
 
-  const resp = await getClient().messages.create({
+  const resp = (await getClient()).messages.create({
     model: config.model,
     max_tokens: config.modelMaxTokens,
     temperature: config.modelTemperature,
