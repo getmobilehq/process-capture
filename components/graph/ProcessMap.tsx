@@ -22,6 +22,14 @@ const KIND_LABEL: Record<Annotation['kind'], string> = {
   metric: 'Metric',
 };
 
+/** Short, colour-independent marks — a badge must read without colour (R5.5). */
+const OPP_MARK: Record<string, string> = {
+  automatable: 'A',
+  assistable: '\u00BD',
+  'human-required': 'H',
+  unclassified: '?',
+};
+
 export function ProcessMap({
   xml,
   graph,
@@ -29,6 +37,7 @@ export function ProcessMap({
   variant = 'asis',
   changedIds,
   changeByNode,
+  opportunities,
 }: {
   xml: string;
   graph: ProcessGraph;
@@ -38,6 +47,8 @@ export function ProcessMap({
   /** To-be only: nodes the change-set touched, styled distinctly (R5.4). */
   changedIds?: Set<string>;
   changeByNode?: Map<string, Change>;
+  /** As-is only: automation labels per activity, toggled on (R5.5). */
+  opportunities?: Map<string, { label: string; rationale: string; evidence: number[] }>;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -46,6 +57,9 @@ export function ProcessMap({
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Annotation | null>(null);
   const [change, setChange] = useState<Change | null>(null);
+  const [opp, setOpp] = useState<
+    { id: string; label: string; rationale: string; evidence: number[] } | null
+  >(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -99,6 +113,25 @@ export function ProcessMap({
           }
         }
 
+        // R5.5 — automation labels as lane-safe badges on the activity itself,
+        // so the reading stays attached to the step it judges.
+        if (opportunities && opportunities.size > 0) {
+          for (const [id, o] of opportunities) {
+            const safe = id.replace(/[^A-Za-z0-9_.-]/g, '_');
+            if (!registry.get(safe)) continue;
+            const badge = document.createElement('button');
+            badge.type = 'button';
+            badge.className = `pc-oppbadge ${o.label}`;
+            badge.textContent = OPP_MARK[o.label] ?? '?';
+            badge.title = `${o.label} — click for the evidence`;
+            badge.addEventListener('click', (e) => {
+              e.stopPropagation();
+              setOpp({ id, ...o });
+            });
+            overlays.add(safe, { position: { bottom: -10, left: 10 }, html: badge });
+          }
+        }
+
         for (const a of graph.annotations) {
           const targetId = a.targetId.replace(/[^A-Za-z0-9_.-]/g, '_');
           if (!registry.get(targetId)) continue;
@@ -126,7 +159,7 @@ export function ProcessMap({
       viewerRef.current = null;
       viewer?.destroy();
     };
-  }, [xml, graph, variant, changedIds, changeByNode]);
+  }, [xml, graph, variant, changedIds, changeByNode, opportunities]);
 
   function canvas() {
     return viewerRef.current?.get('canvas') as
@@ -227,6 +260,24 @@ export function ProcessMap({
           </p>
         )}
       </div>
+
+      {opp && (
+        <aside className="pc-evidence" role="region" aria-label="Automation potential">
+          <div className="pc-evidence-head">
+            <span className={`pc-evidence-kind opp-${opp.label}`}>{opp.label}</span>
+            <button type="button" className="pc-check-na" onClick={() => setOpp(null)}>
+              Close
+            </button>
+          </div>
+          <p className="pc-evidence-text">{opp.rationale}</p>
+          <p className="pc-evidence-cite">
+            {opp.evidence.length > 0
+              ? `Evidence: facet ${opp.evidence.join(', ')}`
+              : 'No facet evidence — this is why it is unclassified.'}{' '}
+            · proposed, unverified
+          </p>
+        </aside>
+      )}
 
       {change && (
         <aside className="pc-evidence" role="region" aria-label="Proposed change">

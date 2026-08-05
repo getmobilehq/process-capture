@@ -587,3 +587,19 @@ decision, why it is the minimal option (§10).
   attribution available today rather than an invented name. Real per-reviewer
   identity needs user accounts; the column is there and the shape does not change
   when they arrive.
+- **DL.65 · Opportunity labels go through the R5.4 gate, not beside it** — "this
+  step could be automated" is a claim about someone's job, so it is held to the
+  same standard as a to-be change: proposed and unverified until a person has ruled
+  on every label. Rather than a second review mechanism, the classification set is
+  presented to `verificationState()` as an indexed list, so one gate governs both
+  and they cannot drift apart.
+- **DL.66 · A confident label without cited evidence is rejected by the server** —
+  `automatable`, `assistable` and `human-required` each require at least one facet
+  citation; only `unclassified` may cite nothing, and it must say what is missing.
+  The retry prompt tells the model to downgrade rather than invent a citation,
+  because an honest "we do not know whether this system has an API" is actionable
+  to a modeller and a wrong confident label is worse than none.
+- **DL.67 · The overlay marks activities with letters, not colour alone** — A, ½
+  and H sit on the badge. The as-is map already spends colour on the coverage
+  states, and an automation judgement a reviewer cannot read without distinguishing
+  hues is not a judgement they can check.

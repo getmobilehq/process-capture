@@ -321,9 +321,14 @@ export const processGraphs = pgTable(
       .references(() => sessions.id),
     /** The spec version this graph was extracted from — a new spec, a new graph. */
     specVersion: integer('spec_version').notNull(),
-    kind: text('kind', { enum: ['asis', 'tobe'] }).notNull(),
+    kind: text('kind', { enum: ['asis', 'tobe', 'opportunity'] }).notNull(),
     graph: jsonb('graph').notNull().$type<unknown>(),
-    /** For a to-be graph: the change-set it was derived from (R5.4). */
+    /**
+     * For a to-be graph: the change-set it was derived from (R5.4).
+     * For an opportunity row: the classification set (R5.5). Both are the
+     * *proposal* the graph column's content was derived from, keyed the same way
+     * and expiring together when the spec version changes.
+     */
     changeSet: jsonb('change_set').$type<unknown>(),
     createdAt: createdAt(),
   },
@@ -354,7 +359,14 @@ export const changeReviews = pgTable(
       .references(() => sessions.id),
     /** The spec version whose to-be change-set this reviews. */
     specVersion: integer('spec_version').notNull(),
-    /** Index into changeSet.changes — stable for a stored change-set. */
+    /**
+     * What is being reviewed. R5.5 puts opportunity classifications behind the
+     * same human gate as to-be changes, so one table serves both.
+     */
+    subject: text('subject', { enum: ['change', 'opportunity'] })
+      .notNull()
+      .default('change'),
+    /** Index into the change-set or the classification set — stable per version. */
     changeIndex: integer('change_index').notNull(),
     verdict: text('verdict', { enum: ['approved', 'edited', 'rejected'] }).notNull(),
     /** The reviewer's wording, when they edited rather than approved as-is. */
@@ -370,9 +382,10 @@ export const changeReviews = pgTable(
     createdAt: createdAt(),
   },
   (t) => ({
-    oneReviewPerChange: uniqueIndex('change_reviews_session_version_index_unique').on(
+    oneReviewPerItem: uniqueIndex('change_reviews_session_version_subject_index_unique').on(
       t.sessionId,
       t.specVersion,
+      t.subject,
       t.changeIndex,
     ),
     bySession: index('change_reviews_session_idx').on(t.sessionId),

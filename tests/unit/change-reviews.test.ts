@@ -10,7 +10,7 @@ describe('change review persistence (R5.4)', () => {
       { sessionId: session.id, specVersion: 1, changeIndex: 0, verdict: 'approved', reviewer: 'a' },
       db,
     );
-    const [r] = await listChangeReviews(session.id, 1, db);
+    const [r] = await listChangeReviews(session.id, 1, 'change', db);
     expect(r.verdict).toBe('approved');
     expect(r.reviewer).toBe('a');
     expect(r.reviewedAt).toBeInstanceOf(Date);
@@ -26,7 +26,7 @@ describe('change review persistence (R5.4)', () => {
         db,
       );
     }
-    const rows = await listChangeReviews(session.id, 1, db);
+    const rows = await listChangeReviews(session.id, 1, 'change', db);
     expect(rows).toHaveLength(1);
     expect(rows[0].verdict).toBe('rejected');
   });
@@ -36,7 +36,7 @@ describe('change review persistence (R5.4)', () => {
     const { session } = await makeSessionFixture(db);
     await recordChangeReview({ sessionId: session.id, specVersion: 1, changeIndex: 0, verdict: 'approved', reviewer: 'a' }, db);
     await recordChangeReview({ sessionId: session.id, specVersion: 1, changeIndex: 1, verdict: 'rejected', reviewer: 'a' }, db);
-    const rows = await listChangeReviews(session.id, 1, db);
+    const rows = await listChangeReviews(session.id, 1, 'change', db);
     expect(rows.map((r) => r.verdict)).toEqual(['approved', 'rejected']);
   });
 
@@ -45,7 +45,7 @@ describe('change review persistence (R5.4)', () => {
     const { db } = await makeTestDb();
     const { session } = await makeSessionFixture(db);
     await recordChangeReview({ sessionId: session.id, specVersion: 1, changeIndex: 0, verdict: 'approved', reviewer: 'a' }, db);
-    expect(await listChangeReviews(session.id, 2, db)).toEqual([]);
+    expect(await listChangeReviews(session.id, 2, 'change', db)).toEqual([]);
   });
 
   it('stores the reviewer’s edit alongside their note, as eval signal', async () => {
@@ -63,7 +63,7 @@ describe('change review persistence (R5.4)', () => {
       },
       db,
     );
-    const [r] = await listChangeReviews(session.id, 1, db);
+    const [r] = await listChangeReviews(session.id, 1, 'change', db);
     expect(r.editedDescription).toBe('Sharper wording');
     expect(r.note).toBe('too vague to action');
   });
