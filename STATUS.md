@@ -380,8 +380,13 @@ Each requirement is one commit, gates run before every commit.
   built**: R5.4 says to-be output may not reach a handover report until a human has
   approved, edited or rejected each change, with reviewer and timestamp stored per
   change. Until that exists, treat the To-be tab as analysis only.
-- **R5.5** — the opportunity overlay. Schema and validator exist; the classifier
-  and view do not.
+- **R5.5 — done.** The technical opportunity overlay. `lib/graph/opportunity.ts`
+  classifies each as-is activity as automatable, assistable, human-required or
+  unclassified, and the server rejects any confident label with no cited facet
+  evidence (DL.66). Labels render on the as-is map as letter badges (DL.67) and go
+  through the same R5.4 verification gate as to-be changes before they can reach a
+  handover report (DL.65). Console-only, behind `TOBE_ENABLED`. 217 unit tests, 10
+  E2E, typecheck and lint clean.
 - **Runtime verification of the map** — the component compiles and the tab renders,
   but no diagram has been drawn end-to-end: that needs a completed spec plus a live
   model call. E2E covers the tab, not the render.

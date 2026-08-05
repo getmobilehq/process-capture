@@ -673,7 +673,7 @@ export async function markDraftSubmitted(sessionId: string, seq: number, db: DB 
 export async function getProcessGraph(
   sessionId: string,
   specVersion: number,
-  kind: 'asis' | 'tobe',
+  kind: 'asis' | 'tobe' | 'opportunity',
   db: DB = getDb(),
 ) {
   return db
@@ -699,7 +699,7 @@ export async function saveProcessGraph(
   input: {
     sessionId: string;
     specVersion: number;
-    kind: 'asis' | 'tobe';
+    kind: 'asis' | 'tobe' | 'opportunity';
     graph: unknown;
     changeSet?: unknown;
   },
@@ -724,7 +724,7 @@ export async function saveProcessGraph(
 export async function deleteProcessGraph(
   sessionId: string,
   specVersion: number,
-  kind: 'asis' | 'tobe',
+  kind: 'asis' | 'tobe' | 'opportunity',
   db: DB = getDb(),
 ) {
   return db
@@ -744,6 +744,7 @@ export async function deleteProcessGraph(
 export async function listChangeReviews(
   sessionId: string,
   specVersion: number,
+  subject: 'change' | 'opportunity' = 'change',
   db: DB = getDb(),
 ) {
   return db
@@ -753,6 +754,7 @@ export async function listChangeReviews(
       and(
         eq(changeReviews.sessionId, sessionId),
         eq(changeReviews.specVersion, specVersion),
+        eq(changeReviews.subject, subject),
       ),
     )
     .orderBy(asc(changeReviews.changeIndex));
@@ -772,6 +774,7 @@ export async function recordChangeReview(
     sessionId: string;
     specVersion: number;
     changeIndex: number;
+    subject?: 'change' | 'opportunity';
     verdict: 'approved' | 'edited' | 'rejected';
     editedDescription?: string | null;
     editedRationale?: string | null;
@@ -787,6 +790,7 @@ export async function recordChangeReview(
       and(
         eq(changeReviews.sessionId, input.sessionId),
         eq(changeReviews.specVersion, input.specVersion),
+        eq(changeReviews.subject, input.subject ?? 'change'),
         eq(changeReviews.changeIndex, input.changeIndex),
       ),
     )
@@ -814,6 +818,7 @@ export async function recordChangeReview(
     .values({
       sessionId: input.sessionId,
       specVersion: input.specVersion,
+      subject: input.subject ?? 'change',
       changeIndex: input.changeIndex,
       ...values,
     })

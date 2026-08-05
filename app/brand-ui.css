@@ -1199,3 +1199,37 @@
   outline: none;
   border-color: var(--brand-mark);
 }
+
+/* ── Opportunity overlay (R5.5) — legible without colour ────────────────── */
+.pc-oppbadge {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  border: 2px solid #fff;
+  font: 900 10px / 1 var(--font-sans);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+}
+.pc-oppbadge.automatable      { background: #0b6b3a; }
+.pc-oppbadge.assistable       { background: var(--o2-blue); }
+.pc-oppbadge\.human-required,
+.pc-oppbadge[class*='human-required'] { background: var(--ink-700); }
+.pc-oppbadge.unclassified     { background: var(--ink-300); color: var(--ink-900); }
+
+.pc-evidence-kind.opp-automatable    { background: #0b6b3a; }
+.pc-evidence-kind.opp-assistable     { background: var(--o2-blue); }
+.pc-evidence-kind[class*='human-required'] { background: var(--ink-700); }
+.pc-evidence-kind.opp-unclassified   { background: var(--ink-300); color: var(--ink-900); }
+.pc-opp-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin: 10px 0 4px;
+  font: 400 12.5px / 1.4 var(--font-sans);
+  color: var(--ink-500);
+}
+.pc-opp-summary b {
+  color: var(--ink-900);
+  font-weight: 700;
+}

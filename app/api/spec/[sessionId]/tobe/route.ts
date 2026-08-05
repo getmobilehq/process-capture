@@ -13,7 +13,7 @@ import { generateChangeSet, ChangeSetGenerationError } from '@/lib/graph/changes
 import { applyChangeSet, ChangeSetApplicationError } from '@/lib/graph/apply';
 import { toBpmnXml } from '@/lib/graph/bpmn';
 import { blockedReason, verificationState } from '@/lib/graph/verification';
-import { reviewRecords } from './review/route';
+import { reviewRecords } from '@/lib/graph/reviews';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

@@ -16,7 +16,7 @@ import type { Change, ProcessGraph } from '@/lib/graph/schema';
  * To-be and Opportunities are declared but not built — showing the tabs disabled
  * is more honest than hiding them, since the delta specifies all three sub-views.
  */
-type Tab = 'spec' | 'map' | 'tobe';
+type Tab = 'spec' | 'map' | 'tobe' | 'opps';
 
 interface ToBe {
   graph: ProcessGraph;
@@ -51,6 +51,13 @@ export function SpecDetail({
   const [details, setDetails] = useState<string[]>([]);
   const [map, setMap] = useState<{ graph: ProcessGraph; xml: string } | null>(null);
   const [tobe, setTobe] = useState<ToBe | null>(null);
+  const [opps, setOpps] = useState<{
+    opportunities: { classifications: { activityId: string; label: string; rationale: string; evidence: number[] }[] };
+    summary: { automatable: number; assistable: number; humanRequired: number; unclassified: number; total: number };
+    activities: { id: string; name: string }[];
+    review: ReviewState;
+    blocked: string | null;
+  } | null>(null);
 
   /** Returns the map as well as storing it — React state is stale to callers. */
   async function drawMap(): Promise<{ graph: ProcessGraph; xml: string } | null> {
@@ -125,6 +132,7 @@ export function SpecDetail({
     index: number,
     verdict: 'approved' | 'edited' | 'rejected',
     extra: { editedDescription?: string; note?: string } = {},
+    subject: 'change' | 'opportunity' = 'change',
   ) {
     setLoading(true);
     setError(null);
@@ -132,13 +140,17 @@ export function SpecDetail({
       const res = await fetch(`/api/spec/${sessionId}/tobe/review`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ changeIndex: index, verdict, ...extra }),
+        body: JSON.stringify({ changeIndex: index, verdict, subject, ...extra }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error ?? 'Could not record that review.');
-      setTobe((prev) =>
-        prev ? { ...prev, review: data.state, blocked: data.state?.verified ? null : prev.blocked } : prev,
-      );
+      if (subject === 'opportunity') {
+        setOpps((prev) => (prev ? { ...prev, review: data.state, blocked: data.state?.verified ? null : prev.blocked } : prev));
+      } else {
+        setTobe((prev) =>
+          prev ? { ...prev, review: data.state, blocked: data.state?.verified ? null : prev.blocked } : prev,
+        );
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not record that review.');
     } finally {
@@ -151,6 +163,28 @@ export function SpecDetail({
    * console. The button is disabled *and* this refuses, because a disabled
    * control is a hint and a gate has to be a rule.
    */
+  /** Labels attach to the as-is activities, so that map must exist first. */
+  async function drawOpps() {
+    if (opps || loading) return;
+    if (!(map ?? (await drawMap()))) return;
+    setLoading(true);
+    setError(null);
+    setDetails([]);
+    try {
+      const res = await fetch(`/api/spec/${sessionId}/opportunities`, { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setDetails(Array.isArray(data.details) ? data.details : []);
+        throw new Error(data.error ?? 'The opportunity overlay could not be built.');
+      }
+      setOpps(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'The opportunity overlay could not be built.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   function downloadToBe() {
     if (!tobe || !tobe.review.verified) return;
     const blob = new Blob([tobe.xml], { type: 'application/xml' });
@@ -221,9 +255,30 @@ export function SpecDetail({
             To-be
           </button>
         )}
-        <button type="button" role="tab" className="pc-tab" disabled title="Not built yet">
-          Opportunities
-        </button>
+        {toBeEnabled ? (
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'opps'}
+            className={`pc-tab ${tab === 'opps' ? 'active' : ''}`}
+            onClick={() => {
+              setTab('opps');
+              void drawOpps();
+            }}
+          >
+            Opportunities
+          </button>
+        ) : (
+          <button
+            type="button"
+            role="tab"
+            className="pc-tab"
+            disabled
+            title="Not available until each label can be reviewed and approved"
+          >
+            Opportunities
+          </button>
+        )}
       </nav>
 
       {tab === 'spec' && (
@@ -236,6 +291,57 @@ export function SpecDetail({
               Download specification (.md)
             </button>
           </div>
+        </div>
+      )}
+
+      {tab === 'opps' && (
+        <div>
+          {loading && <p className="pc-map-status">Reading the evidence for each activity…</p>}
+          {error && (
+            <div className="pc-card" style={{ padding: 'var(--space-6)' }}>
+              <p style={{ marginTop: 0, color: 'var(--vm-red)', fontWeight: 700 }}>{error}</p>
+              {details.length > 0 && (
+                <ul className="t-body-s">
+                  {details.map((d) => (
+                    <li key={d}>{d}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+          {opps && map && (
+            <>
+              <div className="pc-map-banner tobe">
+                <b>Automation potential — proposed, unverified</b>
+                <span>a claim about how work could change · not for handover until reviewed</span>
+              </div>
+              <div className="pc-opp-summary">
+                <span><b>{opps.summary.automatable}</b> automatable</span>
+                <span><b>{opps.summary.assistable}</b> assistable</span>
+                <span><b>{opps.summary.humanRequired}</b> human-required</span>
+                <span><b>{opps.summary.unclassified}</b> unclassified</span>
+              </div>
+              <ProcessMap
+                xml={map.xml}
+                graph={map.graph}
+                informant={informant}
+                opportunities={
+                  new Map(
+                    opps.opportunities.classifications.map((c) => [
+                      c.activityId,
+                      { label: c.label, rationale: c.rationale, evidence: c.evidence },
+                    ]),
+                  )
+                }
+              />
+              <ChangeReview
+                state={opps.review}
+                blocked={opps.blocked}
+                busy={loading}
+                onReview={(i, v, extra) => void reviewChange(i, v, extra, 'opportunity')}
+              />
+            </>
+          )}
         </div>
       )}
 

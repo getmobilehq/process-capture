@@ -7,10 +7,10 @@ import {
   getLatestSpec,
   getProcessGraph,
   getSession,
-  listChangeReviews,
   recordChangeReview,
 } from '@/lib/db/queries';
-import { verificationState, type ReviewRecord } from '@/lib/graph/verification';
+import { verificationState } from '@/lib/graph/verification';
+import { reviewRecords } from '@/lib/graph/reviews';
 import type { ChangeSet } from '@/lib/graph/schema';
 
 export const runtime = 'nodejs';
@@ -18,6 +18,8 @@ export const dynamic = 'force-dynamic';
 
 const bodySchema = z.object({
   changeIndex: z.number().int().min(0),
+  /** Which set is being reviewed — to-be changes, or opportunity labels (R5.5). */
+  subject: z.enum(['change', 'opportunity']).optional().default('change'),
   verdict: z.enum(['approved', 'edited', 'rejected']),
   editedDescription: z.string().max(2000).optional(),
   editedRationale: z.string().max(2000).optional(),
@@ -31,22 +33,6 @@ const bodySchema = z.object({
  * outcome, and a set-level flag cannot express it. The response returns the whole
  * verification state so the UI always shows what is still outstanding.
  */
-/** Database rows → the shape the pure gate module expects. */
-export async function reviewRecords(
-  sessionId: string,
-  specVersion: number,
-): Promise<ReviewRecord[]> {
-  return (await listChangeReviews(sessionId, specVersion)).map((r) => ({
-    changeIndex: r.changeIndex,
-    verdict: r.verdict,
-    editedDescription: r.editedDescription,
-    editedRationale: r.editedRationale,
-    note: r.note,
-    reviewer: r.reviewer,
-    reviewedAt: r.reviewedAt,
-  }));
-}
-
 export async function POST(req: Request, { params }: { params: { sessionId: string } }) {
   if (!isValidSession(cookies().get('pc_admin')?.value)) {
     return NextResponse.json({ error: 'Not authorised' }, { status: 401 });
@@ -61,13 +47,7 @@ export async function POST(req: Request, { params }: { params: { sessionId: stri
   const spec = await getLatestSpec(session.id);
   if (!spec) return NextResponse.json({ error: 'No specification yet.' }, { status: 409 });
 
-  const row = await getProcessGraph(session.id, spec.version, 'tobe');
-  if (!row?.changeSet) {
-    return NextResponse.json(
-      { error: 'Draw the to-be map first — there is nothing to review.' },
-      { status: 409 },
-    );
-  }
+
 
   let body: unknown;
   try {
@@ -78,9 +58,26 @@ export async function POST(req: Request, { params }: { params: { sessionId: stri
   const parsed = bodySchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
 
-  const changeSet = row.changeSet as ChangeSet;
-  if (parsed.data.changeIndex >= changeSet.changes.length) {
-    return NextResponse.json({ error: 'No such change' }, { status: 400 });
+  const subject = parsed.data.subject;
+  const row = await getProcessGraph(
+    session.id,
+    spec.version,
+    subject === 'opportunity' ? 'opportunity' : 'tobe',
+  );
+  if (!row?.changeSet) {
+    return NextResponse.json(
+      { error: 'Draw that view first — there is nothing to review.' },
+      { status: 409 },
+    );
+  }
+
+  // Both sets are reviewed by index, so the count is all the gate needs.
+  const items =
+    subject === 'opportunity'
+      ? (row.changeSet as { classifications: unknown[] }).classifications
+      : (row.changeSet as ChangeSet).changes;
+  if (parsed.data.changeIndex >= items.length) {
+    return NextResponse.json({ error: 'No such item' }, { status: 400 });
   }
 
   // An "edited" verdict without wording is really an approval; treat it as one
@@ -94,6 +91,7 @@ export async function POST(req: Request, { params }: { params: { sessionId: stri
     sessionId: session.id,
     specVersion: spec.version,
     changeIndex: parsed.data.changeIndex,
+    subject,
     verdict,
     editedDescription: parsed.data.editedDescription ?? null,
     editedRationale: parsed.data.editedRationale ?? null,
@@ -103,7 +101,22 @@ export async function POST(req: Request, { params }: { params: { sessionId: stri
     reviewer: 'console admin',
   });
 
-  return NextResponse.json({
-    state: verificationState(changeSet, await reviewRecords(session.id, spec.version)),
-  });
+  const reviews = await reviewRecords(session.id, spec.version, subject);
+  const asChanges =
+    subject === 'opportunity'
+      ? {
+          baseGraph: 'opportunities',
+          provenance: 'proposed' as const,
+          verified: false,
+          changes: (items as { activityId: string; rationale: string }[]).map((c) => ({
+            op: 'modify' as const,
+            target: c.activityId,
+            description: c.rationale,
+            resolvesAnnotationId: ['n/a'],
+            rationale: c.rationale,
+          })),
+        }
+      : (row.changeSet as ChangeSet);
+
+  return NextResponse.json({ state: verificationState(asChanges, reviews) });
 }

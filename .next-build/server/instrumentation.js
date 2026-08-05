@@ -1,0 +1,1 @@
+"use strict";(()=>{var e={};e.id=118,e.ids=[118],e.modules={7872:(e,r,n)=>{async function o(){process.on("unhandledRejection",e=>{console.error("[unhandledRejection]",e)}),process.on("uncaughtException",e=>{console.error("[uncaughtException]",e)})}n.r(r),n.d(r,{register:()=>o})}};var r=require("./webpack-runtime.js");r.C(e);var n=r(r.s=7872);module.exports=n})();
