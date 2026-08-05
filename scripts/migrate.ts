@@ -2,6 +2,7 @@
  * Apply pending Drizzle migrations to the configured database.
  * Run via `npm run db:migrate` (part of `npm run setup`).
  */
+import './load-env';
 import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';

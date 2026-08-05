@@ -611,3 +611,9 @@ decision, why it is the minimal option (§10).
   says what to use instead, and `config.databaseUrl` no longer carries the SQLite
   default that let the stale value pass unnoticed. There is no sensible default for
   a database server address; absent configuration should say so.
+- **DL.69 · tsx scripts load `.env` explicitly** — Next loads `.env` for the app but
+  not for `tsx scripts/*`, so `seed` and `db:migrate` were reading an empty
+  `DATABASE_URL` and silently falling back to the old SQLite default. With the
+  default gone (DL.68) they failed loudly, which is the correct behaviour and made
+  the missing loader visible; both now import `./load-env` first, as `eval.ts`
+  already did.
