@@ -42,11 +42,11 @@ export const config = {
     return Boolean(process.env.OPENAI_API_KEY);
   },
   /**
-   * The to-be process map (delta R5.4). Off unless explicitly enabled, because
-   * R5.4's verification gate is not built: nothing yet stops a machine-generated,
-   * unreviewed change-set reaching a handover report, and the delta locks that
-   * decision. Turn this on only for analysis, never for a pilot where the output
-   * could be mistaken for an approved recommendation.
+   * The analysis views — to-be map (R5.4) and opportunity overlay (R5.5). The
+   * R5.4 verification gate is now built, so an unreviewed change-set cannot reach
+   * a handover report. This stays off by default because the views are for the
+   * architect's analysis, not for a pilot audience who could mistake a proposal
+   * for an approved recommendation.
    */
   get toBeEnabled(): boolean {
     return process.env.ENABLE_TOBE === '1';
