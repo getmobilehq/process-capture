@@ -13,6 +13,7 @@ import { nanoid } from 'nanoid';
 import { getDb, type DB } from './index';
 import {
   answerDrafts,
+  changeReviews,
   coverageStates,
   elementStates,
   entities,
@@ -736,6 +737,87 @@ export async function deleteProcessGraph(
       ),
     )
     ;
+}
+
+// ── Change reviews (delta v1.1 R5.4 — the verification gate) ─────────────────
+
+export async function listChangeReviews(
+  sessionId: string,
+  specVersion: number,
+  db: DB = getDb(),
+) {
+  return db
+    .select()
+    .from(changeReviews)
+    .where(
+      and(
+        eq(changeReviews.sessionId, sessionId),
+        eq(changeReviews.specVersion, specVersion),
+      ),
+    )
+    .orderBy(asc(changeReviews.changeIndex));
+}
+
+/**
+ * Record a reviewer's verdict on one change. Re-reviewing replaces the verdict —
+ * a reviewer changing their mind is normal — but the timestamp moves with it, so
+ * the record always reflects the decision that currently stands.
+ *
+ * An edit keeps the reviewer's wording alongside the original rather than
+ * replacing it: R5.4 calls human edits eval signal, and the generator learns
+ * nothing from a correction that overwrote what it proposed.
+ */
+export async function recordChangeReview(
+  input: {
+    sessionId: string;
+    specVersion: number;
+    changeIndex: number;
+    verdict: 'approved' | 'edited' | 'rejected';
+    editedDescription?: string | null;
+    editedRationale?: string | null;
+    note?: string;
+    reviewer: string;
+  },
+  db: DB = getDb(),
+) {
+  const existing = await db
+    .select()
+    .from(changeReviews)
+    .where(
+      and(
+        eq(changeReviews.sessionId, input.sessionId),
+        eq(changeReviews.specVersion, input.specVersion),
+        eq(changeReviews.changeIndex, input.changeIndex),
+      ),
+    )
+    .then((r) => r[0]);
+
+  const values = {
+    verdict: input.verdict,
+    editedDescription: input.editedDescription ?? null,
+    editedRationale: input.editedRationale ?? null,
+    note: input.note ?? '',
+    reviewer: input.reviewer,
+    reviewedAt: new Date(),
+  };
+
+  if (existing) {
+    return db
+      .update(changeReviews)
+      .set(values)
+      .where(eq(changeReviews.id, existing.id))
+      .returning().then((r) => r[0]);
+  }
+
+  return db
+    .insert(changeReviews)
+    .values({
+      sessionId: input.sessionId,
+      specVersion: input.specVersion,
+      changeIndex: input.changeIndex,
+      ...values,
+    })
+    .returning().then((r) => r[0]);
 }
 
 // ── Entities and pick-list options (delta v1.1 R2) ───────────────────────────

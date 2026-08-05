@@ -514,7 +514,9 @@ decision, why it is the minimal option (§10).
   in the middle of a large empty rectangle. If the Fullscreen API is refused
   (permissions policy, embedded contexts) it falls back to a fixed-position
   expansion, so the control always does something.
-- **DL.56 · The to-be map ships disabled (`ENABLE_TOBE`)** — R5.4's human
+- **DL.56 · The to-be map ships disabled (`ENABLE_TOBE`)** *(superseded in part by
+  DL.62 — the verification gate now exists, so this flag is a deployment choice
+  rather than a safety net)* — R5.4's human
   verification gate is not built: nothing yet stops an unreviewed,
   machine-generated change-set reaching a handover report, and the delta locks
   that decision. Off by default, and gated in **two** places — the tab renders
@@ -563,3 +565,25 @@ decision, why it is the minimal option (§10).
   starting a server with no tables — which serves 500s on every request and reads
   like an application bug. Safe at one instance (DL.57); if max-instances is ever
   raised, this must become a one-shot Job or two containers will race.
+- **DL.62 · The verification gate is per change, and it refuses (R5.4)** — New
+  `change_reviews` table holding verdict, reviewer and timestamp **per change**,
+  because approving four proposals and rejecting a fifth is the normal outcome and
+  a set-level flag cannot express it. `lib/graph/verification.ts` is the single
+  authority on what "verified" means, so the UI and the export path cannot
+  disagree. A set is verified only when *every* change has been ruled on; rejected
+  changes leave the diagram but stay on the record. There is deliberately **no
+  "approve all"** — one button would turn the gate into a formality.
+  The to-be export is disabled *and* the handler refuses: a disabled control is a
+  hint, and a gate has to be a rule.
+- **DL.63 · A reviewer may reword a change, never re-aim it** — An edit replaces
+  the description and rationale and keeps the original alongside; it cannot touch
+  `resolvesAnnotationId`. Re-pointing a change at a different bottleneck is a
+  different change, and letting it happen silently under "edit" would break the
+  evidence chain R5.4 exists to protect. Edits, notes and verdicts are exposed as
+  `evalSignal()` — what was proposed, what the human made of it, and why — which is
+  the feedback the generator needs and the delta asks to be logged.
+- **DL.64 · Reviewer identity is honest about its limits** — The console is one
+  shared password, so reviews are attributed to `console admin`. That is the true
+  attribution available today rather than an invented name. Real per-reviewer
+  identity needs user accounts; the column is there and the shape does not change
+  when they arrive.
