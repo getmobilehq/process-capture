@@ -3,6 +3,7 @@
  * project with three interviewees, matching the approved demo's campaign view.
  * Idempotent — re-running does not duplicate the campaign.
  */
+import './load-env';
 import { getDb } from '@/lib/db';
 import { projects } from '@/lib/db/schema';
 import { addInterviewee, createProject, listInterviewees } from '@/lib/db/queries';
