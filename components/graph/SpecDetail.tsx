@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { ProcessMap } from './ProcessMap';
 import { SpecView } from './SpecView';
+import { ChangeReview, type ReviewState } from './ChangeReview';
 import type { Change, ProcessGraph } from '@/lib/graph/schema';
 
 /**
@@ -23,6 +24,9 @@ interface ToBe {
   changedIds: Set<string>;
   changeByNode: Map<string, Change>;
   skipped: { change: Change; reason: string }[];
+  /** R5.4 — who has ruled on what, and whether this may be shared yet. */
+  review: ReviewState;
+  blocked: string | null;
 }
 
 export function SpecDetail({
@@ -95,6 +99,8 @@ export function SpecDetail({
         changedIds: new Set<string>(data.changedIds ?? []),
         changeByNode: new Map<string, Change>(data.changes ?? []),
         skipped: data.skipped ?? [],
+        review: data.review,
+        blocked: data.blocked ?? null,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'The to-be map could not be built.');
@@ -110,6 +116,48 @@ export function SpecDetail({
     const a = document.createElement('a');
     a.href = url;
     a.download = `spec-${processName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-v${specVersion}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  /** Record one verdict. The server returns the whole state, so nothing drifts. */
+  async function reviewChange(
+    index: number,
+    verdict: 'approved' | 'edited' | 'rejected',
+    extra: { editedDescription?: string; note?: string } = {},
+  ) {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/spec/${sessionId}/tobe/review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ changeIndex: index, verdict, ...extra }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error ?? 'Could not record that review.');
+      setTobe((prev) =>
+        prev ? { ...prev, review: data.state, blocked: data.state?.verified ? null : prev.blocked } : prev,
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not record that review.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  /**
+   * The to-be export is gated (R5.4): unreviewed proposals must not leave the
+   * console. The button is disabled *and* this refuses, because a disabled
+   * control is a hint and a gate has to be a rule.
+   */
+  function downloadToBe() {
+    if (!tobe || !tobe.review.verified) return;
+    const blob = new Blob([tobe.xml], { type: 'application/xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${tobe.graph.processId}-to-be-reviewed.bpmn`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -224,6 +272,30 @@ export function SpecDetail({
                   resolve.
                 </p>
               )}
+              {tobe.review.verified ? (
+                <div style={{ marginTop: 'var(--space-4)' }}>
+                  <button type="button" className="pc-btn ghost sm" onClick={downloadToBe}>
+                    Export to-be BPMN 2.0 (reviewed)
+                  </button>
+                </div>
+              ) : (
+                <div style={{ marginTop: 'var(--space-4)' }}>
+                  <button type="button" className="pc-btn ghost sm" disabled title={tobe.blocked ?? ''}>
+                    Export to-be BPMN 2.0
+                  </button>
+                  <p className="t-body-s" style={{ marginTop: 6, color: 'var(--ink-500)' }}>
+                    Available once every proposed change has been reviewed.
+                  </p>
+                </div>
+              )}
+
+              <ChangeReview
+                state={tobe.review}
+                blocked={tobe.blocked}
+                busy={loading}
+                onReview={(i, v, extra) => void reviewChange(i, v, extra)}
+              />
+
               {tobe.skipped.length > 0 && (
                 <div className="pc-card" style={{ padding: 'var(--space-5)', marginTop: 'var(--space-4)' }}>
                   <p className="t-caption" style={{ marginTop: 0 }}>

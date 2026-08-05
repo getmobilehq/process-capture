@@ -337,6 +337,48 @@ export const processGraphs = pgTable(
   }),
 );
 
+// ── ChangeReview (delta v1.1 R5.4 — the verification gate) ───────────────────
+// One row per change per reviewer decision. R5.4 requires the verdict, reviewer
+// and timestamp to be held *per change*, not per set: approving four changes and
+// rejecting a fifth is the normal outcome, and a set-level flag cannot express it.
+//
+// Human edits are kept alongside the original rather than replacing it — the
+// delta calls them eval signal, and a reviewer's correction is the most valuable
+// feedback the generator can get.
+export const changeReviews = pgTable(
+  'change_reviews',
+  {
+    id: id(),
+    sessionId: text('session_id')
+      .notNull()
+      .references(() => sessions.id),
+    /** The spec version whose to-be change-set this reviews. */
+    specVersion: integer('spec_version').notNull(),
+    /** Index into changeSet.changes — stable for a stored change-set. */
+    changeIndex: integer('change_index').notNull(),
+    verdict: text('verdict', { enum: ['approved', 'edited', 'rejected'] }).notNull(),
+    /** The reviewer's wording, when they edited rather than approved as-is. */
+    editedDescription: text('edited_description'),
+    editedRationale: text('edited_rationale'),
+    /** Why it was rejected, or any note the reviewer left. */
+    note: text('note').notNull().default(''),
+    /** Who reviewed. Thin today — the console is one shared login (DL.62). */
+    reviewer: text('reviewer').notNull(),
+    reviewedAt: timestamp('reviewed_at', { withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    createdAt: createdAt(),
+  },
+  (t) => ({
+    oneReviewPerChange: uniqueIndex('change_reviews_session_version_index_unique').on(
+      t.sessionId,
+      t.specVersion,
+      t.changeIndex,
+    ),
+    bySession: index('change_reviews_session_idx').on(t.sessionId),
+  }),
+);
+
 // ── Finding ──────────────────────────────────────────────────────────────────
 export const findings = pgTable(
   'findings',
@@ -405,6 +447,7 @@ export type CoverageState = typeof coverageStates.$inferSelect;
 export type ElementState = typeof elementStates.$inferSelect;
 export type AnswerDraft = typeof answerDrafts.$inferSelect;
 export type ProcessGraphRow = typeof processGraphs.$inferSelect;
+export type ChangeReview = typeof changeReviews.$inferSelect;
 export type Entity = typeof entities.$inferSelect;
 export type NewEntity = typeof entities.$inferInsert;
 export type EntityMention = typeof entityMentions.$inferSelect;

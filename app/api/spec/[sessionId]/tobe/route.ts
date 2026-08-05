@@ -12,6 +12,8 @@ import { processGraphSchema, type ChangeSet, type ProcessGraph } from '@/lib/gra
 import { generateChangeSet, ChangeSetGenerationError } from '@/lib/graph/changeset';
 import { applyChangeSet, ChangeSetApplicationError } from '@/lib/graph/apply';
 import { toBpmnXml } from '@/lib/graph/bpmn';
+import { blockedReason, verificationState } from '@/lib/graph/verification';
+import { reviewRecords } from './review/route';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -30,6 +32,16 @@ export const dynamic = 'force-dynamic';
  * it may reach a handover report until a human has reviewed each change, and that
  * review path is not built yet.
  */
+/**
+ * The verification state travels with every to-be response (R5.4), so the client
+ * never has to ask separately whether this output may be shared — and cannot
+ * render an export control without knowing the answer.
+ */
+async function reviewPayload(sessionId: string, specVersion: number, changeSet: ChangeSet) {
+  const state = verificationState(changeSet, await reviewRecords(sessionId, specVersion));
+  return { review: state, blocked: blockedReason(state) };
+}
+
 export async function POST(_req: Request, { params }: { params: { sessionId: string } }) {
   if (!isValidSession(cookies().get('pc_admin')?.value)) {
     return NextResponse.json({ error: 'Not authorised' }, { status: 401 });
@@ -80,6 +92,7 @@ export async function POST(_req: Request, { params }: { params: { sessionId: str
       changes: [...applied.changeByNode.entries()],
       skipped: applied.skipped,
       cached: true,
+      ...(await reviewPayload(session.id, spec.version, changeSet)),
     });
   }
 
@@ -101,6 +114,7 @@ export async function POST(_req: Request, { params }: { params: { sessionId: str
       changes: [...applied.changeByNode.entries()],
       skipped: applied.skipped,
       cached: false,
+      ...(await reviewPayload(session.id, spec.version, changeSet)),
     });
   } catch (err) {
     if (err instanceof ChangeSetGenerationError || err instanceof ChangeSetApplicationError) {
