@@ -2,7 +2,7 @@
   "name": "process-capture",
   "version": "1.0.0",
   "private": true,
-  "description": "VMO2 SME interview tool — Process capture V1",
+  "description": "VMO2 SME interview tool \u2014 Process capture V1",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -15,6 +15,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
     "seed": "tsx scripts/seed.ts",
+    "demo:interview": "tsx scripts/demo-interview.ts",
     "setup": "npm run db:migrate && npm run seed",
     "eval": "tsx scripts/eval.ts"
   },

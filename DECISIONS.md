@@ -617,3 +617,10 @@ decision, why it is the minimal option (§10).
   default gone (DL.68) they failed loudly, which is the correct behaviour and made
   the missing loader visible; both now import `./load-env` first, as `eval.ts`
   already did.
+- **DL.70 · Demo data comes from the eval loop pointed at the real database** —
+  `scripts/demo-interview.ts` runs the same simulated informant and the same engine
+  as the §9 harness, but enters through `startSession` — the door the tokenised
+  link uses — against the configured Postgres rather than a throwaway pglite. So a
+  demo session is structurally identical to one a person sat through, and there is
+  no second, diverging way to manufacture a transcript. It asserts nothing: the
+  eval harness stays the sole arbiter of quality.
