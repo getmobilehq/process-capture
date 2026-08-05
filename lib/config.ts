@@ -26,7 +26,7 @@ export const config = {
   transcribeModel: str('TRANSCRIBE_MODEL', 'whisper-1'),
   modelTemperature: int('MODEL_TEMPERATURE', 1),
   modelMaxTokens: int('MODEL_MAX_TOKENS', 4096),
-  databaseUrl: str('DATABASE_URL', 'file:./data/app.db'),
+  databaseUrl: str('DATABASE_URL', ''),
   baseUrl: str('BASE_URL', 'http://localhost:3000'),
   adminPassword: process.env.ADMIN_PASSWORD ?? '',
   retentionDays: int('RETENTION_DAYS', 365),
