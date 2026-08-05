@@ -603,3 +603,11 @@ decision, why it is the minimal option (§10).
   and H sit on the badge. The as-is map already spends colour on the coverage
   states, and an automation judgement a reviewer cannot read without distinguishing
   hues is not a judgement they can check.
+- **DL.68 · A non-Postgres `DATABASE_URL` is refused at the connection, and has no
+  default** — A leftover `file:./data/app.db` did not fail as a bad URL: postgres-js
+  read the path as a database name and asked the server for a database called
+  `data/app.db`, so a stale env line surfaced as an unreadable `3D000` on every
+  console page. `getSql` now rejects anything that is not a `postgres://` URL and
+  says what to use instead, and `config.databaseUrl` no longer carries the SQLite
+  default that let the stale value pass unnoticed. There is no sensible default for
+  a database server address; absent configuration should say so.
