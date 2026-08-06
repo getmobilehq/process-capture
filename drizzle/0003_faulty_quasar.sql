@@ -1,0 +1,1 @@
+ALTER TABLE "projects" ADD COLUMN "archived_processes" jsonb DEFAULT '[]'::jsonb NOT NULL;

@@ -46,7 +46,14 @@ export const projects = pgTable('projects', {
     .notNull()
     .default('active'),
   // FR-1.2 / FR-2.3 — optional list of target process names, stored as JSON.
+  // This is the *live* list: what an informant may be interviewed about. Every
+  // reader wants exactly this, so archiving deliberately removes a name from here
+  // rather than adding a status a reader could forget to filter on.
   targetProcesses: jsonb('target_processes').notNull().$type<string[]>().default([]),
+  // Retired processes. Kept, not deleted — sessions already recorded against one
+  // stay intact and readable, and restoring is a single click. A name lives in
+  // exactly one of these two arrays; lib/db/queries.ts owns that invariant.
+  archivedProcesses: jsonb('archived_processes').notNull().$type<string[]>().default([]),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
