@@ -22,6 +22,13 @@
       "when": 1785922586525,
       "tag": "0002_harsh_molly_hayes",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786058404232,
+      "tag": "0003_faulty_quasar",
+      "breakpoints": true
     }
   ]
 }

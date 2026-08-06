@@ -2,11 +2,17 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { requireAdmin } from '@/lib/console-auth';
 import { config } from '@/lib/config';
-import { getProject, listFindings } from '@/lib/db/queries';
+import { countSessionsByProcess, getProject, listFindings } from '@/lib/db/queries';
 import { buildRegister, buildConflicts } from '@/lib/console';
 import { getFacet } from '@/lib/facets/facets';
 import { CopyLink } from '@/components/console/CopyLink';
-import { addIntervieweeAction, raiseConflictAction, updateFindingAction } from '../../actions';
+import {
+  addIntervieweeAction,
+  archiveProcessAction,
+  raiseConflictAction,
+  restoreProcessAction,
+  updateFindingAction,
+} from '../../actions';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -59,7 +65,13 @@ export default async function ProjectPage({
         ))}
       </nav>
 
-      {tab === 'register' && <Register projectId={project.id} targetProcesses={project.targetProcesses} />}
+      {tab === 'register' && (
+        <Register
+          projectId={project.id}
+          targetProcesses={project.targetProcesses}
+          archivedProcesses={project.archivedProcesses}
+        />
+      )}
       {tab === 'findings' && <Findings projectId={project.id} />}
       {tab === 'conflicts' && <Conflicts projectId={project.id} />}
     </main>
@@ -67,8 +79,17 @@ export default async function ProjectPage({
 }
 
 // ── Register (FR-1.4) ────────────────────────────────────────────────────────
-async function Register({ projectId, targetProcesses }: { projectId: string; targetProcesses: string[] }) {
+async function Register({
+  projectId,
+  targetProcesses,
+  archivedProcesses,
+}: {
+  projectId: string;
+  targetProcesses: string[];
+  archivedProcesses: string[];
+}) {
   const rows = await buildRegister(projectId);
+  const sessionCounts = await countSessionsByProcess(projectId);
 
   return (
     <>
@@ -97,12 +118,14 @@ async function Register({ projectId, targetProcesses }: { projectId: string; tar
             Add &amp; issue link
           </button>
         </form>
-        {targetProcesses.length > 0 && (
-          <p className="t-caption" style={{ marginTop: 12 }}>
-            Target processes: {targetProcesses.join(' · ')}
-          </p>
-        )}
       </div>
+
+      <ProcessList
+        projectId={projectId}
+        targetProcesses={targetProcesses}
+        archivedProcesses={archivedProcesses}
+        sessionCounts={sessionCounts}
+      />
 
       <div className="pc-card" style={{ overflowX: 'auto' }}>
         <table className="regtable" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
@@ -168,6 +191,90 @@ async function Register({ projectId, targetProcesses }: { projectId: string; tar
         </table>
       </div>
     </>
+  );
+}
+
+// ── Target processes: retire and restore ─────────────────────────────────────
+// Archiving withdraws the offer without destroying anything. Sessions already
+// recorded against a retired process stay on the register and stay readable —
+// which is why the interview count is shown on both lists.
+function ProcessList({
+  projectId,
+  targetProcesses,
+  archivedProcesses,
+  sessionCounts,
+}: {
+  projectId: string;
+  targetProcesses: string[];
+  archivedProcesses: string[];
+  sessionCounts: Map<string, number>;
+}) {
+  if (targetProcesses.length === 0 && archivedProcesses.length === 0) return null;
+
+  const count = (name: string) => {
+    const n = sessionCounts.get(name) ?? 0;
+    return n === 0 ? 'no interviews yet' : `${n} interview${n === 1 ? '' : 's'}`;
+  };
+
+  return (
+    <div className="pc-card" style={{ padding: 'var(--space-5)', marginBottom: 'var(--space-6)' }}>
+      <h2 className="t-h4" style={{ marginTop: 0 }}>
+        Target processes
+      </h2>
+      <p className="t-caption" style={{ marginTop: 4, color: 'var(--fg-muted)' }}>
+        Archiving stops a process being offered to new interviewees. Nothing already captured is
+        deleted, and you can restore it at any time.
+      </p>
+
+      {targetProcesses.length > 0 ? (
+        <ul className="pc-proclist">
+          {targetProcesses.map((name) => (
+            <li key={name}>
+              <span>
+                <b>{name}</b>
+                <i>{count(name)}</i>
+              </span>
+              <form action={archiveProcessAction}>
+                <input type="hidden" name="projectId" value={projectId} />
+                <input type="hidden" name="processName" value={name} />
+                <button className="pc-btn ghost sm" type="submit">
+                  Archive
+                </button>
+              </form>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="t-body-s" style={{ color: 'var(--fg-muted)', marginTop: 12 }}>
+          Every process in this campaign is archived. Restore one below to interview against it.
+        </p>
+      )}
+
+      {archivedProcesses.length > 0 && (
+        <details className="pc-archived" open={targetProcesses.length === 0}>
+          <summary>
+            Archived ({archivedProcesses.length})
+          </summary>
+          <ul className="pc-proclist archived">
+            {archivedProcesses.map((name) => (
+              <li key={name}>
+                <span>
+                  <b>{name}</b>
+                  <i>{count(name)} · kept, not deleted</i>
+                </span>
+                <form action={restoreProcessAction}>
+                  <input type="hidden" name="projectId" value={projectId} />
+                  <input type="hidden" name="processName" value={name} />
+                  <button className="pc-btn ghost sm" type="submit">
+                    Restore
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </div>
   );
 }
 

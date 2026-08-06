@@ -4,8 +4,10 @@ import { redirect } from 'next/navigation';
 import { requireAdmin } from '@/lib/console-auth';
 import {
   addInterviewee,
+  archiveTargetProcess,
   createProject,
   raiseFinding,
+  restoreTargetProcess,
   updateFinding,
 } from '@/lib/db/queries';
 
@@ -73,4 +75,25 @@ export async function raiseConflictAction(formData: FormData): Promise<void> {
     });
   }
   redirect(`/console/projects/${projectId}?tab=conflicts`);
+}
+
+/**
+ * Retire a target process, or bring it back. Archiving withdraws the offer — no
+ * new interview can be started against it — and leaves every session already
+ * recorded against it intact and readable on the register.
+ */
+export async function archiveProcessAction(formData: FormData): Promise<void> {
+  requireAdmin();
+  const projectId = String(formData.get('projectId') ?? '');
+  const name = String(formData.get('processName') ?? '').trim();
+  if (projectId && name) await archiveTargetProcess(projectId, name);
+  redirect(`/console/projects/${projectId}?tab=register`);
+}
+
+export async function restoreProcessAction(formData: FormData): Promise<void> {
+  requireAdmin();
+  const projectId = String(formData.get('projectId') ?? '');
+  const name = String(formData.get('processName') ?? '').trim();
+  if (projectId && name) await restoreTargetProcess(projectId, name);
+  redirect(`/console/projects/${projectId}?tab=register`);
 }

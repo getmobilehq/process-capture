@@ -624,3 +624,18 @@ decision, why it is the minimal option (§10).
   demo session is structurally identical to one a person sat through, and there is
   no second, diverging way to manufacture a transcript. It asserts nothing: the
   eval harness stays the sole arbiter of quality.
+- **DL.71 · A target process is archived, never deleted** — A process architect
+  asked to retire processes and reach them again later. Archiving moves the name
+  from `target_processes` to `archived_processes` and withdraws the *offer*: no new
+  interview can be started against it. Nothing captured is touched — sessions,
+  statements and specifications recorded against a retired process stay on the
+  register and stay readable, and an informant mid-interview can still resume. A
+  hard delete was considered and rejected: an interview is a named person's account
+  of their job, and the append-only record is the thing the tool exists to protect.
+- **DL.72 · Two arrays with one mutator, rather than a status on each entry** —
+  `target_processes` keeps meaning "what may be interviewed against", so every
+  existing reader — the entry screen especially — stays correct with no change. The
+  alternative, `{name, status}[]`, would need every reader to filter, and a reader
+  that forgot would silently offer a retired process to an informant. The cost is an
+  invariant across two columns; `moveTargetProcess` owns it in one transaction, and
+  a test asserts a name is never in both lists or neither.

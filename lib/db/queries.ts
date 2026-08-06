@@ -29,6 +29,7 @@ import {
   type Finding,
   type NewFinding,
   type NewProject,
+  type Project,
   type Entity,
   type Session,
   type Statement,
@@ -84,9 +85,95 @@ export async function listProjects(db: DB = getDb()) {
   return db.select().from(projects).orderBy(desc(projects.createdAt));
 }
 
+/**
+ * Retire a target process (console request, August 2026). The name moves from
+ * the live list to the archived one — it is never deleted, because sessions
+ * already recorded against it are a named person's account of their job and must
+ * stay readable. Archiving only withdraws the *offer*: no new interview can be
+ * started against it.
+ *
+ * Both moves are idempotent and run in one transaction, so a name can never end
+ * up in both lists or neither.
+ */
+export async function archiveTargetProcess(
+  projectId: string,
+  name: string,
+  db: DB = getDb(),
+): Promise<Project | undefined> {
+  return moveTargetProcess(projectId, name, 'archive', db);
+}
+
+/** Return an archived process to the live list. The inverse of the above. */
+export async function restoreTargetProcess(
+  projectId: string,
+  name: string,
+  db: DB = getDb(),
+): Promise<Project | undefined> {
+  return moveTargetProcess(projectId, name, 'restore', db);
+}
+
+async function moveTargetProcess(
+  projectId: string,
+  name: string,
+  direction: 'archive' | 'restore',
+  db: DB = getDb(),
+): Promise<Project | undefined> {
+  const wanted = name.trim();
+  if (!wanted) return undefined;
+
+  return db.transaction(async (tx) => {
+    const project = await tx
+      .select()
+      .from(projects)
+      .where(eq(projects.id, projectId))
+      .then((r) => r[0]);
+    if (!project) return undefined;
+
+    const from = direction === 'archive' ? project.targetProcesses : project.archivedProcesses;
+    if (!from.includes(wanted)) return project; // already where it was asked to go
+
+    const live =
+      direction === 'archive'
+        ? project.targetProcesses.filter((p) => p !== wanted)
+        : [...project.targetProcesses.filter((p) => p !== wanted), wanted];
+    const archived =
+      direction === 'archive'
+        ? [...project.archivedProcesses.filter((p) => p !== wanted), wanted]
+        : project.archivedProcesses.filter((p) => p !== wanted);
+
+    return tx
+      .update(projects)
+      .set({ targetProcesses: live, archivedProcesses: archived })
+      .where(eq(projects.id, projectId))
+      .returning()
+      .then((r) => r[0]);
+  });
+}
+
+/**
+ * How many sessions were recorded against each process name in this project.
+ * Shown beside an archive control so the architect can see what sits underneath
+ * a process before retiring it — and see that archiving did not remove it.
+ */
+export async function countSessionsByProcess(
+  projectId: string,
+  db: DB = getDb(),
+): Promise<Map<string, number>> {
+  const rows = await db
+    .select({ processName: sessions.processName })
+    .from(sessions)
+    .where(eq(sessions.projectId, projectId));
+  const counts = new Map<string, number>();
+  for (const r of rows) {
+    if (!r.processName) continue;
+    counts.set(r.processName, (counts.get(r.processName) ?? 0) + 1);
+  }
+  return counts;
+}
+
 export async function updateProject(
   id: string,
-  patch: Partial<Pick<NewProject, 'name' | 'department' | 'description' | 'status' | 'targetProcesses'>>,
+  patch: Partial<Pick<NewProject, 'name' | 'department' | 'description' | 'status' | 'targetProcesses' | 'archivedProcesses'>>,
   db: DB = getDb(),
 ) {
   const row = await db
