@@ -167,7 +167,54 @@ echo $URL
 ```
 
 
-## 9.  Prepare the demo
+## 9.  Switch on the retention sweep
+
+Interview content is a named person's account of their own job, held with their work
+email address. `RETENTION_DAYS` sets how long it is kept — 365 by default — and Cloud
+Scheduler is what makes that real. **Without this step nothing ever expires.**
+
+```bash
+# A shared secret for the scheduler to present. Without RETENTION_TOKEN set, the
+# endpoint returns 404 — a destructive route stays absent until you turn it on.
+SWEEP=$(openssl rand -hex 32)
+printf "$SWEEP" | gcloud secrets create retention-token --data-file=-
+
+gcloud run services update magpie --region=$REGION \
+  --update-secrets=RETENTION_TOKEN=retention-token:latest \
+  --update-env-vars=RETENTION_DAYS=365
+```
+
+Run it once by hand, in report mode, before you schedule anything — it tells you what
+would go without touching it:
+
+```bash
+curl -s -X POST -H "Authorization: Bearer $SWEEP" "$URL/api/admin/retention?dryRun=1"
+```
+
+When that reads correctly, schedule the real sweep nightly:
+
+```bash
+gcloud scheduler jobs create http magpie-retention \
+  --location=$REGION --schedule="30 2 * * *" --time-zone="Europe/London" \
+  --uri="$URL/api/admin/retention" --http-method=POST \
+  --headers="Authorization=Bearer $SWEEP"
+```
+
+> **What it deletes.** A session expires `RETENTION_DAYS` after it finished, or after it
+> was last touched if it never finished, and everything beneath it goes with it —
+> transcript, statements, coverage, drafts, specifications, graphs, reviews, findings.
+> An interviewee record goes once they hold no sessions at all, which is what removes
+> the email address. Campaigns are never touched; they hold no personal data.
+>
+> **Specifications go with their session.** The handover to the modeller is the export,
+> and it is expected to happen long before the window closes. If the data owner wants
+> specifications kept longer than transcripts, that is a policy decision — say so and it
+> becomes a change to `lib/retention.ts`, not an assumption.
+
+You can also run it from any machine with database access: `npm run retention` reports,
+`npm run retention -- --apply` carries it out.
+
+## 10.  Prepare the demo
 
 Open the service URL, sign in to the console with your admin password, then:
 
@@ -179,7 +226,7 @@ Open the service URL, sign in to the console with your admin password, then:
 > **Warm the map before an audience sees it** — The first time a process map is drawn it costs a model call and takes a moment. It is then stored and redraws instantly. Open it once beforehand.
 
 
-## 10.  What is switched off, and why
+## 11.  What is switched off, and why
 
 - **The To-be map  —** Magpie can propose improvements from the bottlenecks it finds, but a person must approve each one before it can reach a report, and that review screen is not built yet. If asked: nothing machine-generated reaches a report unreviewed. That is a design decision, not a missing feature.
 - **Voice input  —** audio would leave for a third party. Unset by default.
@@ -190,7 +237,7 @@ Open the service URL, sign in to the console with your admin password, then:
 The privacy notice tells interviewees their data is kept for a set period. Automatic deletion after that period is not built, and daily backups hold a week of data regardless. Fine for a demo with invented content. It needs solving before real interviewees are pointed at it.
 
 
-## 11.  If something goes wrong
+## 12.  If something goes wrong
 
 - **The service will not start  —** gcloud run services logs read magpie --region=$REGION --limit=50. A migration failure names itself.
 - **Queries hang, then time out  —** the VPC egress flags were not applied. Check with gcloud run services describe magpie.

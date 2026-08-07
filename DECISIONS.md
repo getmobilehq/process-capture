@@ -639,3 +639,24 @@ decision, why it is the minimal option (§10).
   that forgot would silently offer a retired process to an informant. The cost is an
   invariant across two columns; `moveTargetProcess` owns it in one transaction, and
   a test asserts a name is never in both lists or neither.
+- **DL.73 · Retention deletes a whole interview, or none of it** — `RETENTION_DAYS`
+  was configurable but nothing acted on it (SDD I-2). A session expires from when it
+  finished, or from when it was last touched if it never did, and everything beneath
+  it goes with it. Partial retention — keeping the specification but dropping the
+  transcript it was drafted from — was rejected: it leaves an attributed document
+  whose evidence no longer exists, which is worse than either keeping both or
+  keeping neither. An interviewee record goes once they hold no sessions, and that
+  is what removes the email address.
+- **DL.74 · The sweep reports before it deletes, and the route is absent until armed**
+  — `npm run retention` reports by default and deletes only with `--apply`; the
+  scheduled endpoint returns 404 unless `RETENTION_TOKEN` is set, and 401 unless it
+  matches on a constant-time compare. The first person to run this against real
+  interview data must be able to see exactly what it would take before it takes it,
+  and a destructive endpoint should not exist at all until someone deliberately
+  turns it on.
+- **DL.75 · A raw SQL bound is passed as a cast string, not a Date** — the expiry
+  comparison sits inside a `coalesce(...)` fragment, so Drizzle has no column type to
+  infer and hands the driver a bare `Date`. pglite accepts that; postgres-js does
+  not, so the test suite passed while the real database failed. Bounds inside raw
+  fragments are now written as `'...'::timestamptz`. The wider lesson is recorded
+  here because pglite's permissiveness will hide this class of bug again.

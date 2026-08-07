@@ -16,6 +16,7 @@
     "db:migrate": "tsx scripts/migrate.ts",
     "seed": "tsx scripts/seed.ts",
     "demo:interview": "tsx scripts/demo-interview.ts",
+    "retention": "tsx scripts/retention.ts",
     "setup": "npm run db:migrate && npm run seed",
     "eval": "tsx scripts/eval.ts"
   },
