@@ -9,6 +9,10 @@ data
 .env
 .env.local
 tests
+# Config that imports from tests/ — excluded above, so these cannot compile.
+playwright.config.ts
+vitest.config.ts
+drizzle.config.ts
 playwright-report
 test-results
 reference
