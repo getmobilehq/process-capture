@@ -24,6 +24,12 @@ everything downstream follows from it — no unix socket, no Auth Proxy, and Clo
 needs Direct VPC egress.
 
 
+> **There is now a Terraform equivalent of this guide** in `infra/terraform`, and it
+> is the recommended path — one `apply` instead of thirty commands, reviewable as
+> code, and reproducible for a second environment. Keep reading only if you want the
+> step-by-step, or to understand what Terraform is doing on your behalf.
+
+
 ## 1.  Before you start
 
 You need the gcloud CLI installed and signed in, a Google Cloud project with billing enabled, your Anthropic API key, and a password you choose for the console.

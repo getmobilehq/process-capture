@@ -1,0 +1,9 @@
+# Copy to terraform.tfvars and edit. Do not put db_password here — pass it as
+# TF_VAR_db_password so it stays out of the working tree.
+project_id = "your-gcp-project"
+region     = "europe-west2"
+image      = "europe-west2-docker.pkg.dev/your-gcp-project/magpie/magpie:2026-08-10"
+
+# retention_days = 365
+# enable_tobe    = false
+# max_instances  = 1   # see the note in variables.tf before raising this

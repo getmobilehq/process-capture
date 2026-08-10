@@ -660,3 +660,23 @@ decision, why it is the minimal option (§10).
   not, so the test suite passed while the real database failed. Bounds inside raw
   fragments are now written as `'...'::timestamptz`. The wider lesson is recorded
   here because pglite's permissiveness will hide this class of bug again.
+- **DL.76 · Infrastructure moves to Terraform; the runbook stays as narrative** —
+  A bash runbook is fine for one deployment by its author and poor for a client's
+  cloud team: it cannot be reviewed as a diff, reproduced for a second environment,
+  or told what it already created. `infra/terraform` is now the recommended path and
+  `DEPLOY-GCP.md` remains as the explanation of what it does. Terraform deliberately
+  does not build the image — infrastructure and application releases move at
+  different rates, and coupling them makes both harder to reason about.
+- **DL.77 · The origin is derived from the request when `BASE_URL` is unset** — The
+  platform assigns a URL at create time, so configuring it in advance meant either
+  deploying twice or hard-coding a URL nobody had yet. Invite links now take their
+  origin from the request the architect is already making, so one apply is enough
+  and a custom domain works with no change. An explicit `BASE_URL` still wins, since
+  a setting should always beat a guess.
+- **DL.78 · The scheduled sweep authenticates on `X-Retention-Token`, not
+  `Authorization`** — Cloud Scheduler puts its OIDC token in `Authorization`, which
+  is where the endpoint originally looked, so the scheduled call would have arrived
+  carrying Google's JWT and been refused. The endpoint now accepts a dedicated
+  header for the job and keeps bearer auth for a person at a terminal. OIDC proves
+  the caller is the scheduler; the token proves it is allowed. Neither alone would
+  do as much.

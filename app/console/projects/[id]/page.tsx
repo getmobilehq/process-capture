@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { requireAdmin } from '@/lib/console-auth';
-import { config } from '@/lib/config';
+import { originFromRequest } from '@/lib/origin';
 import { countSessionsByProcess, getProject, listFindings } from '@/lib/db/queries';
 import { buildRegister, buildConflicts } from '@/lib/console';
 import { getFacet } from '@/lib/facets/facets';
@@ -90,6 +90,7 @@ async function Register({
 }) {
   const rows = await buildRegister(projectId);
   const sessionCounts = await countSessionsByProcess(projectId);
+  const origin = originFromRequest();
 
   return (
     <>
@@ -174,7 +175,7 @@ async function Register({
                         Open spec v{specVersion}
                       </a>
                     ) : (
-                      <CopyLink url={`${config.baseUrl}/i/${interviewee.inviteToken}`} />
+                      <CopyLink url={`${origin}/i/${interviewee.inviteToken}`} />
                     )}
                   </td>
                 </tr>
