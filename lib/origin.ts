@@ -11,6 +11,7 @@
  *
  * Server-side only — it reads request headers.
  */
+import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { config } from './config';
 
@@ -24,4 +25,20 @@ export function originFromRequest(): string {
 
   const proto = h.get('x-forwarded-proto') ?? (host.startsWith('localhost') ? 'http' : 'https');
   return `${proto}://${host}`;
+}
+
+/**
+ * A 303 redirect to a path on this app, with a **relative** Location header.
+ *
+ * Deliberately not `NextResponse.redirect`, which demands an absolute URL and so
+ * forces you to name an origin. Behind a proxy — Cloud Run, a load balancer,
+ * anything — `new URL(req.url).origin` is the *internal* address the proxy
+ * forwards to, not the address the browser used. Redirecting there sends the
+ * browser to `localhost:3000`, and a `form-action 'self'` CSP correctly refuses
+ * it, which is how this surfaced: a login form that silently did nothing.
+ *
+ * A relative Location sidesteps the question entirely (RFC 7231 §7.1.2).
+ */
+export function seeOther(path: string): NextResponse {
+  return new NextResponse(null, { status: 303, headers: { Location: path } });
 }

@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { seeOther } from '@/lib/origin';
 import {
   ADMIN_COOKIE,
   clearLoginAttempts,
@@ -16,23 +16,22 @@ function clientIp(req: Request): string {
 }
 
 export async function POST(req: Request) {
-  const origin = new URL(req.url).origin;
   const ip = clientIp(req);
 
   const rl = recordLoginAttempt(ip);
   if (!rl.allowed) {
-    return NextResponse.redirect(`${origin}/console/login?error=rate`, { status: 303 });
+    return seeOther('/console/login?error=rate');
   }
 
   const form = await req.formData();
   const password = String(form.get('password') ?? '');
 
   if (!verifyPassword(password)) {
-    return NextResponse.redirect(`${origin}/console/login?error=1`, { status: 303 });
+    return seeOther('/console/login?error=1');
   }
 
   clearLoginAttempts(ip);
-  const res = NextResponse.redirect(`${origin}/console`, { status: 303 });
+  const res = seeOther('/console');
   res.cookies.set(ADMIN_COOKIE, sessionToken(), {
     httpOnly: true,
     sameSite: 'lax',

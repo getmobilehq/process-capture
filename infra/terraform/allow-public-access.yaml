@@ -1,0 +1,39 @@
+# Project-scoped exception to the organisation's domain-restricted-sharing policy.
+#
+# WHY THIS IS NEEDED
+# Magpie's interview face is opened by informants from a tokenised link with no
+# account, so the Cloud Run service must accept unauthenticated requests. The
+# organisation policy inherited from univelcity.com permits only the customer's
+# own domain (C01bqj13q) in IAM policies, which rejects the `allUsers` binding and
+# leaves the service returning 403 to everyone.
+#
+# WHY IT IS `allowAll` AND NOT A NARROWER LIST
+# `constraints/iam.allowedPolicyMemberDomains` accepts only customer and directory
+# IDs in its allowed values — the API rejects `allUsers` and `allAuthenticatedUsers`
+# outright. There is no way to permit public access selectively. Allowing all
+# values on this one project is the only mechanism Google provides.
+#
+# WHAT IT WIDENS — READ BEFORE APPLYING
+# Any IAM binding on project magpie-505120 may now name any principal, including
+# `allUsers`. That is broader than Cloud Run alone. Two things keep it contained:
+# this project holds nothing but Magpie, and the organisation default is untouched
+# — every other project still inherits the restriction.
+#
+# THE ALTERNATIVE
+# If widening this is not acceptable, do not apply it. Put the service behind
+# Identity-Aware Proxy instead: informants sign in with their VMO2 Google account,
+# the org policy stays as it is, and this file is deleted. That costs a global load
+# balancer and a domain, and it removes the "no account, no training" property the
+# interview face was designed around — a real trade, not a free win.
+#
+# Apply:
+#   gcloud org-policies set-policy infra/terraform/allow-public-access.yaml \
+#     --project=magpie-505120
+#
+# Revert (restores full inheritance from the organisation):
+#   gcloud org-policies delete iam.allowedPolicyMemberDomains \
+#     --project=magpie-505120
+name: projects/magpie-505120/policies/iam.allowedPolicyMemberDomains
+spec:
+  rules:
+    - allowAll: true
