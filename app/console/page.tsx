@@ -86,8 +86,8 @@ export default async function ConsoleHome() {
           </h2>
           <form action={createProjectAction} style={{ marginTop: 'var(--space-3)' }}>
             <label className="pc-field">
-              <span>Department name</span>
-              <input name="name" required placeholder="Consumer operations" />
+              <span>Process name</span>
+              <input name="name" required placeholder="Billing complaint resolution" />
             </label>
             <label className="pc-field">
               <span>Department</span>
