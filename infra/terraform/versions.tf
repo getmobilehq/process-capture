@@ -16,10 +16,10 @@ terraform {
   #     --location=europe-west2 --uniform-bucket-level-access
   #   gcloud storage buckets update gs://YOUR-PROJECT-tfstate --versioning
   #
-  # backend "gcs" {
-  #   bucket = "YOUR-PROJECT-tfstate"
-  #   prefix = "magpie"
-  # }
+  backend "gcs" {
+    bucket = "magpie-505120-tfstate"
+    prefix = "magpie"
+  }
 }
 
 provider "google" {
