@@ -43,7 +43,10 @@ try {
   // Drizzle wraps the driver error, so the reason we care about is usually a
   // level or two down the cause chain.
   let chain = '';
-  for (let e = err; e; e = e.cause) chain += `${e.name ?? ''} ${e.message ?? ''} ${e.code ?? ''} `;
+  for (let e = err; e; e = e.cause) {
+    chain += `${e.name ?? ''} ${e.message ?? ''} ${e.code ?? ''} `;
+    console.error(`  caused by: ${e.name ?? 'Error'}: ${e.message ?? ''}${e.code ? ` [${e.code}]` : ''}`);
+  }
   if (/timeout|ECONNREFUSED|ENOTFOUND|EHOSTUNREACH|ETIMEDOUT|CONNECT_TIMEOUT/i.test(chain)) {
     console.error(
       'The database was not reachable. On Cloud Run check that the service has ' +

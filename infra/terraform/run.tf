@@ -28,6 +28,10 @@ resource "google_cloud_run_v2_service" "magpie" {
   name     = var.name
   location = var.region
   labels   = var.labels
+  # The service holds no state — the database does, and that keeps its own
+  # protection. Guarding the service only blocks the recreate you need when a
+  # revision is wedged, which is the one time you are most in a hurry.
+  deletion_protection = false
   # Google's front end terminates TLS and forwards; the app is not exposed directly.
   ingress = "INGRESS_TRAFFIC_ALL"
 
