@@ -337,6 +337,15 @@ export const processGraphs = pgTable(
      * and expiring together when the spec version changes.
      */
     changeSet: jsonb('change_set').$type<unknown>(),
+    /**
+     * The architect's adjusted drawing (R5.6). Generated layout is a starting
+     * point, not an answer — a long process laid out left to right is wide and
+     * awkward, and the person reading it knows better than the algorithm where
+     * things should sit. Stored as BPMN XML *beside* the graph, never instead of
+     * it: moving a box changes the drawing, not the evidence, and clearing this
+     * column restores the generated layout exactly.
+     */
+    diagramXml: text('diagram_xml'),
     createdAt: createdAt(),
   },
   (t) => ({

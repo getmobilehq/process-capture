@@ -807,6 +807,34 @@ export async function saveProcessGraph(
     .returning().then((r) => r[0]);
 }
 
+/**
+ * Store the architect's adjusted drawing for a graph (R5.6). Presentation only —
+ * the `graph` column, which is the evidence, is untouched. Passing null clears
+ * the adjustment and restores the generated layout.
+ */
+export async function saveDiagramLayout(
+  input: {
+    sessionId: string;
+    specVersion: number;
+    kind: 'asis' | 'tobe' | 'opportunity';
+    diagramXml: string | null;
+  },
+  db: DB = getDb(),
+) {
+  return db
+    .update(processGraphs)
+    .set({ diagramXml: input.diagramXml })
+    .where(
+      and(
+        eq(processGraphs.sessionId, input.sessionId),
+        eq(processGraphs.specVersion, input.specVersion),
+        eq(processGraphs.kind, input.kind),
+      ),
+    )
+    .returning()
+    .then((r) => r[0]);
+}
+
 /** Discard a stored graph so the next request re-extracts it. */
 export async function deleteProcessGraph(
   sessionId: string,

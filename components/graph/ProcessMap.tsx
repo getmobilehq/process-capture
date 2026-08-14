@@ -6,11 +6,17 @@ import type { Annotation, Change, ProcessGraph } from '@/lib/graph/schema';
 /**
  * As-is process map (delta v1.1 R5.3).
  *
- * bpmn-js in *viewer* mode — deliberately not the modeller. The graph is
- * extracted evidence, not a drawing surface; letting someone drag a box here
- * would produce a diagram that no longer matches the spec it claims to render.
- * Changes belong in the to-be change-set (R5.4), where they must cite the
- * bottleneck they resolve.
+ * The canvas is editable when `editable` is set (R5.6). This reverses an earlier
+ * decision to ship viewer-only, and the reason that decision existed still holds:
+ * the graph is extracted evidence, not a drawing surface. The reconciliation is
+ * that **editing changes the drawing, not the evidence** — the adjusted BPMN is
+ * stored beside the graph, never instead of it, and "reset to generated" restores
+ * the algorithm's layout exactly. A generated layout is a starting point; a long
+ * process laid out left to right is wide and awkward, and the architect reading it
+ * knows better than the algorithm where things should sit.
+ *
+ * Semantic change still belongs in the to-be change-set (R5.4), where it must cite
+ * the bottleneck it resolves. Moving a box is not a change to what was said.
  *
  * Annotations render as overlay badges on their target element rather than as
  * BPMN text annotations, so clicking one can open the evidence panel with its
@@ -38,6 +44,9 @@ export function ProcessMap({
   changedIds,
   changeByNode,
   opportunities,
+  editable = false,
+  adjusted = false,
+  sessionId,
 }: {
   xml: string;
   graph: ProcessGraph;
@@ -49,6 +58,12 @@ export function ProcessMap({
   changeByNode?: Map<string, Change>;
   /** As-is only: automation labels per activity, toggled on (R5.5). */
   opportunities?: Map<string, { label: string; rationale: string; evidence: number[] }>;
+  /** Let the architect rearrange the drawing and keep it (R5.6). */
+  editable?: boolean;
+  /** True when what is being shown is already an adjusted drawing, not generated. */
+  adjusted?: boolean;
+  /** Required when editable — where to save the arrangement. */
+  sessionId?: string;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -61,6 +76,9 @@ export function ProcessMap({
     { id: string; label: string; rationale: string; evidence: number[] } | null
   >(null);
   const [ready, setReady] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [savedNote, setSavedNote] = useState<string | null>(null);
 
   useEffect(() => {
     let viewer: { destroy: () => void } | null = null;
@@ -69,11 +87,14 @@ export function ProcessMap({
     async function render() {
       if (!hostRef.current) return;
       try {
-        // Loaded on demand: bpmn-js is large and only the map tab needs it.
-        const { default: NavigatedViewer } = await import('bpmn-js/lib/NavigatedViewer');
+        // Loaded on demand: bpmn-js is large and only the map tab needs it. The
+        // modeller is larger still, so it is only pulled in when editing is on.
+        const { default: Engine } = editable
+          ? await import('bpmn-js/lib/Modeler')
+          : await import('bpmn-js/lib/NavigatedViewer');
         if (cancelled || !hostRef.current) return;
 
-        const v = new NavigatedViewer({ container: hostRef.current });
+        const v = new Engine({ container: hostRef.current });
         viewer = v as unknown as { destroy: () => void };
         viewerRef.current = v as unknown as { get: (n: string) => unknown };
 
@@ -81,6 +102,13 @@ export function ProcessMap({
         if (cancelled) return;
 
         (v.get('canvas') as { zoom: (a: string, b?: string) => void }).zoom('fit-viewport', 'auto');
+
+        if (editable) {
+          (v.get('eventBus') as { on: (e: string, cb: () => void) => void }).on(
+            'commandStack.changed',
+            () => setDirty(true),
+          );
+        }
 
         // Badges hang off their target element, so they travel with pan and zoom.
         const overlays = v.get('overlays') as {
@@ -159,12 +187,82 @@ export function ProcessMap({
       viewerRef.current = null;
       viewer?.destroy();
     };
-  }, [xml, graph, variant, changedIds, changeByNode, opportunities]);
+  }, [xml, graph, variant, changedIds, changeByNode, opportunities, editable]);
 
   function canvas() {
     return viewerRef.current?.get('canvas') as
       | { zoom: (a: string | number, b?: string) => void; viewbox: () => { scale: number } }
       | undefined;
+  }
+
+  async function saveLayout() {
+    const v = viewerRef.current as unknown as
+      | { saveXML: (o: { format: boolean }) => Promise<{ xml?: string }> }
+      | null;
+    if (!v || !sessionId) return;
+    setSaving(true);
+    try {
+      const { xml: out } = await v.saveXML({ format: true });
+      const res = await fetch(`/api/spec/${sessionId}/graph/layout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kind: variant, diagramXml: out ?? null }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? 'Save failed.');
+      setDirty(false);
+      setSavedNote('Arrangement saved.');
+    } catch (err) {
+      setSavedNote(err instanceof Error ? err.message : 'Save failed.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  /** Clear the stored arrangement; the next draw returns the generated layout. */
+  async function resetLayout() {
+    if (!sessionId) return;
+    setSaving(true);
+    try {
+      await fetch(`/api/spec/${sessionId}/graph/layout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kind: variant, diagramXml: null }),
+      });
+      setSavedNote('Reset. Reload to see the generated layout.');
+      setDirty(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function download(name: string, data: string, mime: string) {
+    const url = URL.createObjectURL(new Blob([data], { type: mime }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  /**
+   * Export, so taking the diagram to a modelling tool is a choice rather than
+   * something forced by our own canvas being inadequate. BPMN 2.0 XML opens in
+   * ARIS, Camunda, Signavio and bpmn.io; SVG goes into a slide.
+   */
+  async function exportAs(kind: 'bpmn' | 'svg') {
+    const v = viewerRef.current as unknown as {
+      saveXML: (o: { format: boolean }) => Promise<{ xml?: string }>;
+      saveSVG: () => Promise<{ svg?: string }>;
+    } | null;
+    if (!v) return;
+    const base = `process-map-${variant}`;
+    if (kind === 'bpmn') {
+      const { xml: out } = await v.saveXML({ format: true });
+      if (out) download(`${base}.bpmn`, out, 'application/xml');
+    } else {
+      const { svg } = await v.saveSVG();
+      if (svg) download(`${base}.svg`, svg, 'image/svg+xml');
+    }
   }
 
   function zoom(direction: 1 | -1) {
@@ -250,7 +348,55 @@ export function ProcessMap({
           <button type="button" className="pc-mapbtn wide" onClick={toggleFull}>
             {full ? 'Exit full screen' : 'Full screen'}
           </button>
+          <span className="pc-map-sep" aria-hidden="true" />
+          <button
+            type="button"
+            className="pc-mapbtn wide"
+            onClick={() => void exportAs('bpmn')}
+            title="BPMN 2.0 — opens in ARIS, Camunda, Signavio, bpmn.io"
+          >
+            .bpmn
+          </button>
+          <button
+            type="button"
+            className="pc-mapbtn wide"
+            onClick={() => void exportAs('svg')}
+            title="Vector image for a document or slide"
+          >
+            .svg
+          </button>
+          {editable && sessionId && (
+            <>
+              <span className="pc-map-sep" aria-hidden="true" />
+              <button
+                type="button"
+                className="pc-mapbtn wide primary"
+                onClick={() => void saveLayout()}
+                disabled={!dirty || saving}
+                title="Keep this arrangement for everyone who opens the map"
+              >
+                {saving ? 'Saving…' : dirty ? 'Save arrangement' : 'Saved'}
+              </button>
+              {adjusted && (
+                <button
+                  type="button"
+                  className="pc-mapbtn wide"
+                  onClick={() => void resetLayout()}
+                  disabled={saving}
+                  title="Discard the arrangement and go back to the generated layout"
+                >
+                  Reset
+                </button>
+              )}
+            </>
+          )}
         </div>
+        {editable && (
+          <p className="pc-map-editnote">
+            {savedNote ??
+              'Drag to rearrange. Saving keeps the drawing only — it does not change the specification or the evidence behind it.'}
+          </p>
+        )}
         <div ref={hostRef} className="pc-map-canvas" aria-label="Process map" />
         {!ready && !error && <p className="pc-map-status">Drawing the process map…</p>}
         {error && (

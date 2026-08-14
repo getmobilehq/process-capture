@@ -1282,3 +1282,31 @@
   color: var(--brand-mark);
   padding: 4px 0;
 }
+
+/* Editable map canvas — separators, save state, and the standing caveat */
+.pc-map-sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 4px 2px;
+  background: var(--ink-200);
+}
+.pc-mapbtn.primary {
+  background: var(--brand-mark);
+  color: #fff;
+  border-color: var(--brand-mark);
+}
+.pc-mapbtn.primary:disabled {
+  background: var(--ink-100);
+  color: var(--ink-500);
+  border-color: var(--ink-200);
+}
+.pc-map-editnote {
+  margin: 6px 0 0;
+  font: 400 11.5px / 1.4 var(--font-sans);
+  color: var(--ink-500);
+}
+/* The modeller's palette would invite semantic edits we do not want persisted as
+   evidence; rearranging is the point, drawing a new process is not. */
+.pc-map-canvas .djs-palette {
+  display: none;
+}

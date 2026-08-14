@@ -55,7 +55,16 @@ export async function POST(req: Request, { params }: { params: { sessionId: stri
   const stored = await getProcessGraph(session.id, spec.version, 'asis');
   if (stored) {
     const graph = stored.graph as Parameters<typeof toBpmnXml>[0];
-    return NextResponse.json({ graph, xml: toBpmnXml(graph), informant, cached: true });
+    // The architect's adjusted drawing wins over the generated one. `adjusted`
+    // tells the UI to offer "reset to generated layout" — without it, someone
+    // who has rearranged a diagram has no way back.
+    return NextResponse.json({
+      graph,
+      xml: stored.diagramXml ?? toBpmnXml(graph),
+      adjusted: Boolean(stored.diagramXml),
+      informant,
+      cached: true,
+    });
   }
 
   try {

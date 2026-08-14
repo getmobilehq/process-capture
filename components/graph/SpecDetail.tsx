@@ -49,7 +49,7 @@ export function SpecDetail({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [details, setDetails] = useState<string[]>([]);
-  const [map, setMap] = useState<{ graph: ProcessGraph; xml: string } | null>(null);
+  const [map, setMap] = useState<{ graph: ProcessGraph; xml: string; adjusted?: boolean } | null>(null);
   const [tobe, setTobe] = useState<ToBe | null>(null);
   const [opps, setOpps] = useState<{
     opportunities: { classifications: { activityId: string; label: string; rationale: string; evidence: number[] }[] };
@@ -73,7 +73,11 @@ export function SpecDetail({
         setDetails(Array.isArray(data.details) ? data.details : []);
         throw new Error(data.error ?? 'The process map could not be built.');
       }
-      const built = { graph: data.graph as ProcessGraph, xml: data.xml as string };
+      const built = {
+        graph: data.graph as ProcessGraph,
+        xml: data.xml as string,
+        adjusted: Boolean(data.adjusted),
+      };
       setMap(built);
       return built;
     } catch (err) {
@@ -446,7 +450,14 @@ export function SpecDetail({
 
           {map && (
             <>
-              <ProcessMap xml={map.xml} graph={map.graph} informant={informant} />
+              <ProcessMap
+                xml={map.xml}
+                graph={map.graph}
+                informant={informant}
+                editable
+                adjusted={map.adjusted}
+                sessionId={sessionId}
+              />
               <div style={{ marginTop: 'var(--space-4)' }}>
                 <button type="button" className="pc-btn ghost sm" onClick={download}>
                   Export BPMN 2.0 (ARIS-compatible)

@@ -697,3 +697,18 @@ decision, why it is the minimal option (§10).
   activity names spilled over their own borders and over whatever sat beneath them.
   The diagram looked broken when the only thing wrong was the box. Height now
   follows the wrapped line count, capped so one verbose activity cannot dominate.
+- **DL.82 · The canvas is editable, and that reverses DL.34** — DL.34 shipped
+  viewer-only on the grounds that the graph is extracted evidence, not a drawing
+  surface. The reasoning still holds; the conclusion did not survive contact with a
+  real nineteen-step process, which lays out four thousand pixels wide and cannot
+  be read at any fit-to-screen zoom. The reconciliation: **editing changes the
+  drawing, not the evidence.** The arrangement is stored in `diagram_xml` beside
+  the graph, never instead of it, so "reset to generated" cannot lose anything an
+  informant said. The modeller's palette is hidden — rearranging is the point,
+  drawing a new process is not, and a node added by hand would be a claim with no
+  provenance.
+- **DL.83 · The map exports BPMN 2.0 and SVG from the canvas** — The risk named in
+  the request was that architects would leave for a third-party tool. Export makes
+  that a choice rather than an escape: BPMN 2.0 XML opens in ARIS, Camunda,
+  Signavio and bpmn.io, and SVG drops into a document. A tool people can leave
+  freely is one they are more willing to start in.

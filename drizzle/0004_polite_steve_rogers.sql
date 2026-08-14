@@ -1,0 +1,1 @@
+ALTER TABLE "process_graphs" ADD COLUMN "diagram_xml" text;
