@@ -680,3 +680,20 @@ decision, why it is the minimal option (§10).
   header for the job and keeps bearer auth for a person at a terminal. OIDC proves
   the caller is the scheduler; the token proves it is allowed. Neither alone would
   do as much.
+- **DL.79 · Lane geometry is computed in two passes, because one pass was wrong** —
+  Nodes were positioned on a uniform `row × ROW_H` grid while lane bands were drawn
+  with variable heights stacked cumulatively. The moment any lane grew past the
+  fixed row height, every lane below it drifted out of alignment with its own
+  nodes — so activities were drawn in the wrong swimlane, which is not a cosmetic
+  fault but a false statement about who does the work. Lane heights are now derived
+  from their deepest stack first, and nodes placed inside the band they actually
+  belong to.
+- **DL.80 · An empty lane is dropped from the diagram** — A lane nobody works in is
+  a band of blank space the reader scrolls past; on a real seven-lane graph it
+  wasted most of the canvas. The lane list is not the finding — who does the work
+  is, and that is in the nodes. Dropped in the layout and, necessarily, in the
+  serialiser too: emitting a lane with no DI bounds produces invalid output.
+- **DL.81 · Task boxes grow to fit their label** — A fixed 80px box was why long
+  activity names spilled over their own borders and over whatever sat beneath them.
+  The diagram looked broken when the only thing wrong was the box. Height now
+  follows the wrapped line count, capped so one verbose activity cannot dominate.

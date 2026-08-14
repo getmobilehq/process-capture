@@ -152,9 +152,12 @@ describe('layered layout (R5.2)', () => {
     const { nodes } = layoutGraph(graph());
     const host = nodes.get('act:visit')!;
     const boundary = nodes.get('ev:not-home')!;
-    // Horizontally centred on the host, straddling its lower edge.
-    expect(boundary.x + boundary.width / 2).toBe(host.x + host.width / 2);
+    // Straddles the host's lower edge, offset from centre so it does not land on
+    // the activity's own label — but still within the host's horizontal span.
     expect(boundary.y).toBe(host.y + host.height - boundary.height / 2);
+    const centre = boundary.x + boundary.width / 2;
+    expect(centre).toBeGreaterThan(host.x + host.width / 2);
+    expect(centre).toBeLessThanOrEqual(host.x + host.width);
   });
 
   it('terminates on a rework loop rather than hanging', async () => {

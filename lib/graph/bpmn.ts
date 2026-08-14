@@ -66,7 +66,11 @@ export function toBpmnXml(graph: ProcessGraph, opts: BpmnOptions = {}): string {
   }
 
   // ── Process semantics ─────────────────────────────────────────────────────
-  const lanes = graph.lanes
+  // Only lanes the layout kept: an empty lane is dropped there (nobody works in
+  // it, so it is a band of blank space), and emitting one here without matching
+  // DI would produce a lane with no bounds.
+  const shownLanes = graph.lanes.filter((l) => layout.lanes.has(l.id));
+  const lanes = shownLanes
     .map((l) => {
       const refs = (laneMembers.get(l.id) ?? [])
         .map((id) => `        <bpmn:flowNodeRef>${xmlId(id)}</bpmn:flowNodeRef>`)
@@ -136,7 +140,7 @@ export function toBpmnXml(graph: ProcessGraph, opts: BpmnOptions = {}): string {
     : '';
 
   // ── BPMN DI ───────────────────────────────────────────────────────────────
-  const laneShapes = graph.lanes
+  const laneShapes = shownLanes
     .map((l) => {
       const b = layout.lanes.get(l.id)!;
       return `      <bpmndi:BPMNShape id="${xmlId(l.id)}_di" bpmnElement="${xmlId(
