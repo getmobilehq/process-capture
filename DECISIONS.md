@@ -763,3 +763,14 @@ decision, why it is the minimal option (§10).
   block returning nothing. The prompt makes transcription the only reasonable
   response at temperature 0, and a block or a truncation is reported rather than
   passed off as silence.
+- **DL.92 · Network data sources carry no `depends_on`, and that is not a
+  simplification** — A data source with `depends_on` is deferred to apply time
+  whenever that dependency has any pending change. `google_compute_network.default`
+  depended on the whole `google_project_service.required` map, so merely adding
+  `aiplatform.googleapis.com` to that list marked the network "known after apply" —
+  which forces replacement of the reserved range, the VPC peering, and, because it
+  references the network, **the Cloud SQL instance**. Terraform planned exactly
+  that; only `deletion_protection` stopped it. The data sources now read at plan
+  time. On a brand-new project where compute is not yet enabled the read fails with
+  a clear error, on a project holding nothing — a far better failure than silently
+  proposing to destroy a live database.
