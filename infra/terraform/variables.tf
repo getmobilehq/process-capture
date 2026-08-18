@@ -130,7 +130,13 @@ variable "gemini_transcribe_model" {
 }
 
 variable "enable_tobe" {
-  description = "Expose the to-be map and opportunity overlay. Off for a pilot audience."
+  description = <<-EOT
+    Expose the analysis views: to-be map, opportunity overlay and automation
+    assessment. Everything they produce is marked proposed and unverified, and
+    cannot reach a handover report until a person has ruled on each item (R5.4),
+    so this is safe to enable — but a reader still meets claims about how work
+    could change, which is a deliberate choice rather than a default.
+  EOT
   type        = bool
   default     = false
 }
