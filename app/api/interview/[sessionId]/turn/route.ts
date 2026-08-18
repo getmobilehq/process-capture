@@ -10,7 +10,7 @@ const MAX_CONTENT_CHARS = 4000; // input length cap
 
 export async function POST(req: Request, { params }: { params: { sessionId: string } }) {
   // Rate limit the public write path: 40 turns/min per IP.
-  const rl = rateLimit(`turn:${clientIp(req)}`, { limit: 40, windowMs: 60_000 });
+  const rl = await rateLimit(`turn:${clientIp(req)}`, { limit: 40, windowMs: 60_000 });
   if (!rl.allowed) {
     return NextResponse.json(
       { error: 'Too many messages — please slow down.' },

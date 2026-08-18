@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Voice input is not configured.' }, { status: 503 });
   }
 
-  const rl = rateLimit(`transcribe:${clientIp(req)}`, { limit: 20, windowMs: 60_000 });
+  const rl = await rateLimit(`transcribe:${clientIp(req)}`, { limit: 20, windowMs: 60_000 });
   if (!rl.allowed) {
     return NextResponse.json(
       { error: 'Too many voice requests — please wait a moment.' },

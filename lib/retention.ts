@@ -44,6 +44,7 @@ import {
   turns,
 } from './db/schema';
 import { config } from './config';
+import { pruneRateLimits } from './rate-limit';
 
 export interface RetentionPlan {
   cutoff: Date;
@@ -137,8 +138,15 @@ export async function applyRetention(
   const plan = await planRetention(opts, db);
   const deleted: Record<string, number> = {};
 
-  if (opts.dryRun || (plan.sessions.length === 0 && plan.interviewees.length === 0)) {
-    return { ...plan, applied: false, deleted };
+  if (opts.dryRun) return { ...plan, applied: false, deleted };
+  if (plan.sessions.length === 0 && plan.interviewees.length === 0) {
+    // Nothing expired, but stale rate-limit windows still deserve clearing.
+    try {
+      deleted.rate_limits = await pruneRateLimits(db);
+    } catch {
+      // Housekeeping; never worth failing the sweep over.
+    }
+    return { ...plan, applied: deleted.rate_limits > 0, deleted };
   }
 
   const sessionIds = plan.sessions.map((s) => s.id);
@@ -174,6 +182,10 @@ export async function applyRetention(
         .returning({ id: sessions.id });
       deleted.sessions = gone.length;
     }
+
+    // Expired rate-limit windows are rubbish, not records. Swept here because
+    // this job already runs nightly and the alternative is a second schedule.
+    deleted.rate_limits = await pruneRateLimits(tx);
 
     if (intervieweeIds.length > 0) {
       const gone = await tx

@@ -52,7 +52,9 @@ resource "google_cloud_run_v2_service" "magpie" {
 
     scaling {
       # One instance minimum keeps the first interview of the day off a cold
-      # start; one maximum is the correctness constraint described in variables.tf.
+      # start. The maximum is now a capacity choice rather than a correctness
+      # one: rate limits are shared in Postgres, so N instances enforce the same
+      # limit N=1 did.
       min_instance_count = 1
       max_instance_count = var.max_instances
     }

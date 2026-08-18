@@ -774,3 +774,25 @@ decision, why it is the minimal option (§10).
   time. On a brand-new project where compute is not yet enabled the read fails with
   a clear error, on a project holding nothing — a far better failure than silently
   proposing to destroy a live database.
+- **DL.93 · Rate-limit buckets moved to Postgres, resolving SDD I-1** — Limits lived
+  in process memory, so `--max-instances=1` was a correctness constraint rather than
+  a capacity choice: with N instances the effective limit silently became N × the
+  configured value. Buckets are now a table, incremented by a single
+  `INSERT … ON CONFLICT DO UPDATE … RETURNING` — atomic in Postgres, so two
+  simultaneous requests cannot both read the same count and both decide they are
+  under the limit. A table rather than Redis (P6): at interview volumes the row
+  count is negligible and a cache tier would be a dependency to operate for nothing.
+- **DL.94 · The store fails to in-process counting, never open** — A database blip
+  must not let an unauthenticated endpoint spend model credits without limit, and
+  must not block an informant mid-interview either. On error the limiter degrades to
+  exactly the behaviour this file had before, so the worst case is the old behaviour
+  rather than none. It logs at warn, because a sustained run of those means the
+  limit is per-instance again and someone should know.
+- **DL.95 · The login limiter shares the same buckets** — It guards the console
+  password, so per-process counting was the worst of the five call sites: N
+  instances gave an attacker N × the attempts with nothing reporting it.
+- **DL.96 · `getDb()` is resolved inside the try, not as a default parameter** — As
+  a default it threw before the catch could see it, so a missing or malformed
+  `DATABASE_URL` took the request down instead of degrading. Found by a unit test
+  that had no database configured, which is precisely the condition the fallback
+  exists for.

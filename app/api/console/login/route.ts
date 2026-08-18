@@ -18,7 +18,7 @@ function clientIp(req: Request): string {
 export async function POST(req: Request) {
   const ip = clientIp(req);
 
-  const rl = recordLoginAttempt(ip);
+  const rl = await recordLoginAttempt(ip);
   if (!rl.allowed) {
     return seeOther('/console/login?error=rate');
   }
@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     return seeOther('/console/login?error=1');
   }
 
-  clearLoginAttempts(ip);
+  await clearLoginAttempts(ip);
   const res = seeOther('/console');
   res.cookies.set(ADMIN_COOKIE, sessionToken(), {
     httpOnly: true,

@@ -30,7 +30,7 @@ const bodySchema = z.object({
  * correction is a matter for the conversation, not a checkbox.
  */
 export async function POST(req: Request, { params }: { params: { sessionId: string } }) {
-  const rl = rateLimit(`entity:${clientIp(req)}`, { limit: 60, windowMs: 60_000 });
+  const rl = await rateLimit(`entity:${clientIp(req)}`, { limit: 60, windowMs: 60_000 });
   if (!rl.allowed) {
     return NextResponse.json(
       { error: 'Too many changes — please slow down.' },

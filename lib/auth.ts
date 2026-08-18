@@ -7,6 +7,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { config } from '@/lib/config';
+import { clearRateLimit, rateLimit } from '@/lib/rate-limit';
 
 export const ADMIN_COOKIE = 'pc_admin';
 
@@ -39,29 +40,21 @@ export function isValidSession(token: string | undefined): boolean {
   return expected.length === got.length && timingSafeEqual(expected, got);
 }
 
-// ── Rate limiting (per-process; sufficient for a single-instance pilot) ──────
-interface Attempt {
-  count: number;
-  resetAt: number;
-}
-const attempts = new Map<string, Attempt>();
+// ── Rate limiting (shared across instances — SDD I-1) ───────────────────────
+// This one guards the console password, so per-process counting was the worst of
+// the five: with N instances an attacker got N × the attempts and nothing said so.
+// It now uses the same shared buckets as every other limited route.
 const WINDOW_MS = 15 * 60 * 1000;
 const MAX_ATTEMPTS = 10;
 
-export function recordLoginAttempt(ip: string): { allowed: boolean; retryAfterSec?: number } {
-  const now = Date.now();
-  const entry = attempts.get(ip);
-  if (!entry || entry.resetAt < now) {
-    attempts.set(ip, { count: 1, resetAt: now + WINDOW_MS });
-    return { allowed: true };
-  }
-  entry.count += 1;
-  if (entry.count > MAX_ATTEMPTS) {
-    return { allowed: false, retryAfterSec: Math.ceil((entry.resetAt - now) / 1000) };
-  }
-  return { allowed: true };
+export async function recordLoginAttempt(
+  ip: string,
+): Promise<{ allowed: boolean; retryAfterSec?: number }> {
+  const r = await rateLimit(`login:${ip}`, { limit: MAX_ATTEMPTS, windowMs: WINDOW_MS });
+  return r.allowed ? { allowed: true } : { allowed: false, retryAfterSec: r.retryAfterSec };
 }
 
-export function clearLoginAttempts(ip: string): void {
-  attempts.delete(ip);
+/** A correct password clears the count, so one success forgives the fumbles. */
+export async function clearLoginAttempts(ip: string): Promise<void> {
+  await clearRateLimit(`login:${ip}`);
 }

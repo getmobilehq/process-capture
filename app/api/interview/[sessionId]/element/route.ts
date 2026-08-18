@@ -24,7 +24,7 @@ const bodySchema = z.object({
  * something was answered.
  */
 export async function POST(req: Request, { params }: { params: { sessionId: string } }) {
-  const rl = rateLimit(`element:${clientIp(req)}`, { limit: 60, windowMs: 60_000 });
+  const rl = await rateLimit(`element:${clientIp(req)}`, { limit: 60, windowMs: 60_000 });
   if (!rl.allowed) {
     return NextResponse.json(
       { error: 'Too many changes — please slow down.' },

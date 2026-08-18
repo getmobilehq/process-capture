@@ -28,7 +28,7 @@ describe('console auth (FR-1.1)', () => {
     const ip = '203.0.113.7';
     let blocked = false;
     for (let i = 0; i < 12; i += 1) {
-      const r = recordLoginAttempt(ip);
+      const r = await recordLoginAttempt(ip);
       if (!r.allowed) blocked = true;
     }
     expect(blocked).toBe(true);

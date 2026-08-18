@@ -82,13 +82,19 @@ variable "retention_schedule" {
 
 variable "max_instances" {
   description = <<-EOT
-    Cloud Run maximum instances. Pinned to 1 for the pilot and that is a
-    CORRECTNESS constraint, not a capacity choice: rate limiting is currently
-    in-process (SDD issue I-1), so a second instance doubles the effective limit.
-    Do not raise this until rate limiting moves to shared state.
+    Cloud Run maximum instances.
+
+    This was pinned to 1 as a correctness constraint while rate limiting lived in
+    process memory — a second instance silently doubled every limit. Rate limiting
+    now shares its buckets in Postgres (SDD I-1, resolved), so this is once again
+    an ordinary capacity choice.
+
+    Two things still scale per instance rather than globally: the database
+    connection pool (DB_POOL_MAX, 5 by default) and boot-time migrations, which
+    are safe because Drizzle takes a lock but will serialise a cold start.
   EOT
   type        = number
-  default     = 1
+  default     = 3
 }
 
 variable "transcribe_provider" {

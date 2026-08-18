@@ -42,7 +42,7 @@ function view(row: { content: string; seq: number; take: number; status: string 
  */
 export async function POST(req: Request, { params }: { params: { sessionId: string } }) {
   // Autosave is chatty by design; the cap is high enough not to throttle typing.
-  const rl = rateLimit(`draft:${clientIp(req)}`, { limit: 240, windowMs: 60_000 });
+  const rl = await rateLimit(`draft:${clientIp(req)}`, { limit: 240, windowMs: 60_000 });
   if (!rl.allowed) {
     return NextResponse.json(
       { error: 'Too many saves — please slow down.' },

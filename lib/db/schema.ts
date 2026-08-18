@@ -408,6 +408,23 @@ export const changeReviews = pgTable(
   }),
 );
 
+// ── RateLimit (shared fixed-window buckets) ──────────────────────────────────
+// Rate limiting used to live in process memory, which made `--max-instances=1` a
+// correctness constraint rather than a capacity choice: with N instances the
+// effective limit silently became N × the configured value. Buckets live here so
+// the limit means the same thing however many instances are running.
+//
+// A table rather than Redis (P6 — extend before adding). At interview volumes the
+// row count is tiny and the contention is nil; a cache tier would be a dependency
+// to operate for no measurable gain.
+export const rateLimits = pgTable('rate_limits', {
+  /** Bucket identity, e.g. `turn:203.0.113.4` or `login:203.0.113.4`. */
+  key: text('key').primaryKey(),
+  count: integer('count').notNull().default(0),
+  /** When this window ends. A row past its reset is treated as a fresh window. */
+  resetAt: timestamp('reset_at', { withTimezone: true }).notNull(),
+});
+
 // ── Finding ──────────────────────────────────────────────────────────────────
 export const findings = pgTable(
   'findings',
@@ -484,3 +501,4 @@ export type NewElementState = typeof elementStates.$inferInsert;
 export type Finding = typeof findings.$inferSelect;
 export type NewFinding = typeof findings.$inferInsert;
 export type Spec = typeof specs.$inferSelect;
+export type RateLimitRow = typeof rateLimits.$inferSelect;
