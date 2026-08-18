@@ -6,6 +6,7 @@
  * self-service one, and a console page to make console accounts is a privilege
  * escalation waiting to be found.
  *
+ *   npm run console:user -- --credentials "Their Name"    # for the deployed console
  *   npm run console:user -- --list
  *   npm run console:user -- --add joseph@example.com --name "Joseph Agunbiade"
  *   npm run console:user -- --reset joseph@example.com
@@ -47,6 +48,23 @@ const uk = (d: Date | null) => (d ? d.toLocaleDateString('en-GB') : 'never');
 
 async function main() {
   const a = parseArgs();
+
+  // Generate a password and its hash HERE, on the operator's machine. The
+  // deployed console is managed by a Cloud Run job whose output goes to Cloud
+  // Logging for thirty days — so the password must never be sent there. Only the
+  // hash travels, and a hash in a job argument is harmless.
+  if (typeof a.credentials === 'string' || a.credentials === true) {
+    const who = typeof a.credentials === 'string' ? a.credentials : 'the new account';
+    const password = generatePassword();
+    const hash = hashPassword(password);
+    console.log(`Credentials for ${who}:\n`);
+    console.log(`  Password: ${password}`);
+    console.log('  (give this to them directly — it is not stored anywhere)\n');
+    console.log('Then create the account in the deployed console:\n');
+    console.log(`  gcloud run jobs execute magpie-console-user --region=europe-west2 --wait \\`);
+    console.log(`    --args="--add,THEIR@EMAIL,--name,${who},--hash,${hash}"\n`);
+    return;
+  }
 
   if (a.list) {
     const users = await listConsoleUsers();

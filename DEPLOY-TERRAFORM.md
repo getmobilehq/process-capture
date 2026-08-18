@@ -266,6 +266,30 @@ tofu apply    # with deletion_protection = false
 tofu destroy
 ```
 
+## Creating console accounts
+
+Reviews are attributed to whoever is signed in, so give each architect an account
+before they start reviewing — attribution cannot be applied retrospectively.
+
+The password is generated on **your** machine and never sent to the deployment,
+because everything the job prints goes to Cloud Logging for thirty days:
+
+```bash
+npm run console:user -- --credentials "Their Name"
+```
+
+That prints a password to give them directly, and the exact `gcloud` command to
+run — which carries only the bcrypt hash. Then:
+
+```bash
+gcloud run jobs execute magpie-console-user --region=$REGION --wait --args="--list"
+gcloud run jobs execute magpie-console-user --region=$REGION --wait --args="--disable,EMAIL"
+```
+
+> Retire the shared `ADMIN_PASSWORD` once every architect has an account — until
+> then, reviews made with it are attributed to "console admin". Leave the email
+> blank on the sign-in form to use it.
+
 ## When it goes wrong
 
 **`Error: google: could not find default credentials`**
