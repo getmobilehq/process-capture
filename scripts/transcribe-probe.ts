@@ -14,8 +14,6 @@
  */
 import './load-env';
 import { readFileSync } from 'node:fs';
-import { transcribe, primaryProvider } from '@/lib/transcribe';
-import { config } from '@/lib/config';
 
 function parseArgs() {
   const args = process.argv.slice(2);
@@ -44,7 +42,14 @@ async function main() {
     console.error('Usage: npm run transcribe:probe -- --file <audio> [--provider gemini|whisper]');
     process.exit(2);
   }
+
+  // Set the override BEFORE the modules that read it are loaded. `config` reads
+  // process.env once at module scope, so a static import here would freeze the
+  // provider before this line ran — which is exactly what it did the first time.
   if (provider) process.env.TRANSCRIBE_PROVIDER = provider;
+
+  const { transcribe, primaryProvider } = await import('@/lib/transcribe');
+  const { config } = await import('@/lib/config');
 
   const bytes = readFileSync(file);
   const ext = file.split('.').pop()?.toLowerCase() ?? 'webm';
