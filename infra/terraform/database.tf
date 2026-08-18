@@ -11,6 +11,11 @@ resource "google_sql_database_instance" "magpie" {
   deletion_protection = true
 
   settings {
+    # The provider-side flag above stops Terraform destroying this. This one stops
+    # everyone else — gcloud, the console, any API caller. "Terraform won't" and
+    # "nobody can" are different guarantees and a pilot wants both.
+    deletion_protection_enabled = true
+
     tier      = var.db_tier
     edition   = "ENTERPRISE"
     disk_size = 10
@@ -31,7 +36,9 @@ resource "google_sql_database_instance" "magpie" {
       start_time                     = "02:00"
       point_in_time_recovery_enabled = true
       backup_retention_settings {
-        retained_backups = 7
+        # Thirty, not seven: a misconfigured retention sweep discovered a fortnight
+        # later must still be recoverable. Pennies at this data size.
+        retained_backups = 30
       }
     }
 

@@ -4,7 +4,6 @@ import {
   rateLimit,
   clearRateLimit,
   pruneRateLimits,
-  clientIp,
   __resetMemoryBuckets,
 } from '@/lib/rate-limit';
 
@@ -107,16 +106,5 @@ describe('degrading when the shared store is unreachable', () => {
   });
 });
 
-describe('client identification', () => {
-  it('takes the first hop of x-forwarded-for, which is the caller', () => {
-    const req = new Request('https://x/', {
-      headers: { 'x-forwarded-for': '203.0.113.9, 70.41.3.18' },
-    });
-    expect(clientIp(req)).toBe('203.0.113.9');
-  });
-
-  it('falls back to x-real-ip, then to a constant', () => {
-    expect(clientIp(new Request('https://x/', { headers: { 'x-real-ip': '198.51.100.2' } }))).toBe('198.51.100.2');
-    expect(clientIp(new Request('https://x/'))).toBe('local');
-  });
-});
+// Client identification moved to tests/unit/client-ip.test.ts — the assertion here
+// encoded the pre-fix behaviour (first forwarded hop), which was the bypass.

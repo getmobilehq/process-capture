@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { requireAdmin } from '@/lib/console-auth';
 import {
   getInterviewee,
   getProject, getLatestSpec, getSession } from '@/lib/db/queries';
@@ -14,6 +15,7 @@ export const dynamic = 'force-dynamic';
  * team, not something the informant is shown.
  */
 export default async function SpecDetailPage({ params }: { params: { sessionId: string } }) {
+  requireAdmin();
   const session = await getSession(params.sessionId);
   if (!session) redirect('/console');
 

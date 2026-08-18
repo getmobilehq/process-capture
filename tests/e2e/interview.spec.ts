@@ -78,7 +78,18 @@ test('golden path: mocked interview reaches review with 11 answered + 1 unknown'
   const session = await sessionFor(token)!;
   expect(session.status).toBe('complete');
 
-  // The generated spec downloads and honours provenance (P4) and email absence (P7).
+  // The spec is console-only: an informant holds their own session id, so an
+  // unauthenticated fetch must be refused. This route served it to anyone until a
+  // security review caught it.
+  const anon = await page.request.get(`/api/spec/${session.id}`);
+  expect(anon.status()).toBe(401);
+
+  // Signed in, it downloads and honours provenance (P4) and email absence (P7).
+  await page.goto('/console');
+  await page.locator('input[name="password"]').fill('test-admin');
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page).toHaveURL(/\/console$/);
+
   const specRes = await page.request.get(`/api/spec/${session.id}`);
   expect(specRes.ok()).toBeTruthy();
   const md = await specRes.text();

@@ -31,6 +31,11 @@ COPY --from=builder /app/scripts/migrate.mjs ./scripts/migrate.mjs
 COPY --from=builder /app/scripts/console-user.mjs ./scripts/console-user.mjs
 COPY --from=builder /app/node_modules ./node_modules
 
+# Drop root. An internet-facing Next.js app with 'unsafe-eval' in its CSP should
+# not be uid 0 — any RCE would otherwise be root in the container, one hop from
+# the metadata server and a token carrying secretAccessor on the database URL.
+USER node
+
 EXPOSE 3000
 
 CMD ["sh", "-c", "node scripts/migrate.mjs && node node_modules/next/dist/bin/next start"]

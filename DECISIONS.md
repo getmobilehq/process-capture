@@ -832,3 +832,35 @@ decision, why it is the minimal option (§10).
   only path to creating an account is from inside the deployment. The alternative —
   a bastion, or a public IP for an administrative errand — would have widened the
   network to save a day's work.
+- **DL.102 · The legacy session cookie is deleted, not repaired (security review F1)**
+  — It keyed off `config.adminPassword` directly rather than `signingKey()`, so an
+  unset `ADMIN_PASSWORD` collapsed the key to the literal `'disabled'` over a
+  constant message: a fixed, publicly computable cookie granting a full console
+  session. `adminEnabled()` returns true on `SESSION_SECRET` alone, so the
+  vulnerable state was precisely the one DL.98's retirement guidance told an
+  operator to move to. The affordance existed to spare in-flight sessions one
+  re-login; that is not worth an unauthenticated console.
+- **DL.103 · `clientIp` reads the last forwarded hop, and there is one of it** —
+  Google's front end appends to a client-supplied `X-Forwarded-For`, so the first
+  entry is attacker-chosen. Reading it gave anyone a fresh rate-limit bucket per
+  request: the console brute-force ceiling never bound, and the only cap on model
+  spend was gone. The duplicate copy in the login route — which had the same bug —
+  is deleted, because two definitions of "who is calling" is one too many.
+- **DL.104 · Two endpoints were serving attributed statements unauthenticated** —
+  `/console/sessions/[sessionId]` had no `requireAdmin()` and `/api/spec/[sessionId]`
+  had no cookie check, while every sibling route had both. Session ids are
+  unguessable but are not secrets: an informant holds their own, and it appears in
+  every request path and access log. The E2E test now asserts the unauthenticated
+  fetch is refused, so this cannot regress quietly.
+- **DL.105 · Disabling an account ends access, rather than anonymising it** —
+  `identityFromSession` resolved a disabled user to the shared identity, so
+  revocation left them working for the rest of an eight-hour session with their
+  verdicts relabelled "console admin". That laundered an offboarded person's
+  actions instead of stopping them. `assertSession` now refuses them; a database
+  failure still admits a valid signature, because locking every architect out over
+  a lookup is the worse failure.
+- **DL.106 · The account job never sees a password** — Everything it prints goes to
+  Cloud Logging for thirty days, readable by any project viewer, so the generated
+  password it printed was a published password — and the comment above it claimed
+  the opposite. The operator now generates the password locally and passes only a
+  bcrypt hash, which is safe in job arguments and logs.

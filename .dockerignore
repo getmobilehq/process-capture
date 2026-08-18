@@ -20,3 +20,9 @@ VMO2 Design System
 VMO2 Design System.zip
 *.log
 .DS_Store
+# Terraform: tfvars is documented as a home for db_password, and .terraform holds
+# ~130 MB of provider binaries. Neither belongs in a build layer.
+infra
+.env*
+*.docx
+*.pptx

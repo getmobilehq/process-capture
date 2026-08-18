@@ -137,11 +137,53 @@ describe('session integrity', () => {
     expect(isValidSession('v2.a.b.c.d')).toBe(false);
   });
 
-  // A signed-out account must not keep its name on new reviews.
-  it('falls back to the shared identity when the account has been disabled', async () => {
+  // Superseded by the F6 fix below: a disabled account used to be relabelled
+  // "console admin" and carry on working, which laundered an offboarded person's
+  // actions instead of stopping them. It now resolves to null and is refused.
+  it('resolves a disabled account to nobody, rather than to the shared admin', async () => {
     const user = await addUser();
     const token = sessionToken({ userId: user.id, displayName: 'Priya Nair', email: 'p@e.com' });
     await updateConsoleUser(user.id, { status: 'disabled' }, testDb);
-    expect(await identityFromSession(token)).toEqual(SHARED_IDENTITY);
+    expect(await identityFromSession(token)).toBeNull();
+  });
+});
+
+describe('security regressions (found by review, must not return)', () => {
+  // F1: the legacy cookie keyed off ADMIN_PASSWORD directly, so unsetting it —
+  // which the retirement guidance tells you to do — produced a fixed, publicly
+  // computable value that granted a full console session.
+  it('accepts no cookie derived from an empty ADMIN_PASSWORD', async () => {
+    const { createHmac } = await import('node:crypto');
+    state.adminPassword = '';
+    state.sessionSecret = 'signing-key';
+
+    const forged = createHmac('sha256', 'disabled').update('console-admin-v1').digest('hex');
+    expect(isValidSession(forged)).toBe(false);
+    expect(await identityFromSession(forged)).toBeNull();
+  });
+
+  it('accepts no single-value cookie at all, whatever it is keyed on', async () => {
+    const { createHmac } = await import('node:crypto');
+    for (const key of ['disabled', 'shared-secret', 'signing-key']) {
+      const legacy = createHmac('sha256', key).update('console-admin-v1').digest('hex');
+      expect(isValidSession(legacy)).toBe(false);
+    }
+  });
+
+  // F6: disabling an account has to end access, not just anonymise the verdicts.
+  it('refuses a session whose account has been disabled', async () => {
+    const { assertSession } = await import('@/lib/auth');
+    const user = await addUser();
+    const token = sessionToken({ userId: user.id, displayName: 'Priya Nair', email: 'p@e.com' });
+    expect(await assertSession(token)).toBe(true);
+
+    await updateConsoleUser(user.id, { status: 'disabled' }, testDb);
+    expect(await assertSession(token)).toBe(false);
+    expect(await identityFromSession(token)).toBeNull();
+  });
+
+  it('still admits the shared credential, which names nobody to disable', async () => {
+    const { assertSession } = await import('@/lib/auth');
+    expect(await assertSession(sessionToken(SHARED_IDENTITY))).toBe(true);
   });
 });

@@ -120,20 +120,17 @@ interface ParsedSession {
 function parseSession(token: string): ParsedSession | null {
   const parts = token.split('.');
 
-  // Legacy single-value cookie: an HMAC over a constant. Accepted so that anyone
-  // signed in when this deploys is not thrown out mid-task.
-  if (parts.length === 1) {
-    const expected = Buffer.from(
-      createHmac('sha256', config.adminPassword || 'disabled')
-        .update('console-admin-v1')
-        .digest('hex'),
-    );
-    const got = Buffer.from(token);
-    if (expected.length === got.length && timingSafeEqual(expected, got)) {
-      return { userId: null, expires: Date.now() + 60_000 };
-    }
-    return null;
-  }
+  // The legacy single-value cookie is gone, deliberately.
+  //
+  // It keyed off `config.adminPassword` directly rather than `signingKey()`, so an
+  // unset ADMIN_PASSWORD collapsed the key to the literal 'disabled' over a
+  // constant message — a fixed, publicly computable value that granted a full
+  // console session. And `adminEnabled()` returns true on SESSION_SECRET alone, so
+  // the vulnerable state was exactly the one this file's own guidance told an
+  // operator to move to when retiring the shared password.
+  //
+  // The cost of removing it is that anyone signed in at deploy time signs in
+  // again. That is the whole cost.
 
   if (parts.length !== 4 || parts[0] !== 'v2') return null;
   const [, rawUser, rawExpires, mac] = parts;
@@ -149,19 +146,48 @@ function parseSession(token: string): ParsedSession | null {
   return { userId: rawUser === '-' ? null : rawUser, expires };
 }
 
+/**
+ * Signature and expiry only. Enough for the shared credential, which names nobody.
+ * Where a cookie names a user, prefer `assertSession` — a disabled account must
+ * lose access, not merely lose its name.
+ */
 export function isValidSession(token: string | undefined): boolean {
   if (!token || !adminEnabled()) return false;
   return parseSession(token) !== null;
 }
 
 /**
+ * Access check that honours revocation. Disabling an account used to leave the
+ * holder signed in for the rest of the eight-hour session — their verdicts simply
+ * became anonymous, which laundered an offboarded person's actions into the
+ * shared bucket rather than stopping them.
+ *
+ * A database failure resolves to allow-if-signature-valid: the alternative is
+ * that a blip locks every architect out mid-review, and the signature is still
+ * proof the cookie came from us.
+ */
+export async function assertSession(token: string | undefined): Promise<boolean> {
+  if (!token || !adminEnabled()) return false;
+  const parsed = parseSession(token);
+  if (!parsed) return false;
+  if (!parsed.userId) return true;
+
+  try {
+    const user = await getConsoleUser(parsed.userId);
+    return Boolean(user && user.status === 'active');
+  } catch {
+    return true;
+  }
+}
+
+/**
  * Who is signed in. Reads the user only when the cookie names one, so the shared
  * path stays a pure signature check.
  *
- * A disabled account resolves to the shared identity rather than failing: their
- * session is already valid and short-lived, and locking a page mid-render is a
- * worse outcome than one more review labelled "console admin". `isValidSession`
- * governs access; this governs attribution.
+ * A disabled account returns null — access is refused by `assertSession`, and
+ * attributing their action to "console admin" would launder it rather than stop
+ * it. A database failure still degrades to the shared identity, because failing a
+ * render over an attribution lookup is the worse outcome.
  */
 export async function identityFromSession(
   token: string | undefined,
@@ -173,7 +199,7 @@ export async function identityFromSession(
 
   try {
     const user = await getConsoleUser(parsed.userId);
-    if (!user || user.status !== 'active') return SHARED_IDENTITY;
+    if (!user || user.status !== 'active') return null;
     return { userId: user.id, displayName: user.name, email: user.email };
   } catch {
     return SHARED_IDENTITY;

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { z } from 'zod';
-import { identityFromSession, isValidSession, SHARED_IDENTITY } from '@/lib/auth';
+import { assertSession, identityFromSession, SHARED_IDENTITY } from '@/lib/auth';
 import { config } from '@/lib/config';
 import {
   getLatestSpec,
@@ -35,7 +35,10 @@ const bodySchema = z.object({
  */
 export async function POST(req: Request, { params }: { params: { sessionId: string } }) {
   const cookie = cookies().get('pc_admin')?.value;
-  if (!isValidSession(cookie)) {
+  // assertSession, not isValidSession: this records who approved a recommendation
+  // about someone's job, so a disabled account must be refused rather than
+  // silently attributed to "console admin".
+  if (!(await assertSession(cookie))) {
     return NextResponse.json({ error: 'Not authorised' }, { status: 401 });
   }
   const identity = (await identityFromSession(cookie)) ?? SHARED_IDENTITY;

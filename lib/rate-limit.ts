@@ -146,9 +146,26 @@ export async function clearRateLimit(key: string, injected?: DB): Promise<void> 
   buckets.delete(key);
 }
 
+/**
+ * The caller's address, as far as it can be trusted.
+ *
+ * Reads the LAST `x-forwarded-for` entry, not the first. Google's front end
+ * appends to whatever the client sent, so the first entry is a value the caller
+ * chose — taking it let anyone mint a fresh rate-limit bucket per request by
+ * rotating the header, which defeated the console brute-force limit outright and
+ * removed the only cap on model spend.
+ *
+ * The last entry is written by the proxy in front of us and cannot be forged from
+ * outside it. Behind a different topology (an external load balancer adds its own
+ * hop) this offset needs revisiting — hence one definition, here, rather than a
+ * copy in each route.
+ */
 export function clientIp(req: Request): string {
   const fwd = req.headers.get('x-forwarded-for');
-  if (fwd) return fwd.split(',')[0].trim();
+  if (fwd) {
+    const hops = fwd.split(',').map((h) => h.trim()).filter(Boolean);
+    if (hops.length > 0) return hops[hops.length - 1];
+  }
   return req.headers.get('x-real-ip') ?? 'local';
 }
 
