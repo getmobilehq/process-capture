@@ -91,6 +91,38 @@ variable "max_instances" {
   default     = 1
 }
 
+variable "transcribe_provider" {
+  description = <<-EOT
+    Voice-to-text provider: "gemini" (Vertex AI, in this project) or "whisper"
+    (OpenAI). Gemini is what company policy asks for; Whisper stays available
+    until Gemini has proven itself.
+  EOT
+  type        = string
+  default     = "gemini"
+
+  validation {
+    condition     = contains(["gemini", "whisper"], var.transcribe_provider)
+    error_message = "transcribe_provider must be gemini or whisper."
+  }
+}
+
+variable "transcribe_fallback" {
+  description = <<-EOT
+    Allow a transient failure of the chosen provider to be answered by the other
+    one. OFF by default: a policy that says "use Gemini" is not satisfied by a
+    system that quietly uses OpenAI whenever Gemini has a bad minute. Turning this
+    on sends audio to the other vendor on those occasions — a deliberate choice.
+  EOT
+  type        = bool
+  default     = false
+}
+
+variable "gemini_transcribe_model" {
+  description = "Vertex model used for transcription."
+  type        = string
+  default     = "gemini-2.5-flash"
+}
+
 variable "enable_tobe" {
   description = "Expose the to-be map and opportunity overlay. Off for a pilot audience."
   type        = bool

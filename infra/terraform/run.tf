@@ -24,6 +24,15 @@ resource "google_secret_manager_secret_iam_member" "database_url" {
   member    = "serviceAccount:${google_service_account.magpie.email}"
 }
 
+# Voice-to-text through Vertex AI runs as this service, not as a key holder —
+# which is the point: nothing to issue, rotate or govern, and the audio never
+# leaves the project.
+resource "google_project_iam_member" "vertex_user" {
+  project = var.project_id
+  role    = "roles/aiplatform.user"
+  member  = "serviceAccount:${google_service_account.magpie.email}"
+}
+
 resource "google_cloud_run_v2_service" "magpie" {
   name     = var.name
   location = var.region
@@ -79,6 +88,27 @@ resource "google_cloud_run_v2_service" "magpie" {
         name  = "MODEL"
         value = var.model
       }
+      env {
+        name  = "TRANSCRIBE_PROVIDER"
+        value = var.transcribe_provider
+      }
+      env {
+        name  = "TRANSCRIBE_FALLBACK"
+        value = var.transcribe_fallback ? "1" : "0"
+      }
+      env {
+        name  = "VERTEX_PROJECT"
+        value = var.project_id
+      }
+      env {
+        name  = "VERTEX_REGION"
+        value = var.region
+      }
+      env {
+        name  = "GEMINI_TRANSCRIBE_MODEL"
+        value = var.gemini_transcribe_model
+      }
+
       env {
         name  = "RETENTION_DAYS"
         value = tostring(var.retention_days)
@@ -148,6 +178,7 @@ resource "google_cloud_run_v2_service" "magpie" {
   }
 
   depends_on = [
+    google_project_iam_member.vertex_user,
     google_secret_manager_secret_iam_member.external,
     google_secret_manager_secret_iam_member.database_url,
     google_secret_manager_secret_iam_member.retention_token,

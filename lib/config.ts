@@ -24,6 +24,22 @@ export const config = {
   // When unset, the mic button is not offered.
   openaiApiKey: process.env.OPENAI_API_KEY ?? '',
   transcribeModel: str('TRANSCRIBE_MODEL', 'whisper-1'),
+  /**
+   * Voice-to-text provider (August 2026). `gemini` routes through Vertex AI in
+   * our own project, which is what company policy asks for; `whisper` is the
+   * original OpenAI path, kept until Gemini has proven itself.
+   */
+  transcribeProvider: str('TRANSCRIBE_PROVIDER', 'whisper') as 'whisper' | 'gemini',
+  /**
+   * Fall back to the other provider when the chosen one fails. Off by default:
+   * a policy that says "use Gemini" is not satisfied by a system that quietly
+   * uses OpenAI whenever Gemini has a bad minute. Turning this on is a
+   * deliberate act, and the response records which provider actually answered.
+   */
+  transcribeFallback: process.env.TRANSCRIBE_FALLBACK === '1',
+  vertexProject: str('VERTEX_PROJECT', ''),
+  vertexRegion: str('VERTEX_REGION', 'europe-west2'),
+  geminiTranscribeModel: str('GEMINI_TRANSCRIBE_MODEL', 'gemini-2.5-flash'),
   modelTemperature: int('MODEL_TEMPERATURE', 1),
   modelMaxTokens: int('MODEL_MAX_TOKENS', 4096),
   databaseUrl: str('DATABASE_URL', ''),
@@ -37,9 +53,13 @@ export const config = {
   surveyUrl: process.env.SURVEY_URL ?? '',
   /** MOCK_MODEL short-circuits the Anthropic client for deterministic E2E/tests. */
   mockModel: process.env.MOCK_MODEL === '1',
-  /** True when optional voice input is configured. */
+  /**
+   * True when optional voice input can work at all — either provider configured
+   * is enough. Voice is an enhancement throughout: an informant who cannot use
+   * the microphone types instead and loses nothing.
+   */
   get voiceEnabled(): boolean {
-    return Boolean(process.env.OPENAI_API_KEY);
+    return Boolean(process.env.OPENAI_API_KEY) || Boolean(process.env.VERTEX_PROJECT);
   },
   /**
    * The analysis views — to-be map (R5.4) and opportunity overlay (R5.5). The

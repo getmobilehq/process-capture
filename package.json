@@ -2,7 +2,7 @@
   "name": "process-capture",
   "version": "1.0.0",
   "private": true,
-  "description": "VMO2 SME interview tool \u2014 Process capture V1",
+  "description": "VMO2 SME interview tool — Process capture V1",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -17,6 +17,7 @@
     "seed": "tsx scripts/seed.ts",
     "demo:interview": "tsx scripts/demo-interview.ts",
     "retention": "tsx scripts/retention.ts",
+    "transcribe:probe": "tsx scripts/transcribe-probe.ts",
     "setup": "npm run db:migrate && npm run seed",
     "eval": "tsx scripts/eval.ts"
   },
@@ -25,6 +26,7 @@
     "bcryptjs": "^2.4.3",
     "bpmn-js": "^17.11.1",
     "drizzle-orm": "^0.44.6",
+    "google-auth-library": "^10.9.1",
     "nanoid": "^5.1.6",
     "next": "^14.2.35",
     "postgres": "^3.4.9",

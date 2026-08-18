@@ -736,3 +736,30 @@ decision, why it is the minimal option (§10).
   is no data for any of them. A number invented here would be quoted back as though
   it had been measured, and the assessment would stop being evidence and start being
   a business case nobody built.
+- **DL.88 · Voice-to-text is a provider interface, not an OpenAI call** — Company
+  policy asks for Gemini; the pilot is not yet willing to lose Whisper. Both now sit
+  behind `lib/transcribe`, chosen by `TRANSCRIBE_PROVIDER`. The Whisper path was
+  moved rather than rewritten: its retry posture and extension detection were
+  arrived at by fixing real failures (DV.3) and none of that should be lost to a
+  refactor. Every result names the provider that produced it, so a switch is never
+  silent.
+- **DL.89 · Gemini through Vertex AI, not the Gemini API** — Same argument that made
+  Bedrock and Vertex right for the base model: access is the platform's own
+  identity, so there is no third-party API key to issue, rotate or govern, and the
+  audio never leaves the project. On Cloud Run the credentials are the service
+  account's, resolved through ADC; the Terraform grants `roles/aiplatform.user` to
+  that identity and nothing else changes.
+- **DL.90 · Fallback is off by default, and only transient failures qualify** — A
+  policy that says "use Gemini" is not satisfied by a system that quietly uses
+  OpenAI whenever Gemini has a bad minute. `TRANSCRIBE_FALLBACK` defaults off, so
+  the policy holds unless someone deliberately relaxes it. When it is on, only
+  transient failures fall back: a safety block or a malformed request would fail
+  identically on the other side, so retrying there just sends the audio to a second
+  vendor for nothing.
+- **DL.91 · Gemini is instructed to transcribe, and its refusals are surfaced** —
+  Gemini has no dedicated transcription endpoint, so audio goes to `generateContent`
+  with an instruction. That invites two failure modes prose alone would hide: the
+  model answering the informant's words instead of writing them down, and a safety
+  block returning nothing. The prompt makes transcription the only reasonable
+  response at temperature 0, and a block or a truncation is reported rather than
+  passed off as silence.

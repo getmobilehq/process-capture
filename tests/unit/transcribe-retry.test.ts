@@ -44,7 +44,8 @@ describe('transcribe retries (transient connection blips)', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(res.status).toBe(200);
-    await expect(res.json()).resolves.toEqual({ text: 'a spoken reply' });
+    // The response now names the provider that answered, so a fallback is never silent.
+    await expect(res.json()).resolves.toEqual({ text: 'a spoken reply', provider: 'whisper' });
   });
 
   it('retries a 429 and a 5xx from OpenAI', async () => {
@@ -79,6 +80,8 @@ describe('transcribe retries (transient connection blips)', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(res.status).toBe(502);
-    await expect(res.json()).resolves.toEqual({ error: 'Transcription service unreachable.' });
+    // One message for every provider failure: the informant is told it did not
+    // work, not which vendor let us down.
+    await expect(res.json()).resolves.toEqual({ error: 'Transcription failed.' });
   });
 });
