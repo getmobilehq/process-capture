@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { ProcessMap } from './ProcessMap';
+import { AutomationAssessment } from './AutomationAssessment';
 import { SpecView } from './SpecView';
 import { ChangeReview, type ReviewState } from './ChangeReview';
 import type { Change, ProcessGraph } from '@/lib/graph/schema';
@@ -16,7 +17,7 @@ import type { Change, ProcessGraph } from '@/lib/graph/schema';
  * To-be and Opportunities are declared but not built — showing the tabs disabled
  * is more honest than hiding them, since the delta specifies all three sub-views.
  */
-type Tab = 'spec' | 'map' | 'tobe' | 'opps';
+type Tab = 'spec' | 'map' | 'tobe' | 'opps' | 'assess';
 
 interface ToBe {
   graph: ProcessGraph;
@@ -51,6 +52,7 @@ export function SpecDetail({
   const [details, setDetails] = useState<string[]>([]);
   const [map, setMap] = useState<{ graph: ProcessGraph; xml: string; adjusted?: boolean } | null>(null);
   const [tobe, setTobe] = useState<ToBe | null>(null);
+  const [assess, setAssess] = useState<{ assessment: never; processName: string } | null>(null);
   const [opps, setOpps] = useState<{
     opportunities: { classifications: { activityId: string; label: string; rationale: string; evidence: number[] }[] };
     summary: { automatable: number; assistable: number; humanRequired: number; unclassified: number; total: number };
@@ -189,6 +191,84 @@ export function SpecDetail({
     }
   }
 
+  /** Built on the opportunity labels, so those have to exist first. */
+  async function runAssessment() {
+    if (assess || loading) return;
+    if (!opps && !(await (async () => { await drawOpps(); return true; })())) return;
+    setLoading(true);
+    setError(null);
+    setDetails([]);
+    try {
+      const res = await fetch(`/api/spec/${sessionId}/assessment`, { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setDetails(Array.isArray(data.details) ? data.details : []);
+        throw new Error(data.error ?? 'The assessment could not be produced.');
+      }
+      setAssess(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'The assessment could not be produced.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function downloadAssessment() {
+    if (!assess) return;
+    const a = assess.assessment as unknown as {
+      verdict: string; headline: string; reasoning: string;
+      segments: { segmentId: string; why: string; precondition: string; staysHuman: string }[];
+      openQuestions: string[];
+      derived: { id: string; label: string; activityNames: string[]; coverage: number; evidence: number[] }[];
+      signals: { totalActivities: number; automationShare: number; unclassifiedShare: number };
+    };
+    const pct = (n: number) => `${Math.round(n * 100)}%`;
+    const written = new Map(a.segments.map((x) => [x.segmentId, x]));
+    const lines = [
+      `# Automation assessment — ${assess.processName}`,
+      '',
+      `**Verdict: ${a.verdict}**`,
+      '',
+      a.headline,
+      '',
+      a.reasoning,
+      '',
+      `- ${a.signals.totalActivities} steps assessed`,
+      `- ${pct(a.signals.automationShare)} automatable or assistable`,
+      `- ${pct(a.signals.unclassifiedShare)} not judged`,
+      '',
+      '## Where the opportunity is',
+      '',
+    ];
+    for (const seg of a.derived.filter((d) => d.label === 'automatable' || d.label === 'assistable')) {
+      const w = written.get(seg.id);
+      lines.push(`### ${seg.label} — ${pct(seg.coverage)} of the process`);
+      lines.push('');
+      lines.push(seg.activityNames.join(' → '));
+      if (w) {
+        lines.push('', w.why, '', `**Before this could be pursued:** ${w.precondition}`, '', `**Stays with a person:** ${w.staysHuman}`);
+      }
+      lines.push('', `Evidence: facet ${seg.evidence.join(', ') || 'none cited'}`, '');
+    }
+    if (a.openQuestions.length > 0) {
+      lines.push('## What we could not judge', '');
+      for (const q of a.openQuestions) lines.push(`- ${q}`);
+      lines.push('');
+    }
+    lines.push(
+      '---',
+      '',
+      'This is an indication for a decision, not a recommendation to proceed. It is derived from one informant\'s account and is unverified. It carries no cost, saving or timeline, because nothing captured would support one.',
+    );
+    const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const el = document.createElement('a');
+    el.href = url;
+    el.download = `automation-assessment-${sessionId}.md`;
+    el.click();
+    URL.revokeObjectURL(url);
+  }
+
   function downloadToBe() {
     if (!tobe || !tobe.review.verified) return;
     const blob = new Blob([tobe.xml], { type: 'application/xml' });
@@ -283,6 +363,21 @@ export function SpecDetail({
             Opportunities
           </button>
         )}
+        {toBeEnabled && (
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'assess'}
+            className={`pc-tab ${tab === 'assess' ? 'active' : ''}`}
+            onClick={() => {
+              setTab('assess');
+              void runAssessment();
+            }}
+            title="Would this process benefit from AI automation?"
+          >
+            Automation assessment
+          </button>
+        )}
       </nav>
 
       {tab === 'spec' && (
@@ -345,6 +440,31 @@ export function SpecDetail({
                 onReview={(i, v, extra) => void reviewChange(i, v, extra, 'opportunity')}
               />
             </>
+          )}
+        </div>
+      )}
+
+      {tab === 'assess' && (
+        <div>
+          {loading && <p className="pc-map-status">Weighing the evidence for each step…</p>}
+          {error && (
+            <div className="pc-card" style={{ padding: 'var(--space-6)' }}>
+              <p style={{ marginTop: 0, color: 'var(--vm-red)', fontWeight: 700 }}>{error}</p>
+              {details.length > 0 && (
+                <ul className="t-body-s">
+                  {details.map((d) => (
+                    <li key={d}>{d}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+          {assess && (
+            <AutomationAssessment
+              assessment={assess.assessment}
+              processName={assess.processName}
+              onDownload={downloadAssessment}
+            />
           )}
         </div>
       )}

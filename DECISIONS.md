@@ -712,3 +712,27 @@ decision, why it is the minimal option (§10).
   that a choice rather than an escape: BPMN 2.0 XML opens in ARIS, Camunda,
   Signavio and bpmn.io, and SVG drops into a document. A tool people can leave
   freely is one they are more willing to start in.
+- **DL.84 · Segments are derived in code; the model only describes them** — Value in
+  automation lands on a run of steps, not one step, so R5.8 groups adjacent
+  activities sharing a label into segments. That grouping is a union-find over the
+  flow graph in `lib/graph/segments.ts`, not a model call: a segment is a claim that
+  *these steps, in this order* belong together, which is checkable against the map.
+  A grouping a model found persuasive is not. Runs of different labels are never
+  merged — where a process alternates the result is several small segments, and that
+  fragmentation is itself the finding.
+- **DL.85 · The server refuses a verdict the numbers will not carry** — A model that
+  has read a process is prone to finding an opportunity in it, and a tool that
+  always finds one is a tool nobody should believe. `permittedVerdicts()` computes,
+  from the counts alone, which verdicts are defensible: above 40% unjudged only
+  `insufficient-evidence` is available, and `strong-candidate` needs both half the
+  steps automatable and a single run covering 40%. The model is told the permitted
+  set and the server checks it obeyed.
+- **DL.86 · The gate stops over-claiming, never under-claiming** — First cut allowed
+  `partial-candidate` at 25% automation but not `poor-candidate`, so a correctly
+  cautious answer was rejected for being too modest. The two weakest verdicts are
+  now always available. A reader is never harmed by being told the opportunity is
+  smaller than the arithmetic would permit.
+- **DL.87 · The assessment states no cost, saving, headcount or timeline** — There
+  is no data for any of them. A number invented here would be quoted back as though
+  it had been measured, and the assessment would stop being evidence and start being
+  a business case nobody built.
