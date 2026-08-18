@@ -18,6 +18,7 @@
     "demo:interview": "tsx scripts/demo-interview.ts",
     "retention": "tsx scripts/retention.ts",
     "transcribe:probe": "tsx scripts/transcribe-probe.ts",
+    "console:user": "tsx scripts/console-user.ts",
     "setup": "npm run db:migrate && npm run seed",
     "eval": "tsx scripts/eval.ts"
   },

@@ -1,0 +1,1 @@
+ALTER TABLE "change_reviews" ADD COLUMN "reviewer_id" text;

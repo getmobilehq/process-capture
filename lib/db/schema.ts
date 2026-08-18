@@ -390,8 +390,15 @@ export const changeReviews = pgTable(
     editedRationale: text('edited_rationale'),
     /** Why it was rejected, or any note the reviewer left. */
     note: text('note').notNull().default(''),
-    /** Who reviewed. Thin today — the console is one shared login (DL.62). */
+    /** Who reviewed, as a display name — what a report shows. */
     reviewer: text('reviewer').notNull(),
+    /**
+     * The account that ruled on this, where one was signed in (SDD I-3). Null
+     * means the shared credential was used. Not a foreign key: a review must stay
+     * readable if the account is later removed, and the display name above is
+     * already the durable record.
+     */
+    reviewerId: text('reviewer_id'),
     reviewedAt: timestamp('reviewed_at', { withTimezone: true })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -405,6 +412,36 @@ export const changeReviews = pgTable(
       t.changeIndex,
     ),
     bySession: index('change_reviews_session_idx').on(t.sessionId),
+  }),
+);
+
+// ── ConsoleUser (named architects — SDD issue I-3) ───────────────────────────
+// The console began as one shared password, so every review was attributed to
+// "console admin". That is honest for two people who know each other and
+// inadequate the moment someone asks who approved a recommendation about their
+// team's job. Reviews now carry a person.
+//
+// Deliberately not SSO: that remains a V1 non-goal, and a pilot cannot wait for an
+// identity integration. This is named accounts with hashed passwords — enough to
+// answer "who", which is the question governance actually asks.
+export const consoleUsers = pgTable(
+  'console_users',
+  {
+    id: id(),
+    email: text('email').notNull(),
+    name: text('name').notNull(),
+    /** bcrypt. Never a plaintext password, never a reversible token. */
+    passwordHash: text('password_hash').notNull(),
+    /** Disabled rather than deleted: their past reviews must stay attributable. */
+    status: text('status', { enum: ['active', 'disabled'] })
+      .notNull()
+      .default('active'),
+    lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => ({
+    emailUnique: uniqueIndex('console_users_email_unique').on(t.email),
   }),
 );
 
@@ -502,3 +539,5 @@ export type Finding = typeof findings.$inferSelect;
 export type NewFinding = typeof findings.$inferInsert;
 export type Spec = typeof specs.$inferSelect;
 export type RateLimitRow = typeof rateLimits.$inferSelect;
+export type ConsoleUser = typeof consoleUsers.$inferSelect;
+export type NewConsoleUser = typeof consoleUsers.$inferInsert;

@@ -25,7 +25,7 @@ export default function LoginPage({ searchParams }: { searchParams: { error?: st
           <form action="/api/console/login" method="post">
             {searchParams.error === '1' && (
               <p className="t-caption" style={{ color: 'var(--vm-red)', marginBottom: 12 }} role="alert">
-                That password was not recognised. Please try again.
+                Those details were not recognised. Please try again.
               </p>
             )}
             {searchParams.error === 'rate' && (
@@ -34,9 +34,22 @@ export default function LoginPage({ searchParams }: { searchParams: { error?: st
               </p>
             )}
             <label className="pc-field">
-              <span>Password</span>
-              <input name="password" type="password" required autoFocus autoComplete="current-password" />
+              <span>Email</span>
+              <input
+                name="email"
+                type="email"
+                autoFocus
+                autoComplete="username"
+                placeholder="you@virginmediao2.co.uk"
+              />
             </label>
+            <label className="pc-field">
+              <span>Password</span>
+              <input name="password" type="password" required autoComplete="current-password" />
+            </label>
+            <p className="t-caption" style={{ color: 'var(--fg-muted)', marginTop: 4 }}>
+              Leave the email blank to sign in with the shared console password.
+            </p>
             <button className="pc-btn" type="submit" style={{ marginTop: 'var(--space-2)' }}>
               Sign in
             </button>

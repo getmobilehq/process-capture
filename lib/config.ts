@@ -45,6 +45,12 @@ export const config = {
   databaseUrl: str('DATABASE_URL', ''),
   baseUrl: str('BASE_URL', 'http://localhost:3000'),
   adminPassword: process.env.ADMIN_PASSWORD ?? '',
+  /**
+   * Signs console session cookies. Falls back to ADMIN_PASSWORD so existing
+   * deployments keep working untouched — but set it explicitly once named
+   * accounts are in use, or rotating the shared password logs everyone out.
+   */
+  sessionSecret: str('SESSION_SECRET', ''),
   retentionDays: int('RETENTION_DAYS', 365),
   sessionMaxTurns: int('SESSION_MAX_TURNS', 60),
   // Delta v1.1 R9.1 — the interview has a felt horizon. Configurable per pilot.

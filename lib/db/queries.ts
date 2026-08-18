@@ -14,6 +14,7 @@ import { getDb, type DB } from './index';
 import {
   answerDrafts,
   changeReviews,
+  consoleUsers,
   coverageStates,
   elementStates,
   entities,
@@ -28,6 +29,7 @@ import {
   turns,
   type Finding,
   type NewFinding,
+  type ConsoleUser,
   type NewProject,
   type Project,
   type Entity,
@@ -237,6 +239,67 @@ export async function setIntervieweeStatus(
     .where(eq(interviewees.id, id))
     .returning().then((r) => r[0]);
   return row;
+}
+
+// ── Console users (SDD I-3) ──────────────────────────────────────────────────
+
+export async function findConsoleUserByEmail(
+  email: string,
+  db: DB = getDb(),
+): Promise<ConsoleUser | undefined> {
+  const rows = await db
+    .select()
+    .from(consoleUsers)
+    .where(eq(consoleUsers.email, email.trim().toLowerCase()));
+  return rows[0];
+}
+
+export async function getConsoleUser(
+  id: string,
+  db: DB = getDb(),
+): Promise<ConsoleUser | undefined> {
+  const rows = await db.select().from(consoleUsers).where(eq(consoleUsers.id, id));
+  return rows[0];
+}
+
+export async function listConsoleUsers(db: DB = getDb()): Promise<ConsoleUser[]> {
+  return db.select().from(consoleUsers).orderBy(asc(consoleUsers.email));
+}
+
+export async function countConsoleUsers(db: DB = getDb()): Promise<number> {
+  return (await db.select({ id: consoleUsers.id }).from(consoleUsers)).length;
+}
+
+export async function createConsoleUser(
+  input: { email: string; name: string; passwordHash: string },
+  db: DB = getDb(),
+): Promise<ConsoleUser> {
+  return db
+    .insert(consoleUsers)
+    .values({
+      email: input.email.trim().toLowerCase(),
+      name: input.name.trim(),
+      passwordHash: input.passwordHash,
+    })
+    .returning()
+    .then((r) => r[0]);
+}
+
+export async function updateConsoleUser(
+  id: string,
+  patch: Partial<{ name: string; passwordHash: string; status: 'active' | 'disabled' }>,
+  db: DB = getDb(),
+): Promise<ConsoleUser | undefined> {
+  return db
+    .update(consoleUsers)
+    .set(patch)
+    .where(eq(consoleUsers.id, id))
+    .returning()
+    .then((r) => r[0]);
+}
+
+export async function recordConsoleLogin(id: string, db: DB = getDb()): Promise<void> {
+  await db.update(consoleUsers).set({ lastLoginAt: new Date() }).where(eq(consoleUsers.id, id));
 }
 
 // ── Sessions ─────────────────────────────────────────────────────────────────
@@ -895,6 +958,7 @@ export async function recordChangeReview(
     editedRationale?: string | null;
     note?: string;
     reviewer: string;
+    reviewerId?: string | null;
   },
   db: DB = getDb(),
 ) {
@@ -917,6 +981,7 @@ export async function recordChangeReview(
     editedRationale: input.editedRationale ?? null,
     note: input.note ?? '',
     reviewer: input.reviewer,
+    reviewerId: input.reviewerId ?? null,
     reviewedAt: new Date(),
   };
 

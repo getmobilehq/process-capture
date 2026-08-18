@@ -796,3 +796,31 @@ decision, why it is the minimal option (§10).
   `DATABASE_URL` took the request down instead of degrading. Found by a unit test
   that had no database configured, which is precisely the condition the fallback
   exists for.
+- **DL.97 · Named console accounts, resolving SDD I-3** — Every review was
+  attributed to "console admin". That is honest for two people who know each other
+  and inadequate the moment someone asks who approved a recommendation about their
+  team's job — which becomes a live question at fifteen to twenty informants across
+  VMO2. `console_users` holds named accounts with bcrypt hashes; the session cookie
+  carries the account id, signed; and `change_reviews` gains `reviewer_id` beside
+  the display name. Still not SSO — that remains a V1 non-goal, and a pilot cannot
+  wait for an identity integration. This answers "who", which is the question
+  governance actually asks.
+- **DL.98 · The shared password survives as a bootstrap, not a peer** — Removing
+  `ADMIN_PASSWORD` in the same change would lock a running deployment out of its own
+  console the moment it shipped, and somebody has to be able to get in to create the
+  first account. An email selects the named path; without one the shared credential
+  is tried, and those sessions are still labelled "console admin" — the honest label
+  for a session nobody is named in. Retire it by unsetting `ADMIN_PASSWORD` once
+  accounts exist. Four tests exist solely to prove the shared path still works.
+- **DL.99 · A disabled account degrades attribution, it does not break the page** —
+  `isValidSession` governs access; `identityFromSession` governs attribution. A
+  session whose account was disabled mid-shift resolves to the shared identity
+  rather than throwing: the session is already valid and short-lived, and one more
+  review labelled "console admin" is a better outcome than a page that fails to
+  render. `reviewer_id` is deliberately not a foreign key — a review must stay
+  readable after an account is removed, and the display name is the durable record.
+- **DL.100 · Accounts are managed by CLI, never by a console screen** — Creating the
+  people who may approve recommendations about someone else's job is an
+  administrative act. A console page for making console accounts is a privilege
+  escalation waiting to be found. Generated passwords are printed once and never
+  recoverable; lost means reset, which is the point.

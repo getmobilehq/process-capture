@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { z } from 'zod';
-import { isValidSession } from '@/lib/auth';
+import { identityFromSession, isValidSession, SHARED_IDENTITY } from '@/lib/auth';
 import { config } from '@/lib/config';
 import {
   getLatestSpec,
@@ -34,9 +34,11 @@ const bodySchema = z.object({
  * verification state so the UI always shows what is still outstanding.
  */
 export async function POST(req: Request, { params }: { params: { sessionId: string } }) {
-  if (!isValidSession(cookies().get('pc_admin')?.value)) {
+  const cookie = cookies().get('pc_admin')?.value;
+  if (!isValidSession(cookie)) {
     return NextResponse.json({ error: 'Not authorised' }, { status: 401 });
   }
+  const identity = (await identityFromSession(cookie)) ?? SHARED_IDENTITY;
   if (!config.toBeEnabled) {
     return NextResponse.json({ error: 'The to-be map is not enabled.' }, { status: 404 });
   }
@@ -96,9 +98,11 @@ export async function POST(req: Request, { params }: { params: { sessionId: stri
     editedDescription: parsed.data.editedDescription ?? null,
     editedRationale: parsed.data.editedRationale ?? null,
     note: parsed.data.note ?? '',
-    // The console is a single shared login, so this is the honest attribution
-    // available today rather than an invented identity (DL.62).
-    reviewer: 'console admin',
+    // The person who actually ruled on this (SDD I-3). Falls back to "console
+    // admin" only when the shared credential was used — which is the honest label
+    // for a session nobody is named in.
+    reviewer: identity.displayName,
+    reviewerId: identity.userId,
   });
 
   const reviews = await reviewRecords(session.id, spec.version, subject);
