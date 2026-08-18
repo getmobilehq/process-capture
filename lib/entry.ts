@@ -69,6 +69,8 @@ export async function startSession(
   if (!interviewee) throw new EntryError('invalid');
   if (interviewee.status === 'complete') throw new EntryError('used_up');
 
+  const project = await getProject(interviewee.projectId, db);
+
   // Persist any edits to the prefilled identity (FR-2.1 — fields are editable).
   const patch: Partial<{ fullName: string; email: string; role: string }> = {};
   if (input.fullName?.trim() && input.fullName.trim() !== interviewee.fullName) {
@@ -77,14 +79,26 @@ export async function startSession(
   if (input.email?.trim() && input.email.trim() !== interviewee.email) {
     patch.email = input.email.trim();
   }
+  // `role` is interpolated into the SYSTEM prompt, so it is sanitised rather than
+  // merely trimmed: newlines let a caller close the sentence they are inside and
+  // append instructions of their own, and there is no legitimate job title that
+  // needs one — or that runs past 120 characters.
   if (input.role?.trim() && input.role.trim() !== interviewee.role) {
-    patch.role = input.role.trim();
+    patch.role = sanitiseForPrompt(input.role, 120);
   }
   if (Object.keys(patch).length > 0) {
     await updateInterviewee(interviewee.id, patch, db);
   }
 
-  const processName = input.processName?.trim() ? input.processName.trim() : null;
+  // Likewise interpolated into the system prompt. It is additionally checked
+  // against the campaign's own list: the entry screen offers a <select>, so a
+  // value outside it did not come from the form, and accepting free text here
+  // made that dropdown decorative. "Something else" is represented by null,
+  // which the agent elicits properly (facet 1).
+  const requested = input.processName?.trim() ? input.processName.trim() : null;
+  const offered = project?.targetProcesses ?? [];
+  const processName =
+    requested && offered.some((p) => p === requested) ? requested : null;
 
   let session = await getResumableSession(interviewee.id, db);
   if (session) {
@@ -104,4 +118,21 @@ export async function startSession(
   }
 
   return session;
+}
+
+/**
+ * Make a value safe to interpolate into a prompt.
+ *
+ * Strips line breaks and control characters, collapses runs of whitespace, and
+ * caps the length. This is not an attempt to detect malicious wording — that is
+ * unwinnable and unnecessary, because P1 already stops the model changing state.
+ * It removes the specific affordance that turns a form field into extra
+ * *instructions*: the ability to break out of the line it sits on.
+ */
+export function sanitiseForPrompt(value: string, maxLength: number): string {
+  return value
+    .replace(/[\u0000-\u001F\u007F]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, maxLength);
 }

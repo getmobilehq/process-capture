@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { informantHolds } from '@/lib/informant-auth';
 import { z } from 'zod';
 import {
   getSession,
@@ -7,7 +8,7 @@ import {
   upsertEntity,
 } from '@/lib/db/queries';
 import { entityKindFor, isPicklistFacet } from '@/lib/facets/facets';
-import { clientIp, rateLimit } from '@/lib/rate-limit';
+import { clientIp, rateLimit, tooLarge } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -30,6 +31,16 @@ const bodySchema = z.object({
  * correction is a matter for the conversation, not a checkbox.
  */
 export async function POST(req: Request, { params }: { params: { sessionId: string } }) {
+  // Bounded before parsing — an entity is a name.
+  if (tooLarge(req, 16 * 1024)) {
+    return NextResponse.json({ error: 'Request too large.' }, { status: 413 });
+  }
+  // Only the person who opened the invite link may act on this interview. The
+  // session id alone used to be the permission, and it appears in every access
+  // log — see lib/informant-auth.ts.
+  if (!informantHolds(params.sessionId)) {
+    return NextResponse.json({ error: 'Not authorised' }, { status: 401 });
+  }
   const rl = await rateLimit(`entity:${clientIp(req)}`, { limit: 60, windowMs: 60_000 });
   if (!rl.allowed) {
     return NextResponse.json(

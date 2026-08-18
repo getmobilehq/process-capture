@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { clientIp, rateLimit } from '@/lib/rate-limit';
+import { clientIp, rateLimit, tooLarge } from '@/lib/rate-limit';
 import { transcribe, transcriptionAvailable, TranscribeError } from '@/lib/transcribe';
 
 export const runtime = 'nodejs';
@@ -32,6 +32,12 @@ export async function POST(req: Request) {
       { error: 'Too many voice requests — please wait a moment.' },
       { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } },
     );
+  }
+
+  // Before formData(), which buffers the whole body. The check below bounds what
+  // reaches the provider; this bounds what reaches memory.
+  if (tooLarge(req, MAX_AUDIO_BYTES + 64 * 1024)) {
+    return NextResponse.json({ error: 'Recording too long.' }, { status: 413 });
   }
 
   let form: FormData;

@@ -13,6 +13,7 @@ import { openInterview } from '@/lib/engine/engine';
 import { PICKLIST_FACETS } from '@/lib/facets/facets';
 import { InterviewRoom } from '@/components/interview/InterviewRoom';
 import { config } from '@/lib/config';
+import { informantHolds } from '@/lib/informant-auth';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -23,6 +24,13 @@ export default async function InterviewPage({ params }: { params: { token: strin
 
   const latest = await getLatestSession(interviewee.id);
   if (!latest || latest.status === 'abandoned') redirect(`/i/${params.token}`);
+
+  // The interview API is bound to a cookie issued when the session starts, and a
+  // server component cannot set one. Landing here without it — a bookmark, a
+  // shared link, a new browser — bounces to the entry screen, whose "Resume"
+  // button issues it. The invite token stays the credential; this only stops a
+  // bare session id being one.
+  if (!informantHolds(latest.id)) redirect(`/i/${params.token}`);
 
   // Ensure the opening agent turn exists (idempotent). No-op once opened.
   if (latest.status === 'open') {

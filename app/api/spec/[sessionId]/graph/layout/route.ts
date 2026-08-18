@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { tooLarge } from '@/lib/rate-limit';
 import { cookies } from 'next/headers';
 import { z } from 'zod';
 import { isValidSession } from '@/lib/auth';
@@ -22,6 +23,10 @@ const bodySchema = z.object({
  * column cannot lose anything an informant told us.
  */
 export async function POST(req: Request, { params }: { params: { sessionId: string } }) {
+  // Bounded before parsing — a rearranged BPMN diagram.
+  if (tooLarge(req, 4 * 1024 * 1024)) {
+    return NextResponse.json({ error: 'Request too large.' }, { status: 413 });
+  }
   if (!isValidSession(cookies().get('pc_admin')?.value)) {
     return NextResponse.json({ error: 'Not authorised' }, { status: 401 });
   }

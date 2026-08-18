@@ -23,6 +23,25 @@ import type { CoverageStateValue } from '@/lib/engine/coverage';
 import type { Finding } from '@/lib/db/schema';
 import { draftFacet, type DraftStatement } from './draft';
 
+/**
+ * Remove any email address from the rendered document (P7).
+ *
+ * The validator already refuses a spec containing one, and that check stays — but
+ * as the *only* defence it made the rule unrecoverable: an informant who said an
+ * address out loud got it recorded as a statement, drafted into a facet section,
+ * and then rejected, blocking their completion permanently with nothing they or
+ * an architect could do about it.
+ *
+ * Redacting here means the validator's job goes back to catching a bug in us
+ * rather than punishing a person for a sentence. The rule is unchanged: no email
+ * reaches the document.
+ */
+const EMAIL_IN_TEXT = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
+
+export function redactEmails(markdown: string): string {
+  return markdown.replace(EMAIL_IN_TEXT, '[email removed]');
+}
+
 export interface RenderedSpec {
   markdown: string;
   coverageSummary: { answered: number; unknown: number; not_applicable: number };
@@ -189,16 +208,18 @@ export async function renderSpec(sessionId: string, db: DB = getDb()): Promise<R
     }),
   );
 
-  const markdown = [
-    frontLines.join('\n'),
-    '',
-    `# Process specification — ${processName}`,
-    '',
-    '_Provenance: stated. Every statement below is attributed to the named informant and reflects the process as they described it._',
-    '',
-    sections.join('\n\n'),
-    '',
-  ].join('\n');
+  const markdown = redactEmails(
+    [
+      frontLines.join('\n'),
+      '',
+      `# Process specification — ${processName}`,
+      '',
+      '_Provenance: stated. Every statement below is attributed to the named informant and reflects the process as they described it._',
+      '',
+      sections.join('\n\n'),
+      '',
+    ].join('\n'),
+  );
 
   return { markdown, coverageSummary, openItems };
 }

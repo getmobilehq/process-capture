@@ -10,10 +10,11 @@
  * not checked. A planted-fault spec fails loudly here rather than producing an
  * authoritative-looking diagram from broken material (R5.7).
  */
+import { z } from 'zod';
 import { config } from '@/lib/config';
 import { getClient } from '@/lib/engine/model';
 import { validateGraph } from './validate';
-import type { ProcessGraph } from './schema';
+import { annotationSchema, type ProcessGraph } from './schema';
 
 const MAX_ATTEMPTS = 2;
 
@@ -246,7 +247,22 @@ ${markdown}
       (b): b is Extract<typeof b, { type: 'tool_use' }> => b.type === 'tool_use',
     );
     const proposed = (call?.input as { annotations?: unknown[] })?.annotations ?? [];
-    return proposed as ProcessGraph['annotations'];
+
+    // Parsed, not cast. A cast here let a malformed annotation — a non-enum
+    // `kind`, a missing `evidence.facet` — reach the database, after which the
+    // stored graph failed `processGraphSchema.safeParse` on every read: the map,
+    // the opportunity overlay and the assessment all returned 500 permanently for
+    // that spec version, because a graph is written once and never replaced.
+    // Dropping the bad entries here costs an annotation; keeping them cost the
+    // whole diagram.
+    const parsed = z.array(annotationSchema).safeParse(proposed);
+    if (parsed.success) return parsed.data;
+
+    const salvaged = proposed.filter((a) => annotationSchema.safeParse(a).success);
+    console.warn(
+      `extract: dropped ${proposed.length - salvaged.length} malformed annotation(s)`,
+    );
+    return salvaged as ProcessGraph['annotations'];
   } catch {
     return [];
   }

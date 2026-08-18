@@ -31,12 +31,11 @@ async function sarahToken(): Promise<string> {
  */
 async function startInterview(page: import('@playwright/test').Page, token: string) {
   await page.goto(`/i/${token}`);
-  const start = page.getByRole('button', { name: /Start interview/i });
-  if (await start.isVisible().catch(() => false)) {
-    await start.click();
-  } else {
-    await page.goto(`/i/${token}/interview`);
-  }
+  // Always go through the entry screen — either button submits the same form,
+  // and that is what issues the cookie binding the interview API to the person
+  // holding the link. Navigating straight to /interview now bounces back here,
+  // which is the point: a session id is not a credential.
+  await page.getByRole('button', { name: /(Start|Resume) interview/i }).click();
   await expect(page).toHaveURL(new RegExp(`/i/${token}/interview$`));
   await expect(page.locator('.pc-msg.agent').first()).toBeVisible();
 }

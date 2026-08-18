@@ -1,7 +1,13 @@
 'use server';
 
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { startSession, EntryError } from '@/lib/entry';
+import {
+  informantToken,
+  INFORMANT_COOKIE,
+  INFORMANT_COOKIE_OPTIONS,
+} from '@/lib/informant-auth';
 
 /**
  * Start (or resume) the interview for a token, persisting any edits to the
@@ -14,13 +20,16 @@ export async function startInterview(formData: FormData): Promise<void> {
   const processName = processRaw ? String(processRaw) : null;
 
   try {
-    await startSession({
+    const session = await startSession({
       token,
       processName: processName === '__something_else__' ? null : processName,
       fullName: str(formData.get('fullName')),
       email: str(formData.get('email')),
       role: str(formData.get('role')),
     });
+    // Binds the interview API to whoever opened the link, so a bare session id
+    // stops being a credential.
+    cookies().set(INFORMANT_COOKIE, informantToken(session.id), INFORMANT_COOKIE_OPTIONS);
   } catch (err) {
     if (err instanceof EntryError) {
       // A dead-end raced the form (link used up meanwhile) — bounce to the page,

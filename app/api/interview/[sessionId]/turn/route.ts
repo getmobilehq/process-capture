@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
+import { informantHolds } from '@/lib/informant-auth';
 import { processUserTurn } from '@/lib/engine/engine';
 import { getSession } from '@/lib/db/queries';
-import { clientIp, rateLimit } from '@/lib/rate-limit';
+import { clientIp, rateLimit, tooLarge } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -9,6 +10,16 @@ export const dynamic = 'force-dynamic';
 const MAX_CONTENT_CHARS = 4000; // input length cap
 
 export async function POST(req: Request, { params }: { params: { sessionId: string } }) {
+  // Bounded before parsing — a turn is 4,000 characters.
+  if (tooLarge(req, 64 * 1024)) {
+    return NextResponse.json({ error: 'Request too large.' }, { status: 413 });
+  }
+  // Only the person who opened the invite link may act on this interview. The
+  // session id alone used to be the permission, and it appears in every access
+  // log — see lib/informant-auth.ts.
+  if (!informantHolds(params.sessionId)) {
+    return NextResponse.json({ error: 'Not authorised' }, { status: 401 });
+  }
   // Rate limit the public write path: 40 turns/min per IP.
   const rl = await rateLimit(`turn:${clientIp(req)}`, { limit: 40, windowMs: 60_000 });
   if (!rl.allowed) {

@@ -173,3 +173,18 @@ export function clientIp(req: Request): string {
 export function __resetMemoryBuckets(): void {
   buckets.clear();
 }
+
+/**
+ * Refuse an oversized request before parsing it.
+ *
+ * `req.formData()` and `req.json()` buffer the whole body into memory, so a size
+ * check *after* parsing bounds what is forwarded, not what is allocated — one
+ * large POST could exhaust the container regardless of any rate limit. Checking
+ * Content-Length first is not a complete defence (the header can lie, and a
+ * chunked body has none), which is why the post-parse caps stay; it closes the
+ * cheap case, which is the one that gets used.
+ */
+export function tooLarge(req: Request, maxBytes: number): boolean {
+  const declared = Number(req.headers.get('content-length') ?? '0');
+  return Number.isFinite(declared) && declared > maxBytes;
+}

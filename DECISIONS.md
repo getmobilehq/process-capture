@@ -864,3 +864,38 @@ decision, why it is the minimal option (§10).
   password it printed was a published password — and the comment above it claimed
   the opposite. The operator now generates the password locally and passes only a
   bcrypt hash, which is safe in job arguments and logs.
+- **DL.107 · The interview API is bound to the link holder, not the session id** —
+  Possession of a session id *was* the permission on all five interview routes. The
+  ids are unguessable, but a session id is not treated as a secret: it sits in the
+  path of every request the informant makes, so it is in every access log, proxy
+  log and support screenshot. What made it urgent was `POST /confirm`, which had no
+  auth and no rate limit: one request ended someone's interview, spent a dozen model
+  calls, and marked their invite token used — permanently, with nothing in the
+  console to re-issue it. A signed httpOnly cookie is now issued when the interview
+  starts and required by the routes. The informant's experience is unchanged: they
+  arrive through `/i/{token}`, which sets it. Landing on `/interview` without one
+  bounces to the entry screen, whose Resume button issues it.
+- **DL.108 · `role` is sanitised and `processName` is checked against the campaign** —
+  Both are interpolated into the SYSTEM prompt. Sanitising strips line breaks and
+  control characters and caps the length; it does not try to detect malicious
+  wording, which is unwinnable and unnecessary because P1 already stops the model
+  changing state. It removes the one affordance that turns a form field into extra
+  instructions — breaking out of the line it sits on. `processName` is now required
+  to match the campaign's own list, so the entry screen's dropdown stopped being
+  decorative.
+- **DL.109 · Emails are redacted by the renderer, not only refused by the validator**
+  — The P7 rule is unchanged: no address reaches a specification. But as the only
+  defence it was unrecoverable — an informant who said an address aloud had it
+  recorded, drafted into a section, then rejected, blocking their completion for
+  good with no recourse. Redacting first returns the validator to catching a bug in
+  us rather than punishing a person for a sentence.
+- **DL.110 · Model annotations are parsed, not cast** — A cast let a malformed
+  annotation reach the database, after which the stored graph failed validation on
+  every read: map, overlay and assessment all returned 500 permanently for that spec
+  version, because a graph is written once and never replaced. Dropping bad entries
+  costs an annotation; keeping them cost the whole diagram.
+- **DL.111 · Request bodies are refused before they are parsed** — `formData()` and
+  `json()` buffer the whole body, so a post-parse cap bounds what is forwarded, not
+  what is allocated. Checking `Content-Length` first is not complete — the header
+  can lie and a chunked body has none, which is why the post-parse caps stay — but
+  it closes the cheap case, which is the one that gets used.

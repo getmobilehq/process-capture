@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { informantHolds } from '@/lib/informant-auth';
 import { z } from 'zod';
 import {
   discardDraft,
@@ -9,7 +10,7 @@ import {
   startNewTake,
   undoDiscard,
 } from '@/lib/db/queries';
-import { clientIp, rateLimit } from '@/lib/rate-limit';
+import { clientIp, rateLimit, tooLarge } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -41,6 +42,16 @@ function view(row: { content: string; seq: number; take: number; status: string 
  * two taps can permanently destroy a transcription.
  */
 export async function POST(req: Request, { params }: { params: { sessionId: string } }) {
+  // Bounded before parsing — a draft is one unsent answer.
+  if (tooLarge(req, 256 * 1024)) {
+    return NextResponse.json({ error: 'Request too large.' }, { status: 413 });
+  }
+  // Only the person who opened the invite link may act on this interview. The
+  // session id alone used to be the permission, and it appears in every access
+  // log — see lib/informant-auth.ts.
+  if (!informantHolds(params.sessionId)) {
+    return NextResponse.json({ error: 'Not authorised' }, { status: 401 });
+  }
   // Autosave is chatty by design; the cap is high enough not to throttle typing.
   const rl = await rateLimit(`draft:${clientIp(req)}`, { limit: 240, windowMs: 60_000 });
   if (!rl.allowed) {
@@ -91,6 +102,9 @@ export async function POST(req: Request, { params }: { params: { sessionId: stri
 
 /** Session recovery (R10.3): what was unsubmitted when the tab went away. */
 export async function GET(_req: Request, { params }: { params: { sessionId: string } }) {
+  if (!informantHolds(params.sessionId)) {
+    return NextResponse.json({ error: 'Not authorised' }, { status: 401 });
+  }
   const session = await getSession(params.sessionId);
   if (!session) return NextResponse.json({ error: 'Unknown session' }, { status: 404 });
   return NextResponse.json({
