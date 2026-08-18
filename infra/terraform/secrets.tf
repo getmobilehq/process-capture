@@ -28,6 +28,31 @@ resource "google_secret_manager_secret" "external" {
   depends_on = [google_project_service.required]
 }
 
+# Signs console session cookies. Terraform generates it rather than asking for it:
+# nobody needs to know this value, and one fewer secret a person handles is one
+# fewer secret a person mishandles. Rotating it signs everyone out, which is the
+# correct behaviour and the reason it is separate from any password.
+resource "random_password" "session_secret" {
+  length  = 48
+  special = false
+}
+
+resource "google_secret_manager_secret" "session_secret" {
+  secret_id = "${var.name}-session-secret"
+  labels    = var.labels
+
+  replication {
+    auto {}
+  }
+
+  depends_on = [google_project_service.required]
+}
+
+resource "google_secret_manager_secret_version" "session_secret" {
+  secret      = google_secret_manager_secret.session_secret.id
+  secret_data = random_password.session_secret.result
+}
+
 # The retention token is Terraform's because the scheduler job must send it; a
 # value only one side knows is no use to the other.
 resource "google_secret_manager_secret" "retention_token" {

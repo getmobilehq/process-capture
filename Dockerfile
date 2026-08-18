@@ -25,6 +25,10 @@ COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/drizzle ./drizzle
 COPY --from=builder /app/scripts/migrate.mjs ./scripts/migrate.mjs
+# Administrative CLI, run as a Cloud Run job on the VPC — the database has a
+# private address only, so this is the path in that does not involve opening the
+# network for an errand.
+COPY --from=builder /app/scripts/console-user.mjs ./scripts/console-user.mjs
 COPY --from=builder /app/node_modules ./node_modules
 
 EXPOSE 3000

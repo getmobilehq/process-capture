@@ -12,6 +12,12 @@ resource "google_secret_manager_secret_iam_member" "external" {
   member    = "serviceAccount:${google_service_account.magpie.email}"
 }
 
+resource "google_secret_manager_secret_iam_member" "session_secret" {
+  secret_id = google_secret_manager_secret.session_secret.id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.magpie.email}"
+}
+
 resource "google_secret_manager_secret_iam_member" "retention_token" {
   secret_id = google_secret_manager_secret.retention_token.id
   role      = "roles/secretmanager.secretAccessor"
@@ -142,6 +148,16 @@ resource "google_cloud_run_v2_service" "magpie" {
       }
 
       env {
+        name = "SESSION_SECRET"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.session_secret.secret_id
+            version = "latest"
+          }
+        }
+      }
+
+      env {
         name = "RETENTION_TOKEN"
         value_source {
           secret_key_ref {
@@ -184,6 +200,8 @@ resource "google_cloud_run_v2_service" "magpie" {
     google_secret_manager_secret_iam_member.external,
     google_secret_manager_secret_iam_member.database_url,
     google_secret_manager_secret_iam_member.retention_token,
+    google_secret_manager_secret_iam_member.session_secret,
+    google_secret_manager_secret_version.session_secret,
     google_secret_manager_secret_version.database_url,
     google_secret_manager_secret_version.retention_token,
   ]

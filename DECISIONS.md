@@ -824,3 +824,11 @@ decision, why it is the minimal option (§10).
   administrative act. A console page for making console accounts is a privilege
   escalation waiting to be found. Generated passwords are printed once and never
   recoverable; lost means reset, which is the point.
+- **DL.101 · Account management runs as a Cloud Run job, because a laptop cannot
+  reach the database** — The CLI as first built was `tsx scripts/console-user.ts`,
+  which cannot work in production: Cloud SQL has a private address only, and the
+  image contained just `migrate.mjs`. A feature nobody can invoke is not a feature.
+  A plain-Node twin now ships in the image and runs as a job on the same VPC, so the
+  only path to creating an account is from inside the deployment. The alternative —
+  a bastion, or a public IP for an administrative errand — would have widened the
+  network to save a day's work.
