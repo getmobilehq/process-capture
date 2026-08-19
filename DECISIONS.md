@@ -919,3 +919,12 @@ decision, why it is the minimal option (§10).
   session immediately (`assertSession` refuses a disabled account) and, if you are
   the only active account, locks everyone out of account management with no path
   back except the CLI. Refused rather than left to be discovered.
+- **DL.115 · Deleting an account is offered, and it is safe for the record** —
+  `change_reviews` stores the reviewer's display name, and `reviewer_id` is
+  deliberately not a foreign key, so a review keeps its attribution after the
+  account is gone. Deleting removes the ability to sign in; it does not rewrite
+  what someone approved. Disabling remains the better default for a person who has
+  left but whose work may still be queried; deletion is for accounts created in
+  error. It asks for the email typed back as well as the acting person's password,
+  because it is the one action here with no undo, and the confirmation names what
+  is being removed rather than trusting a click.

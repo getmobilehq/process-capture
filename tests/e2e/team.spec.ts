@@ -105,3 +105,59 @@ test('you cannot disable your own account and lock yourself out', async ({ page 
   const ownRow = page.locator('tr', { hasText: email });
   await expect(ownRow.getByRole('button', { name: 'Disable' })).toHaveCount(0);
 });
+
+test('deleting an account requires the email typed back and your own password', async ({ page }) => {
+  const email = `owner-${Date.now()}@example.com`;
+  const password = 'owner-password';
+  await query(
+    `INSERT INTO console_users (id, email, name, password_hash, status, created_by, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, 'active', 'test', now(), now())`,
+    [`o${Date.now()}`, email, 'Owner Person', bcrypt.hashSync(password, 10)],
+  );
+  const doomed = `doomed-${Date.now()}@example.com`;
+  await query(
+    `INSERT INTO console_users (id, email, name, password_hash, status, created_by, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, 'active', 'test', now(), now())`,
+    [`d${Date.now()}`, doomed, 'Doomed Person', bcrypt.hashSync('x', 10)],
+  );
+
+  await signInNamed(page, email, password);
+  await page.goto(`/console/team?remove=${encodeURIComponent(doomed)}`);
+
+  // Three forms on this page carry a confirmPassword field, so scope to the one
+  // under test rather than positionally — the delete panel renders first, which
+  // is not obvious from reading the page.
+  const del = () =>
+    page.locator('form').filter({ has: page.getByRole('button', { name: 'Delete this account' }) });
+
+  // A mistyped email removes nothing — the confirmation is the point.
+  await del().locator('input[name="confirmEmail"]').fill('something-else@example.com');
+  await del().locator('input[name="confirmPassword"]').fill(password);
+  await page.getByRole('button', { name: 'Delete this account' }).click();
+  await expect(page.getByText(/did not match/i)).toBeVisible();
+  expect(await query('SELECT id FROM console_users WHERE email = $1', [doomed])).toHaveLength(1);
+
+  // Right email, wrong password — still nothing.
+  await page.goto(`/console/team?remove=${encodeURIComponent(doomed)}`);
+  await del().locator('input[name="confirmEmail"]').fill(doomed);
+  await del().locator('input[name="confirmPassword"]').fill('not-my-password');
+  await page.getByRole('button', { name: 'Delete this account' }).click();
+  await expect(page.getByText(/password was not recognised/i)).toBeVisible();
+  expect(await query('SELECT id FROM console_users WHERE email = $1', [doomed])).toHaveLength(1);
+
+  // Both correct — gone, and it says whether any reviews were affected.
+  await page.goto(`/console/team?remove=${encodeURIComponent(doomed)}`);
+  await del().locator('input[name="confirmEmail"]').fill(doomed);
+  await del().locator('input[name="confirmPassword"]').fill(password);
+  await page.getByRole('button', { name: 'Delete this account' }).click();
+  await expect(page.getByText(/has been deleted/i)).toBeVisible();
+  expect(await query('SELECT id FROM console_users WHERE email = $1', [doomed])).toHaveLength(0);
+
+  // And they can no longer sign in.
+  await page.goto('/api/console/logout');
+  await page.goto('/console/login');
+  await page.locator('input[name="email"]').fill(doomed);
+  await page.locator('input[name="password"]').fill('x');
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page).toHaveURL(/error=1/);
+});

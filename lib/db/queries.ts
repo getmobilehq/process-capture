@@ -299,6 +299,30 @@ export async function updateConsoleUser(
     .then((r) => r[0]);
 }
 
+/**
+ * Remove an account outright.
+ *
+ * Safe for the audit trail by construction: `change_reviews.reviewer` holds the
+ * display name, and `reviewer_id` is deliberately not a foreign key — so a review
+ * this person made keeps their name on it after the account is gone. Deleting
+ * removes their ability to sign in; it does not rewrite what they did.
+ *
+ * Disabling remains the better default for someone who has left but whose work you
+ * may want to ask about. Deleting is for accounts created in error.
+ */
+export async function deleteConsoleUser(id: string, db: DB = getDb()): Promise<void> {
+  await db.delete(consoleUsers).where(eq(consoleUsers.id, id));
+}
+
+/** How many reviews this person has ruled on — shown before deleting them. */
+export async function countReviewsBy(userId: string, db: DB = getDb()): Promise<number> {
+  const rows = await db
+    .select({ id: changeReviews.id })
+    .from(changeReviews)
+    .where(eq(changeReviews.reviewerId, userId));
+  return rows.length;
+}
+
 export async function recordConsoleLogin(id: string, db: DB = getDb()): Promise<void> {
   await db.update(consoleUsers).set({ lastLoginAt: new Date() }).where(eq(consoleUsers.id, id));
 }

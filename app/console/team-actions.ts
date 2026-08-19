@@ -10,7 +10,9 @@ import {
   signIn,
 } from '@/lib/auth';
 import {
+  countReviewsBy,
   createConsoleUser,
+  deleteConsoleUser,
   findConsoleUserByEmail,
   updateConsoleUser,
 } from '@/lib/db/queries';
@@ -113,4 +115,32 @@ export async function setConsoleUserStatusAction(formData: FormData): Promise<vo
 
   await updateConsoleUser(user.id, { status });
   back({ status: `${email}:${status}` });
+}
+
+/**
+ * Delete an account. Same guards as creating one, plus the email typed back —
+ * deletion is the one action here with no undo, so it asks you to name what you
+ * are removing rather than trusting a click.
+ *
+ * Past reviews keep the person's name (see `deleteConsoleUser`), so this removes
+ * their access without rewriting the record of what they approved.
+ */
+export async function deleteConsoleUserAction(formData: FormData): Promise<void> {
+  const identity = await actingUser();
+  if (!identity.userId) back({ error: 'shared' });
+
+  const email = String(formData.get('email') ?? '').trim().toLowerCase();
+  const typed = String(formData.get('confirmEmail') ?? '').trim().toLowerCase();
+  const confirm = String(formData.get('confirmPassword') ?? '');
+
+  if (!email || typed !== email) back({ error: 'nomatch' });
+  if (!(await confirmIdentity(identity, confirm))) back({ error: 'confirm' });
+
+  const user = await findConsoleUserByEmail(email);
+  if (!user) back({ error: 'missing' });
+  if (user.id === identity.userId) back({ error: 'self' });
+
+  const reviews = await countReviewsBy(user.id);
+  await deleteConsoleUser(user.id);
+  back({ deleted: email, reviews: String(reviews) });
 }

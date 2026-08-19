@@ -5,6 +5,7 @@ import { ADMIN_COOKIE, identityFromSession } from '@/lib/auth';
 import { listConsoleUsers } from '@/lib/db/queries';
 import {
   addConsoleUserAction,
+  deleteConsoleUserAction,
   resetConsoleUserAction,
   setConsoleUserStatusAction,
 } from '../team-actions';
@@ -17,13 +18,22 @@ const ERRORS: Record<string, string> = {
   confirm: 'That password was not recognised. Confirming it is what stops a stolen session creating access that outlives it.',
   exists: 'Someone already has an account with that email. Use “New password” instead.',
   missing: 'A name and email are both needed.',
-  self: 'You cannot disable your own account.',
+  self: 'You cannot disable or delete your own account.',
+  nomatch: 'The email you typed did not match the account you were deleting. Nothing was removed.',
 };
 
 export default async function TeamPage({
   searchParams,
 }: {
-  searchParams: { error?: string; created?: string; password?: string; status?: string };
+  searchParams: {
+    error?: string;
+    created?: string;
+    password?: string;
+    status?: string;
+    deleted?: string;
+    reviews?: string;
+    remove?: string;
+  };
 }) {
   requireAdmin();
   const identity = await identityFromSession(cookies().get(ADMIN_COOKIE)?.value);
@@ -52,6 +62,17 @@ export default async function TeamPage({
         </div>
       )}
 
+      {searchParams.deleted && (
+        <div className="pc-card" style={{ padding: 'var(--space-5)', marginTop: 'var(--space-5)' }}>
+          <p className="t-body" style={{ margin: 0 }}>
+            <b>{searchParams.deleted}</b> has been deleted and can no longer sign in.
+            {Number(searchParams.reviews ?? '0') > 0
+              ? ` Their ${searchParams.reviews} review${Number(searchParams.reviews) === 1 ? '' : 's'} keep their name — deleting the account does not rewrite what they approved.`
+              : ' They had made no reviews.'}
+          </p>
+        </div>
+      )}
+
       {searchParams.created && searchParams.password && (
         <div className="pc-card pc-newcred" style={{ marginTop: 'var(--space-5)' }}>
           <h2 className="t-h4" style={{ marginTop: 0 }}>
@@ -63,6 +84,38 @@ export default async function TeamPage({
             only as a hash, so this is the one time it can be shown. Leaving this page loses it —
             issue a new one if that happens.
           </p>
+        </div>
+      )}
+
+      {named && searchParams.remove && (
+        <div className="pc-card" style={{ padding: 'var(--space-5)', marginTop: 'var(--space-5)', borderColor: 'var(--vm-red)' }}>
+          <h2 className="t-h4" style={{ marginTop: 0 }}>
+            Delete {searchParams.remove}?
+          </h2>
+          <p className="t-body-s" style={{ color: 'var(--fg-muted)' }}>
+            They will no longer be able to sign in. Anything they have already approved, edited or
+            rejected keeps their name against it — deleting the account does not rewrite the record.
+            There is no undo; if you only want to stop their access for now, disable them instead.
+          </p>
+          <form action={deleteConsoleUserAction} style={{ display: 'grid', gap: 12, maxWidth: 420 }}>
+            <input type="hidden" name="email" value={searchParams.remove} />
+            <label className="pc-field" style={{ margin: 0 }}>
+              <span>Type their email to confirm</span>
+              <input name="confirmEmail" required placeholder={searchParams.remove} />
+            </label>
+            <label className="pc-field" style={{ margin: 0 }}>
+              <span>Your own password</span>
+              <input name="confirmPassword" type="password" required autoComplete="current-password" />
+            </label>
+            <span style={{ display: 'flex', gap: 8 }}>
+              <button className="pc-btn danger" type="submit">
+                Delete this account
+              </button>
+              <Link href="/console/team" className="pc-btn ghost">
+                Cancel
+              </Link>
+            </span>
+          </form>
         </div>
       )}
 
@@ -99,17 +152,22 @@ export default async function TeamPage({
                   </td>
                   <td style={{ padding: '12px 16px' }}>
                     {named && u.id !== identity?.userId && (
-                      <form action={setConsoleUserStatusAction} style={{ display: 'inline' }}>
-                        <input type="hidden" name="email" value={u.email} />
-                        <input
-                          type="hidden"
-                          name="status"
-                          value={u.status === 'active' ? 'disabled' : 'active'}
-                        />
-                        <button className="pc-btn ghost sm" type="submit">
-                          {u.status === 'active' ? 'Disable' : 'Enable'}
-                        </button>
-                      </form>
+                      <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <form action={setConsoleUserStatusAction} style={{ display: 'inline' }}>
+                          <input type="hidden" name="email" value={u.email} />
+                          <input
+                            type="hidden"
+                            name="status"
+                            value={u.status === 'active' ? 'disabled' : 'active'}
+                          />
+                          <button className="pc-btn ghost sm" type="submit">
+                            {u.status === 'active' ? 'Disable' : 'Enable'}
+                          </button>
+                        </form>
+                        <Link href={`/console/team?remove=${encodeURIComponent(u.email)}`} className="pc-btn ghost sm danger-outline">
+                          Delete
+                        </Link>
+                      </span>
                     )}
                   </td>
                 </tr>
