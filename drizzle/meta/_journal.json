@@ -57,6 +57,13 @@
       "when": 1787088401673,
       "tag": "0007_sad_norrin_radd",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787127950735,
+      "tag": "0008_spotty_phil_sheldon",
+      "breakpoints": true
     }
   ]
 }

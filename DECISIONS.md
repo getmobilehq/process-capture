@@ -899,3 +899,23 @@ decision, why it is the minimal option (§10).
   what is allocated. Checking `Content-Length` first is not complete — the header
   can lie and a chunked body has none, which is why the post-parse caps stay — but
   it closes the cheap case, which is the one that gets used.
+- **DL.112 · Accounts can be created from the console, and DL.100 is reversed with
+  its reasoning answered** — DL.100 kept this on the CLI because a page for making
+  console accounts is a privilege escalation waiting to be found. That is still
+  true: without a guard, a stolen eight-hour session becomes permanent access. Two
+  things answer it rather than dismiss it. **Only a named account may create
+  accounts** — a session on the shared password cannot, or one shared credential
+  becomes a factory for permanent individually-attributed ones, which is worse than
+  the problem named accounts solved. And **the acting person re-enters their own
+  password**, so a stolen cookie alone is not enough; that is the specific
+  escalation a page introduces, so it is the specific thing guarded. The CLI and
+  Cloud Run job remain for bootstrap, because someone has to make the first account.
+- **DL.113 · A generated password is shown once, in the page, and stored only as a
+  hash** — It travels back through the redirect so it renders once and is persisted
+  nowhere: not in the database, not in a log, not in an email. The architect's own
+  address bar and history hold it briefly, which is acceptable for a value they are
+  about to hand over by hand, and the alternative is storing it somewhere.
+- **DL.114 · You cannot disable your own account** — Disabling yourself ends your
+  session immediately (`assertSession` refuses a disabled account) and, if you are
+  the only active account, locks everyone out of account management with no path
+  back except the CLI. Refused rather than left to be discovered.

@@ -23,11 +23,16 @@ export default async function ConsoleHome() {
           Process architect
           <i className="pc-cap" aria-hidden="true" />
         </span>
-        <form action="/api/console/logout" method="post">
-          <button className="pc-btn ghost sm" type="submit">
-            Sign out
-          </button>
-        </form>
+        <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <Link href="/console/team" className="pc-btn ghost sm">
+            People
+          </Link>
+          <form action="/api/console/logout" method="post">
+            <button className="pc-btn ghost sm" type="submit">
+              Sign out
+            </button>
+          </form>
+        </span>
       </div>
 
       <h1 className="t-h2" style={{ marginTop: 'var(--space-5)' }}>

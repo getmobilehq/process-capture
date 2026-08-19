@@ -1,0 +1,1 @@
+ALTER TABLE "console_users" ADD COLUMN "created_by" text DEFAULT 'bootstrap' NOT NULL;

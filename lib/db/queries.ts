@@ -271,7 +271,7 @@ export async function countConsoleUsers(db: DB = getDb()): Promise<number> {
 }
 
 export async function createConsoleUser(
-  input: { email: string; name: string; passwordHash: string },
+  input: { email: string; name: string; passwordHash: string; createdBy?: string },
   db: DB = getDb(),
 ): Promise<ConsoleUser> {
   return db
@@ -280,6 +280,7 @@ export async function createConsoleUser(
       email: input.email.trim().toLowerCase(),
       name: input.name.trim(),
       passwordHash: input.passwordHash,
+      createdBy: input.createdBy ?? 'bootstrap',
     })
     .returning()
     .then((r) => r[0]);

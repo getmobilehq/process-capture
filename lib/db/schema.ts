@@ -437,6 +437,12 @@ export const consoleUsers = pgTable(
       .notNull()
       .default('active'),
     lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
+    /**
+     * Who created this account, as a display name. Accounts can now be made from
+     * the console, so "who let them in" is a question someone will eventually ask.
+     * Not a foreign key — the answer must survive the creator being removed.
+     */
+    createdBy: text('created_by').notNull().default('bootstrap'),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
