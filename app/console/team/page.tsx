@@ -33,6 +33,9 @@ export default async function TeamPage({
     deleted?: string;
     reviews?: string;
     remove?: string;
+    check?: string;
+    near?: string;
+    name?: string;
   };
 }) {
   requireAdmin();
@@ -76,14 +79,52 @@ export default async function TeamPage({
       {searchParams.created && searchParams.password && (
         <div className="pc-card pc-newcred" style={{ marginTop: 'var(--space-5)' }}>
           <h2 className="t-h4" style={{ marginTop: 0 }}>
-            Password for {searchParams.created}
+            Account created
           </h2>
+          <p className="t-body-s" style={{ color: 'var(--fg-muted)', marginBottom: 4 }}>
+            They sign in with both of these. Check the address is the one you meant — it is what
+            they must type, exactly.
+          </p>
+          <p className="pc-newcred-label">Email</p>
+          <p className="pc-newcred-value">{searchParams.created}</p>
+          <p className="pc-newcred-label">Password</p>
           <p className="pc-newcred-value">{searchParams.password}</p>
           <p className="t-body-s" style={{ color: 'var(--fg-muted)', margin: 0 }}>
-            Give this to them directly and ask them to keep it in a password manager. It is stored
-            only as a hash, so this is the one time it can be shown. Leaving this page loses it —
-            issue a new one if that happens.
+            Give both to them directly. The password is stored only as a hash, so this is the one
+            time it can be shown — leaving this page loses it, and you would need to issue a new one.
           </p>
+        </div>
+      )}
+
+      {named && searchParams.check && searchParams.near && (
+        <div className="pc-card" style={{ padding: 'var(--space-5)', marginTop: 'var(--space-5)', borderColor: 'var(--o2-blue)' }}>
+          <h2 className="t-h4" style={{ marginTop: 0 }}>
+            Is that address right?
+          </h2>
+          <p className="t-body-s">
+            You entered <b>{searchParams.check}</b>. Other accounts here use{' '}
+            <b>@{searchParams.near}</b>, and the two are close enough that this might be a slip —
+            autofill often changes a field while you are looking at another one.
+          </p>
+          <p className="t-body-s" style={{ color: 'var(--fg-muted)' }}>
+            If it is correct, carry on. If not, go back and change it — an account created at the
+            wrong address simply will not let them sign in.
+          </p>
+          <form action={addConsoleUserAction} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'end' }}>
+            <input type="hidden" name="email" value={searchParams.check} />
+            <input type="hidden" name="name" value={searchParams.name ?? ''} />
+            <input type="hidden" name="acknowledged" value={searchParams.check} />
+            <label className="pc-field" style={{ margin: 0, minWidth: 220 }}>
+              <span>Your own password</span>
+              <input name="confirmPassword" type="password" required autoComplete="current-password" />
+            </label>
+            <button className="pc-btn" type="submit">
+              Yes, create it
+            </button>
+            <Link href="/console/team" className="pc-btn ghost">
+              Go back
+            </Link>
+          </form>
         </div>
       )}
 

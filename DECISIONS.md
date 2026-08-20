@@ -928,3 +928,18 @@ decision, why it is the minimal option (§10).
   error. It asks for the email typed back as well as the acting person's password,
   because it is the one action here with no undo, and the confirmation names what
   is being removed rather than trusting a click.
+- **DL.116 · A near-miss domain is queried once, never blocked** — Two accounts were
+  created at `@virginmedia.co.uk` by someone who believed they had typed
+  `@virginmediao2.co.uk`, and the mistake only surfaced when the colleagues could
+  not sign in. Nothing was wrong with the code — the address was saved exactly as
+  submitted — but autofill rewrites a field while you are looking at another one.
+  The console now compares a new address against the domains already in use and
+  asks once, showing both. It does not block: the first account on a new domain is
+  legitimate, and a tool that argues with a correct answer trains people to click
+  through its warnings. "Looks like a slip" is deliberately narrow — one domain
+  contains the other, or they are within three edits — so a genuinely different
+  organisation is never queried.
+- **DL.117 · The created address is shown as prominently as the password** — Both
+  are handed over together and both must be typed exactly, but only the password was
+  displayed with any weight. The address was in a heading, easy to skim past while
+  concentrating on copying the secret — which is precisely what happened.

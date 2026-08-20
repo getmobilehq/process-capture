@@ -1433,3 +1433,10 @@
   user-select: all;
   word-break: break-all;
 }
+.pc-newcred-label {
+  font: 700 11px / 1 var(--font-sans);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-500);
+  margin: 12px 0 0;
+}

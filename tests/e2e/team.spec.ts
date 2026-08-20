@@ -70,8 +70,11 @@ test('a named account creates another, and the password is shown once', async ({
   await addAgain.locator('input[name="confirmPassword"]').fill(password);
   await page.getByRole('button', { name: 'Create account' }).click();
 
-  await expect(page.getByText(new RegExp(`Password for ${newEmail}`, 'i'))).toBeVisible();
-  const shown = await page.locator('.pc-newcred-value').innerText();
+  // The panel now shows the address alongside the password, so a typo or an
+  // autofill surprise is visible at the moment it matters.
+  await expect(page.getByText('Account created')).toBeVisible();
+  await expect(page.locator('.pc-newcred-value').first()).toHaveText(newEmail);
+  const shown = await page.locator('.pc-newcred-value').last().innerText();
   expect(shown.length).toBeGreaterThan(16);
 
   // Stored as a hash, never in the clear, and attributed to its creator.
@@ -160,4 +163,46 @@ test('deleting an account requires the email typed back and your own password', 
   await page.locator('input[name="password"]').fill('x');
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(page).toHaveURL(/error=1/);
+});
+
+test('a near-miss domain is queried once, and the address is shown with the password', async ({
+  page,
+}) => {
+  const stamp = Date.now();
+  const owner = `owner2-${stamp}@virginmediao2.co.uk`;
+  const password = 'owner2-password';
+  await query(
+    `INSERT INTO console_users (id, email, name, password_hash, status, created_by, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, 'active', 'test', now(), now())`,
+    [`n${stamp}`, owner, 'Owner Two', bcrypt.hashSync(password, 10)],
+  );
+
+  await signInNamed(page, owner, password);
+  await page.goto('/console/team');
+
+  // The exact mistake: the o2 dropped from the domain.
+  const slip = `colleague-${stamp}@virginmedia.co.uk`;
+  const add = () =>
+    page.locator('form').filter({ has: page.getByRole('button', { name: 'Create account' }) });
+  await add().locator('input[name="name"]').fill('Near Miss');
+  await add().locator('input[name="email"]').fill(slip);
+  await add().locator('input[name="confirmPassword"]').fill(password);
+  await page.getByRole('button', { name: 'Create account' }).click();
+
+  // Queried, not blocked — and both addresses are shown so the difference is visible.
+  await expect(page.getByText(/Is that address right\?/i)).toBeVisible();
+  await expect(page.getByText(slip)).toBeVisible();
+  await expect(page.getByText(/virginmediao2\.co\.uk/).first()).toBeVisible();
+  expect(await query('SELECT id FROM console_users WHERE email = $1', [slip])).toHaveLength(0);
+
+  // Confirming carries on, and the created address is displayed with the password.
+  const confirmForm = page
+    .locator('form')
+    .filter({ has: page.getByRole('button', { name: 'Yes, create it' }) });
+  await confirmForm.locator('input[name="confirmPassword"]').fill(password);
+  await page.getByRole('button', { name: 'Yes, create it' }).click();
+
+  await expect(page.getByText('Account created')).toBeVisible();
+  await expect(page.locator('.pc-newcred-value').first()).toHaveText(slip);
+  expect(await query('SELECT id FROM console_users WHERE email = $1', [slip])).toHaveLength(1);
 });

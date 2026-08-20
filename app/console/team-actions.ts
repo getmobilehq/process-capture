@@ -14,8 +14,10 @@ import {
   createConsoleUser,
   deleteConsoleUser,
   findConsoleUserByEmail,
+  listConsoleUsers,
   updateConsoleUser,
 } from '@/lib/db/queries';
+import { nearMissDomain } from '@/lib/email-domain';
 
 /**
  * Console account management from the console (August 2026).
@@ -67,6 +69,15 @@ export async function addConsoleUserAction(formData: FormData): Promise<void> {
   if (!email || !name) back({ error: 'missing' });
   if (!(await confirmIdentity(identity, confirm))) back({ error: 'confirm' });
   if (await findConsoleUserByEmail(email)) back({ error: 'exists' });
+
+  // Ask once about a domain that looks like a slip, unless this submission is the
+  // answer to that question. Autofill rewrites a field while you are looking at
+  // another one, and the mistake only surfaces when a colleague cannot sign in.
+  if (String(formData.get('acknowledged') ?? '') !== email) {
+    const others = (await listConsoleUsers()).map((u) => u.email);
+    const near = nearMissDomain(email, others);
+    if (near) back({ check: email, name, near });
+  }
 
   const password = generatePassword();
   await createConsoleUser({
