@@ -1,3 +1,8 @@
+# TEMPLATE — replace PROJECT_ID and apply. One per project that needs it.
+#
+#   sed 's/PROJECT_ID/your-project/' allow-public-access.example.yaml > /tmp/p.yaml
+#   gcloud org-policies set-policy /tmp/p.yaml --project=your-project
+#
 # Project-scoped exception to the organisation's domain-restricted-sharing policy.
 #
 # WHY THIS IS NEEDED
@@ -14,7 +19,7 @@
 # values on this one project is the only mechanism Google provides.
 #
 # WHAT IT WIDENS — READ BEFORE APPLYING
-# Any IAM binding on project magpie-505120 may now name any principal, including
+# Any IAM binding on project PROJECT_ID may now name any principal, including
 # `allUsers`. That is broader than Cloud Run alone. Two things keep it contained:
 # this project holds nothing but Magpie, and the organisation default is untouched
 # — every other project still inherits the restriction.
@@ -28,12 +33,12 @@
 #
 # Apply:
 #   gcloud org-policies set-policy infra/terraform/allow-public-access.yaml \
-#     --project=magpie-505120
+#     --project=PROJECT_ID
 #
 # Revert (restores full inheritance from the organisation):
 #   gcloud org-policies delete iam.allowedPolicyMemberDomains \
-#     --project=magpie-505120
-name: projects/magpie-505120/policies/iam.allowedPolicyMemberDomains
+#     --project=PROJECT_ID
+name: projects/PROJECT_ID/policies/iam.allowedPolicyMemberDomains
 spec:
   rules:
     - allowAll: true

@@ -4,3 +4,10 @@ terraform.tfvars
 *.tfstate
 *.tfstate.*
 crash.log
+# Real environment files stay local; the examples are committed. They hold project
+# ids and image tags, never secrets — but an unreviewed tfvars is how a password
+# ends up in git.
+envs/*.tfvars
+envs/*.backend.hcl
+!envs/example.tfvars
+!envs/example.backend.hcl

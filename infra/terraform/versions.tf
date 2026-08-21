@@ -12,18 +12,19 @@ terraform {
     }
   }
 
-  # State holds the Cloud SQL password (Terraform must know it to manage the SQL
-  # user), so it is sensitive. Keep it in a bucket, not on a laptop. Create the
-  # bucket once, by hand, then uncomment:
+  # State holds the Cloud SQL password, the retention token and the session
+  # secret, so it belongs in a bucket rather than on a laptop.
   #
-  #   gcloud storage buckets create gs://YOUR-PROJECT-tfstate \
-  #     --location=europe-west2 --uniform-bucket-level-access
-  #   gcloud storage buckets update gs://YOUR-PROJECT-tfstate --versioning
+  # Deliberately EMPTY: a backend block cannot use variables, so hard-coding the
+  # bucket welds this configuration to one project. The bucket is supplied at init
+  # time instead, which is what lets the same code stand up a second environment:
   #
-  backend "gcs" {
-    bucket = "magpie-505120-tfstate"
-    prefix = "magpie"
-  }
+  #   tofu init -backend-config=envs/<name>.backend.hcl
+  #   tofu apply -var-file=envs/<name>.tfvars
+  #
+  # See envs/example.backend.hcl. Create the bucket once, by hand, in the project
+  # it belongs to — with versioning and uniform bucket-level access.
+  backend "gcs" {}
 }
 
 provider "google" {

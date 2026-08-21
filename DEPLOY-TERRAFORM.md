@@ -266,6 +266,19 @@ tofu apply    # with deletion_protection = false
 tofu destroy
 ```
 
+## Moving to a different GCP project
+
+Everything here is parameterised by `project_id`, so a second environment is a
+second variables file rather than a second copy of the code:
+
+```bash
+tofu init -backend-config=envs/vmo2.backend.hcl -reconfigure
+tofu apply -var-file=envs/vmo2.tfvars
+```
+
+`MIGRATE-TO-NEW-PROJECT.md` is the full runbook, including the one thing that can
+stop you — the organisation policy that permits public Cloud Run.
+
 ## Creating console accounts
 
 Reviews are attributed to whoever is signed in, so give each architect an account

@@ -3,6 +3,10 @@
 Declarative equivalent of `DEPLOY-GCP.md`. One `apply` builds the lot: private
 Cloud SQL, secrets, Artifact Registry, Cloud Run, and the nightly retention sweep.
 
+> **Moving to a different GCP project?** See `MIGRATE-TO-NEW-PROJECT.md` in the
+> repository root. The short version: `envs/<name>.backend.hcl` plus
+> `envs/<name>.tfvars`, and nothing in the code names a project.
+
 > **Following this for the first time?** `DEPLOY-TERRAFORM.md` in the repository root
 > is the full step-by-step runbook, including tool installation, authentication and
 > troubleshooting. This file is the short version for someone who already has the

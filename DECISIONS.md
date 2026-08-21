@@ -943,3 +943,16 @@ decision, why it is the minimal option (§10).
   are handed over together and both must be typed exactly, but only the password was
   displayed with any weight. The address was in a heading, easy to skim past while
   concentrating on copying the secret — which is precisely what happened.
+- **DL.118 · The backend block is empty and supplied at init time** — A Terraform
+  backend cannot take variables, so a hard-coded bucket welds the configuration to
+  one project. `envs/<name>.backend.hcl` plus `envs/<name>.tfvars` makes a second
+  environment a second pair of small files rather than a second copy of the code.
+  Verified by re-initialising the live environment through the new path and planning
+  clean against it.
+- **DL.119 · The org-policy exception is a template, and carries its own warning** —
+  It was welded to one project id, and it is the one artefact that may not be
+  grantable in a client's organisation at all: applying it needs org-policy admin
+  there, and "make this internet-facing" is a real thing to ask a security team. The
+  file now says so, and names the alternative (Identity-Aware Proxy) as a change of
+  design rather than a configuration flag — so the question gets asked before a
+  migration date is booked rather than during it.
