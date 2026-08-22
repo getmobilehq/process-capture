@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { serverError } from '@/lib/api-error';
 import { timingSafeEqual } from 'node:crypto';
 import { applyRetention, describeRetention } from '@/lib/retention';
 
@@ -56,6 +57,6 @@ export async function POST(req: Request) {
       deleted: result.deleted,
     });
   } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    return serverError('retention sweep', err);
   }
 }

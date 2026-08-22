@@ -1079,3 +1079,48 @@ decision, why it is the minimal option (§10).
   consecutive failures rather than one — an alert that cries wolf is an alert people
   stop reading. Alerting is off unless `alert_email` is set, so a deployment without
   it still works and simply tells nobody.
+- **DL.139 · An unconfirmed entity stays inside the interview that named it** —
+  Free text at a pick-list facet creates a `pending` entity on the project, and the
+  pick-list is rendered into every other informant's system prompt. So one person's
+  unreviewed sentence was reaching another person's interview as text the model
+  reads — a write path between informants that P2 does not contemplate and nobody
+  approved. `picklistOptions` now shows an entity to other sessions only once it is
+  `confirmed` or came from the taxonomy; the informant who typed it still sees their
+  own. Names are also sanitised on the way in, the same treatment `role` already
+  had: a line break is what turns a name into an instruction.
+- **DL.140 · Every cookie-authenticated POST checks where it came from** — Cookies
+  authenticate the console and, since DL.107, the informant; a cookie is attached by
+  the browser whoever caused the request, so another site's form could act as the
+  signed-in person. `SameSite=lax` covers most of it and login none of it — an
+  attacker can force a victim into *their* account and read what gets typed. The
+  routes now compare `Origin` (falling back to `Referer`, which our
+  `strict-origin-when-cross-origin` policy still sends same-origin) against
+  `x-forwarded-host`. It fails closed. The retention sweep deliberately does not
+  call it: a header token cannot be attached cross-site, so it is not forgeable.
+- **DL.141 · An unrecognised exception is logged, not returned** — Six routes
+  returned `(err as Error).message` to the caller. Those messages are written for us
+  and carry our internals: connection strings, file paths, SDK account identifiers.
+  `serverError()` logs the exception and answers with a sentence. Routes' own domain
+  errors are unchanged — they are written to be read by the person who caused them.
+  The `DATABASE_URL` guard now names only the scheme for the same reason: the one
+  URL it can print is the one that failed the check, and it may hold a password.
+- **DL.142 · A failed sign-in costs the same whether or not the account exists** —
+  bcrypt is deliberately slow, so skipping it for an unknown address made "no such
+  account" and "wrong password" distinguishable with a stopwatch, and the register is
+  a list of named colleagues. An unknown address is now compared against a decoy hash
+  at the same cost.
+- **DL.143 · An entity id arriving over HTTP is a claim, not a fact** — The tick
+  endpoint took `entityId` on trust, so a crafted request could file a mention against
+  a row from another campaign entirely — one client's interview linked to another
+  client's vocabulary, a P7 failure before anything else. `getEntityInProject` checks
+  the project and the kind the facet asked for.
+- **DL.144 · CSP with a per-request nonce, replacing `unsafe-inline`** — `script-src
+  'self' 'unsafe-inline'` is very nearly no script policy at all: stopping injected
+  markup from executing is the entire point. It was there because Next emits inline
+  bootstrap scripts. `middleware.ts` mints a nonce per request and sets the policy on
+  both the request and response headers, which is how Next knows to stamp its own
+  scripts; `strict-dynamic` covers the chunks those scripts load. `unsafe-eval` is
+  now development-only (dev HMR needs it). `style-src` keeps `unsafe-inline`: inline
+  style *attributes* are used throughout for coverage colours and lane geometry,
+  cannot be nonced individually, and cannot execute. Verified against a production
+  build — hydration, sign-in, and the bpmn-js canvas all render with no violations.

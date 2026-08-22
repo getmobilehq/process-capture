@@ -16,7 +16,13 @@ function audioRequest(): Request {
   return new Request('http://localhost/api/transcribe', {
     method: 'POST',
     body: form,
-    headers: { 'x-forwarded-for': `10.0.0.${Math.floor(Math.random() * 250) + 1}` },
+    headers: {
+      'x-forwarded-for': `10.0.0.${Math.floor(Math.random() * 250) + 1}`,
+      // What a browser sends, and what the route now insists on: the same-origin
+      // check fails closed, so a request with no stated origin is refused.
+      host: 'localhost',
+      origin: 'http://localhost',
+    },
   });
 }
 

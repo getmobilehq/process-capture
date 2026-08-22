@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { rejectCrossOrigin } from '@/lib/origin';
 import { cookies } from 'next/headers';
 import { z } from 'zod';
 import { assertSession, identityFromSession, SHARED_IDENTITY } from '@/lib/auth';
@@ -34,6 +35,10 @@ const bodySchema = z.object({
  * verification state so the UI always shows what is still outstanding.
  */
 export async function POST(req: Request, { params }: { params: { sessionId: string } }) {
+  // Cross-site request forgery: these are cookie-authenticated, so the browser
+  // attaches credentials whoever asked for the request.
+  const wrongSite = rejectCrossOrigin(req);
+  if (wrongSite) return wrongSite;
   const cookie = cookies().get('pc_admin')?.value;
   // assertSession, not isValidSession: this records who approved a recommendation
   // about someone's job, so a disabled account must be refused rather than

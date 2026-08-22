@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { rejectCrossOrigin } from '@/lib/origin';
 import { informantHolds } from '@/lib/informant-auth';
 import { z } from 'zod';
 import {
@@ -42,6 +43,10 @@ function view(row: { content: string; seq: number; take: number; status: string 
  * two taps can permanently destroy a transcription.
  */
 export async function POST(req: Request, { params }: { params: { sessionId: string } }) {
+  // Cross-site request forgery: these are cookie-authenticated, so the browser
+  // attaches credentials whoever asked for the request.
+  const wrongSite = rejectCrossOrigin(req);
+  if (wrongSite) return wrongSite;
   // Bounded before parsing — a draft is one unsent answer.
   if (tooLarge(req, 256 * 1024)) {
     return NextResponse.json({ error: 'Request too large.' }, { status: 413 });

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { rejectCrossOrigin } from '@/lib/origin';
 import { cookies } from 'next/headers';
 import { isValidSession } from '@/lib/auth';
 import { config } from '@/lib/config';
@@ -24,7 +25,11 @@ export const dynamic = 'force-dynamic';
  * `proposed` and unverified: this says how far work *could* run without a person,
  * which is a claim about someone's job and not a decision anyone has taken.
  */
-export async function POST(_req: Request, { params }: { params: { sessionId: string } }) {
+export async function POST(req: Request, { params }: { params: { sessionId: string } }) {
+  // Cross-site request forgery: these are cookie-authenticated, so the browser
+  // attaches credentials whoever asked for the request.
+  const wrongSite = rejectCrossOrigin(req);
+  if (wrongSite) return wrongSite;
   if (!isValidSession(cookies().get('pc_admin')?.value)) {
     return NextResponse.json({ error: 'Not authorised' }, { status: 401 });
   }

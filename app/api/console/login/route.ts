@@ -1,4 +1,4 @@
-import { seeOther } from '@/lib/origin';
+import { isSameOrigin, seeOther } from '@/lib/origin';
 import { clientIp } from '@/lib/rate-limit';
 import { ADMIN_COOKIE, clearLoginAttempts, recordLoginAttempt, sessionToken, signIn } from '@/lib/auth';
 
@@ -6,6 +6,11 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
+  // Login is forgeable too, in the other direction: another site can post *its*
+  // credentials here and silently sign the victim into an account it controls,
+  // after which everything they type is in the attacker's console.
+  if (!isSameOrigin(req)) return seeOther('/console/login?error=1');
+
   const ip = clientIp(req);
 
   const rl = await recordLoginAttempt(ip);

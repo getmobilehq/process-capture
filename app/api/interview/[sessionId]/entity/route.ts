@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
+import { rejectCrossOrigin } from '@/lib/origin';
 import { informantHolds } from '@/lib/informant-auth';
 import { z } from 'zod';
 import {
+  getEntityInProject,
   getSession,
   picklistOptions,
   recordEntityMention,
@@ -31,6 +33,10 @@ const bodySchema = z.object({
  * correction is a matter for the conversation, not a checkbox.
  */
 export async function POST(req: Request, { params }: { params: { sessionId: string } }) {
+  // Cross-site request forgery: these are cookie-authenticated, so the browser
+  // attaches credentials whoever asked for the request.
+  const wrongSite = rejectCrossOrigin(req);
+  if (wrongSite) return wrongSite;
   // Bounded before parsing — an entity is a name.
   if (tooLarge(req, 16 * 1024)) {
     return NextResponse.json({ error: 'Request too large.' }, { status: 413 });
@@ -73,7 +79,11 @@ export async function POST(req: Request, { params }: { params: { sessionId: stri
 
   let resolvedId: string;
   if (entityId) {
-    resolvedId = entityId;
+    // The id is checked against this engagement rather than trusted, and against
+    // the kind the facet expects — a ticked "system" must not be somebody's role.
+    const entity = await getEntityInProject(entityId, session.projectId, kind);
+    if (!entity) return NextResponse.json({ error: 'Unknown option' }, { status: 400 });
+    resolvedId = entity.id;
   } else if (name) {
     resolvedId = (await upsertEntity({ projectId: session.projectId, kind, name })).id;
   } else {

@@ -40,8 +40,13 @@ const POOL_MAX = Number(process.env.DB_POOL_MAX ?? 5);
  */
 function assertPostgresUrl(url: string): void {
   if (/^postgres(ql)?:\/\//.test(url)) return;
+  // Only the scheme goes into the message. A URL that fails this check is still a
+  // URL that may carry a password, and a startup exception is the least private
+  // place in the system: it goes to the console, to Cloud Logging, and into
+  // whatever pastes the operator makes while working out what went wrong.
+  const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(url)?.[1] ?? '(none)';
   throw new Error(
-    `DATABASE_URL must be a Postgres connection string, not "${url}". ` +
+    `DATABASE_URL must be a Postgres connection string; its scheme is "${scheme}". ` +
       'Magpie moved off SQLite — a `file:` URL is a leftover from that. ' +
       'Locally: postgres://postgres:magpie@localhost:5434/magpie (see MIGRATION-POSTGRES.md).',
   );

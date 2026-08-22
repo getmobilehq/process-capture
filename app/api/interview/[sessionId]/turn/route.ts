@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { rejectCrossOrigin } from '@/lib/origin';
 import { informantHolds } from '@/lib/informant-auth';
 import { processUserTurn } from '@/lib/engine/engine';
 import { getSession } from '@/lib/db/queries';
@@ -10,6 +11,10 @@ export const dynamic = 'force-dynamic';
 const MAX_CONTENT_CHARS = 4000; // input length cap
 
 export async function POST(req: Request, { params }: { params: { sessionId: string } }) {
+  // Cross-site request forgery: these are cookie-authenticated, so the browser
+  // attaches credentials whoever asked for the request.
+  const wrongSite = rejectCrossOrigin(req);
+  if (wrongSite) return wrongSite;
   // Bounded before parsing — a turn is 4,000 characters.
   if (tooLarge(req, 64 * 1024)) {
     return NextResponse.json({ error: 'Request too large.' }, { status: 413 });

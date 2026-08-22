@@ -11,6 +11,7 @@
 import { and, asc, desc, eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { getDb, type DB } from './index';
+import { sanitiseForPrompt } from '@/lib/sanitise';
 import {
   answerDrafts,
   changeReviews,
@@ -1069,7 +1070,10 @@ export async function upsertEntity(
     .values({
       projectId: input.projectId,
       kind: input.kind,
-      name: input.name.trim(),
+      // Sanitised, not merely trimmed: entity names are rendered into the system
+      // prompt of every other interview in the project, and a line break is what
+      // turns a name into an instruction. Same treatment as `role` in lib/entry.ts.
+      name: sanitiseForPrompt(input.name, 120),
       canonicalKey: key,
       status: input.status ?? 'pending',
       origin: input.origin ?? 'interview',
@@ -1105,6 +1109,29 @@ export async function listEntities(
     ? and(eq(entities.projectId, projectId), eq(entities.kind, kind))
     : eq(entities.projectId, projectId);
   return db.select().from(entities).where(where).orderBy(asc(entities.name));
+}
+
+/**
+ * The entity behind an id, but only if it belongs to this engagement and is of
+ * the kind the facet asked for.
+ *
+ * An entity id arriving over HTTP is a claim, not a fact — the tick comes from
+ * the informant's browser, and nothing stops it naming a row from another
+ * campaign entirely. Without this the register would carry a mention linking one
+ * client's interview to another client's vocabulary, which is a privacy failure
+ * (P7) before it is anything else.
+ */
+export async function getEntityInProject(
+  entityId: string,
+  projectId: string,
+  kind: EntityKind,
+  db: DB = getDb(),
+): Promise<Entity | undefined> {
+  return db
+    .select()
+    .from(entities)
+    .where(and(eq(entities.id, entityId), eq(entities.projectId, projectId), eq(entities.kind, kind)))
+    .then((r) => r[0]);
 }
 
 /** Record that a session named or ticked an entity on a facet. Idempotent. */
@@ -1192,7 +1219,16 @@ export async function picklistOptions(
     mentions.filter((m) => m.entity_mentions.sessionId !== sessionId).map((m) => m.entity_mentions.entityId),
   );
 
-  return all
+  // An entity a colleague typed as free text is `pending` until an admin confirms
+  // it — and until then it must not reach anyone else. It is shown to other
+  // informants as a sourced option *and* rendered into their system prompt, so an
+  // unconfirmed name is one informant writing into another's interview. Their own
+  // pending entries stay: they typed them a moment ago.
+  const visible = all.filter(
+    (e) => e.status === 'confirmed' || e.origin === 'taxonomy' || thisSession.has(e.id),
+  );
+
+  return visible
     .map((e): PicklistOption => {
       // Priority order matters: the taxonomy is the strongest provenance, then
       // what this informant already said, then what colleagues said.

@@ -15,6 +15,7 @@ import {
 import type { DB } from '@/lib/db';
 import { getDb } from '@/lib/db';
 import type { Interviewee, Project, Session } from '@/lib/db/schema';
+import { sanitiseForPrompt } from '@/lib/sanitise';
 
 export type EntryResolution =
   | { kind: 'invalid' }
@@ -120,19 +121,5 @@ export async function startSession(
   return session;
 }
 
-/**
- * Make a value safe to interpolate into a prompt.
- *
- * Strips line breaks and control characters, collapses runs of whitespace, and
- * caps the length. This is not an attempt to detect malicious wording — that is
- * unwinnable and unnecessary, because P1 already stops the model changing state.
- * It removes the specific affordance that turns a form field into extra
- * *instructions*: the ability to break out of the line it sits on.
- */
-export function sanitiseForPrompt(value: string, maxLength: number): string {
-  return value
-    .replace(/[\u0000-\u001F\u007F]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, maxLength);
-}
+// Re-exported so callers and tests have one obvious place to reach for it.
+export { sanitiseForPrompt } from '@/lib/sanitise';

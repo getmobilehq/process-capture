@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { serverError } from '@/lib/api-error';
+import { rejectCrossOrigin } from '@/lib/origin';
 import {
   deleteProcessGraph,
   getInterviewee,
@@ -28,6 +30,10 @@ export const dynamic = 'force-dynamic';
  * graph and extracts again — an explicit act, never a side effect of viewing.
  */
 export async function POST(req: Request, { params }: { params: { sessionId: string } }) {
+  // Cross-site request forgery: these are cookie-authenticated, so the browser
+  // attaches credentials whoever asked for the request.
+  const wrongSite = rejectCrossOrigin(req);
+  if (wrongSite) return wrongSite;
   if (!isValidSession(cookies().get('pc_admin')?.value)) {
     return NextResponse.json({ error: 'Not authorised' }, { status: 401 });
   }
@@ -90,6 +96,6 @@ export async function POST(req: Request, { params }: { params: { sessionId: stri
       // rather than rendering an authoritative-looking diagram from bad material.
       return NextResponse.json({ error: err.message, details: err.errors }, { status: 422 });
     }
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    return serverError('graph extraction', err);
   }
 }

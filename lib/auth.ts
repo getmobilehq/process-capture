@@ -91,6 +91,19 @@ export function hashPassword(plain: string): string {
   return bcrypt.hashSync(plain, 10);
 }
 
+/**
+ * A real hash, at the same cost as everybody's, matching nothing. Compared
+ * against when the address is unknown so a failed sign-in takes the same time
+ * whether or not the account exists (see `signIn`). Built once at module load —
+ * a fixed literal is fine too, but generating it keeps the cost factor in one
+ * place, and lazily so the process does not pay for it at import.
+ */
+let decoy: string | null = null;
+function decoyHash(): string {
+  if (!decoy) decoy = bcrypt.hashSync('no account by that address', 10);
+  return decoy;
+}
+
 /** A password worth issuing: long, random, and not something a person invented. */
 export function generatePassword(): string {
   return randomBytes(18).toString('base64url');
@@ -233,7 +246,14 @@ export async function signIn(input: {
     } catch {
       return { ok: false, reason: 'invalid' };
     }
-    if (!user || user.status !== 'active') return { ok: false, reason: 'invalid' };
+    // An unknown address must cost the same as a known one. bcrypt is slow by
+    // design — tens of milliseconds — so skipping it when there is no user makes
+    // "no such account" and "wrong password" trivially distinguishable by a
+    // stopwatch, and the register is a list of named colleagues.
+    if (!user || user.status !== 'active') {
+      bcrypt.compareSync(input.password, decoyHash());
+      return { ok: false, reason: 'invalid' };
+    }
     if (!bcrypt.compareSync(input.password, user.passwordHash)) {
       return { ok: false, reason: 'invalid' };
     }

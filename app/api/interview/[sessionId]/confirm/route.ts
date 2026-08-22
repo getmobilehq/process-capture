@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { rejectCrossOrigin } from '@/lib/origin';
 import { informantHolds } from '@/lib/informant-auth';
 import { clientIp, rateLimit } from '@/lib/rate-limit';
 import { completeInterview } from '@/lib/engine/engine';
@@ -16,6 +17,10 @@ export const dynamic = 'force-dynamic';
  * open_items rather than papered over (R9.4).
  */
 export async function POST(req: Request, { params }: { params: { sessionId: string } }) {
+  // Cross-site request forgery: these are cookie-authenticated, so the browser
+  // attaches credentials whoever asked for the request.
+  const wrongSite = rejectCrossOrigin(req);
+  if (wrongSite) return wrongSite;
   // Completion runs per-facet spec generation — roughly a dozen model calls. It
   // was the one interview route with no limit at all.
   const rl = await rateLimit(`confirm:${clientIp(req)}`, { limit: 6, windowMs: 60_000 });

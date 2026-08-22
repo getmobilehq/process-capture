@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { rejectCrossOrigin } from '@/lib/origin';
 import { clientIp, rateLimit, tooLarge } from '@/lib/rate-limit';
 import { transcribe, transcriptionAvailable, TranscribeError } from '@/lib/transcribe';
 
@@ -22,6 +23,10 @@ const MAX_AUDIO_BYTES = 18 * 1024 * 1024;
  * the interview does not depend on any of this working.
  */
 export async function POST(req: Request) {
+  // Cross-site request forgery: these are cookie-authenticated, so the browser
+  // attaches credentials whoever asked for the request.
+  const wrongSite = rejectCrossOrigin(req);
+  if (wrongSite) return wrongSite;
   if (!transcriptionAvailable()) {
     return NextResponse.json({ error: 'Voice input is not configured.' }, { status: 503 });
   }
