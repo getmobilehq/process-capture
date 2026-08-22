@@ -41,7 +41,9 @@ const GATEWAY = 50;
 const TASK_W = 160;
 const TASK_MIN_H = 80;
 
-const COL_GAP = 60;
+// Wider than a diagram strictly needs, because the gap is where condition labels
+// live. At 60 they had nowhere to go but on top of the boxes either side.
+const COL_GAP = 120;
 const ROW_GAP = 28;
 const LANE_PAD = 24;
 const LANE_MIN_H = 100;

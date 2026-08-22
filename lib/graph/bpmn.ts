@@ -160,6 +160,57 @@ export function toBpmnXml(graph: ProcessGraph, opts: BpmnOptions = {}): string {
     )
     .join('\n');
 
+  // Condition labels are placed explicitly, not left to the renderer.
+  //
+  // Without bounds, bpmn-js puts every label at its edge's midpoint. Where several
+  // flows converge on a decision — which is exactly where the labels are — they
+  // land on top of each other and on the boxes behind them. That is the "text
+  // falling on blocks" a reader sees, and no amount of panning or zooming fixes
+  // it, because the labels are genuinely in the same place.
+  //
+  // So: reserve a rectangle per label, and nudge it clear of everything already
+  // reserved. Deterministic, so the same graph places labels the same way twice.
+  const LABEL_W = 96;
+  const LABEL_H = 16;
+  const placed: { x: number; y: number; width: number; height: number }[] = [
+    ...[...layout.nodes.values()].map((b) => ({ x: b.x, y: b.y, width: b.width, height: b.height })),
+  ];
+
+  // Gateways and events render their name *outside* the shape, centred beneath it.
+  // Reserving only the diamond left that text unclaimed, so a condition label
+  // would sit neatly clear of the diamond and squarely on top of the question it
+  // was answering — which is the collision that survived the first fix.
+  for (const n of [...graph.gateways, ...graph.events]) {
+    const box = layout.nodes.get(n.id);
+    if (!box || !n.name) continue;
+    const lines = Math.max(1, Math.ceil(n.name.length / 16));
+    placed.push({
+      x: box.x + box.width / 2 - 55,
+      y: box.y + box.height + 2,
+      width: 110,
+      height: lines * 12 + 6,
+    });
+  }
+  const overlaps = (
+    a: { x: number; y: number; width: number; height: number },
+    b: { x: number; y: number; width: number; height: number },
+  ) => a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+
+  function placeLabel(x: number, y: number) {
+    // Try just above the line first, then step away in both directions. Bounded,
+    // because a label that cannot find space is better slightly off than looped for.
+    for (const dy of [-20, -38, -56, 14, 32, 50, -74, 68]) {
+      const rect = { x: x - LABEL_W / 2, y: y + dy - LABEL_H / 2, width: LABEL_W, height: LABEL_H };
+      if (!placed.some((p) => overlaps(rect, p))) {
+        placed.push(rect);
+        return rect;
+      }
+    }
+    const fallback = { x: x - LABEL_W / 2, y: y - 20 - LABEL_H / 2, width: LABEL_W, height: LABEL_H };
+    placed.push(fallback);
+    return fallback;
+  }
+
   const edges = graph.flows
     .map((f) => {
       const a = layout.nodes.get(f.from);
@@ -171,9 +222,21 @@ export function toBpmnXml(graph: ProcessGraph, opts: BpmnOptions = {}): string {
       const y2 = Math.round(z.y + z.height / 2);
       // An elbow when the lanes differ, a straight line when they do not.
       const mid = y1 === y2 ? '' : `\n        <di:waypoint x="${x2}" y="${y1}" />`;
+
+      // Labelled edges get their bounds near the source, where the reader is
+      // looking when they leave a decision — not at a midpoint that may be half a
+      // diagram away from the choice it describes.
+      let label = '';
+      if (f.condition) {
+        const r = placeLabel(x1 + 34, y1);
+        label = `\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x="${Math.round(
+          r.x,
+        )}" y="${Math.round(r.y)}" width="${r.width}" height="${r.height}" />\n        </bpmndi:BPMNLabel>`;
+      }
+
       return `      <bpmndi:BPMNEdge id="${xmlId(f.id)}_di" bpmnElement="${xmlId(
         f.id,
-      )}">\n        <di:waypoint x="${x1}" y="${y1}" />${mid}\n        <di:waypoint x="${x2}" y="${y2}" />\n      </bpmndi:BPMNEdge>`;
+      )}">\n        <di:waypoint x="${x1}" y="${y1}" />${mid}\n        <di:waypoint x="${x2}" y="${y2}" />${label}\n      </bpmndi:BPMNEdge>`;
     })
     .filter(Boolean)
     .join('\n');

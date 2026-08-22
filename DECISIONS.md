@@ -1003,3 +1003,19 @@ decision, why it is the minimal option (§10).
 - **DL.127 · The loading copy says how long to expect** — Analysis takes a minute or
   two on a long process. Silence for that long reads as a hang, which is part of why
   the timeout above was reported as intermittent rather than total.
+- **DL.128 · Condition labels are placed by us, not by the renderer** — We emitted a
+  `name` on each sequence flow and no label bounds, so bpmn-js placed all eleven at
+  their edge midpoints. Where several flows converge on a decision — which is
+  precisely where conditions live — they landed on each other and on the boxes
+  behind. That is the "text falling on blocks" a reader sees, and no amount of
+  panning or zooming fixes it, because the labels really are in the same place. Each
+  labelled edge now reserves a rectangle and steps clear of everything already
+  reserved, deterministically.
+- **DL.129 · The reserved set includes external labels, not just shapes** — Gateways
+  and events render their name *below* the shape. Reserving only the diamond meant a
+  condition label cleared the diamond and landed squarely on the question it was
+  answering. That collision survived the first fix and is why the second was needed.
+- **DL.130 · Column gap widened to 120px** — The gap between columns is where
+  condition labels live. At 60 there was nowhere for them to go but on top of the
+  boxes either side, so the placement above would have had to give up more often
+  than not.
