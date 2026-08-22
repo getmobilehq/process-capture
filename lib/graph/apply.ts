@@ -222,6 +222,15 @@ export function applyChangeSet(graph: ProcessGraph, changeSet: ChangeSet): Appli
 
   // The to-be graph must be as valid as the as-is one. A change-set that produces
   // an incoherent process is a failure, not a diagram to render with a caveat.
+  // Collapse any decision left with one way out.
+  //
+  // Removing a step can take a whole branch with it — automate the "is the charge
+  // correct?" check and one arm of the gateway goes. What remains is a diamond
+  // with a single exit, which is not a decision: it is invalid BPMN, and it tells
+  // a reader there is still a choice being made when there is not. Rewire past it
+  // and drop it, so the to-be says what actually happens.
+  next = collapseDeadGateways(next);
+
   const check = validateGraph(next);
   if (!check.ok) {
     throw new ChangeSetApplicationError(
@@ -231,4 +240,44 @@ export function applyChangeSet(graph: ProcessGraph, changeSet: ChangeSet): Appli
   }
 
   return { graph: next, changedIds, changeByNode, skipped };
+}
+
+/**
+ * Remove gateways that no longer branch, rewiring their inbound flows to whatever
+ * they led to. Repeated to a fixed point, because collapsing one gateway can leave
+ * the one before it with a single exit too.
+ */
+function collapseDeadGateways(graph: ProcessGraph): ProcessGraph {
+  let next = graph;
+
+  for (let pass = 0; pass < next.gateways.length + 1; pass += 1) {
+    const dead = next.gateways.find(
+      (g) => next.flows.filter((f) => f.from === g.id).length < 2,
+    );
+    if (!dead) break;
+
+    const outgoing = next.flows.filter((f) => f.from === dead.id);
+    const incoming = next.flows.filter((f) => f.to === dead.id);
+    const target = outgoing[0]?.to;
+
+    const flows = next.flows.filter((f) => f.from !== dead.id && f.to !== dead.id);
+    if (target) {
+      // Each inbound flow now goes straight to where the gateway led. The branch
+      // condition goes with the gateway — there is nothing left to condition on.
+      for (const f of incoming) {
+        if (f.from === target) continue; // would be a self-loop; drop it instead
+        if (flows.some((x) => x.from === f.from && x.to === target)) continue;
+        flows.push({ ...f, to: target, condition: undefined });
+      }
+    }
+
+    next = {
+      ...next,
+      gateways: next.gateways.filter((g) => g.id !== dead.id),
+      flows,
+      annotations: next.annotations.filter((a) => a.targetId !== dead.id),
+    };
+  }
+
+  return next;
 }

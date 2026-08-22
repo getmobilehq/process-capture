@@ -14,7 +14,7 @@
  * it, and a tool that always finds one is a tool nobody should believe.
  */
 import { config } from '@/lib/config';
-import { getClient } from '@/lib/engine/model';
+import { getClient, ANALYSIS_REQUEST } from '@/lib/engine/model';
 import { deriveSegments, segmentSignals, type Segment, type SegmentSignals } from './segments';
 import type { OpportunitySet, ProcessGraph } from './schema';
 
@@ -257,7 +257,7 @@ Verdicts the numbers permit: ${allowed.join(', ')}. Choosing anything else is re
       tools: [TOOL],
       tool_choice: { type: 'tool', name: TOOL.name },
       messages,
-    });
+    }, ANALYSIS_REQUEST);
 
     const call = resp.content.find(
       (b): b is Extract<typeof b, { type: 'tool_use' }> => b.type === 'tool_use',

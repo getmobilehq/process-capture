@@ -434,7 +434,7 @@ export function SpecDetail({
 
       {tab === 'opps' && (
         <div>
-          {loading && <p className="pc-map-status">Reading the evidence for each activity…</p>}
+          {loading && <p className="pc-map-status">Reading the evidence for each activity… this takes a minute or two on a long process.</p>}
           {error && (
             <div className="pc-card" style={{ padding: 'var(--space-6)' }}>
               <p style={{ marginTop: 0, color: 'var(--vm-red)', fontWeight: 700 }}>{error}</p>
@@ -485,7 +485,7 @@ export function SpecDetail({
 
       {tab === 'levels' && (
         <div>
-          {loading && <p className="pc-map-status">Placing each step on the scale…</p>}
+          {loading && <p className="pc-map-status">Placing each step on the scale… this takes a minute or two on a long process.</p>}
           {error && (
             <div className="pc-card" style={{ padding: 'var(--space-6)' }}>
               <p style={{ marginTop: 0, color: 'var(--vm-red)', fontWeight: 700 }}>{error}</p>
@@ -504,7 +504,7 @@ export function SpecDetail({
 
       {tab === 'assess' && (
         <div>
-          {loading && <p className="pc-map-status">Weighing the evidence for each step…</p>}
+          {loading && <p className="pc-map-status">Weighing the evidence for each step… this takes a minute or two on a long process.</p>}
           {error && (
             <div className="pc-card" style={{ padding: 'var(--space-6)' }}>
               <p style={{ marginTop: 0, color: 'var(--vm-red)', fontWeight: 700 }}>{error}</p>
@@ -529,7 +529,7 @@ export function SpecDetail({
 
       {tab === 'tobe' && (
         <div>
-          {loading && <p className="pc-map-status">Proposing changes against the evidence…</p>}
+          {loading && <p className="pc-map-status">Proposing changes against the evidence… this takes a minute or two on a long process.</p>}
 
           {error && (
             <div className="pc-card" style={{ padding: 'var(--space-6)' }}>
@@ -605,7 +605,7 @@ export function SpecDetail({
 
       {tab === 'map' && (
         <div>
-          {loading && <p className="pc-map-status">Reading the specification and drawing it…</p>}
+          {loading && <p className="pc-map-status">Reading the specification and drawing it… this takes a minute or two on a long process.</p>}
 
           {error && (
             <div className="pc-card" style={{ padding: 'var(--space-6)' }}>

@@ -193,3 +193,85 @@ describe('placement robustness against a real generator (R5.4)', () => {
     expect(validateGraph(g).ok).toBe(true);
   });
 });
+
+describe('collapsing a decision that no longer branches', () => {
+  function forked(): ProcessGraph {
+    return {
+      processId: 'p', name: 'P', specRef: 's', generatedAt: 'n',
+      lanes: [{ id: 'lane:a', name: 'Advisor', sourceFacet: 2 }],
+      events: [
+        { id: 'ev:s', type: 'start', name: 'S', laneId: 'lane:a', sourceFacet: 3 },
+        { id: 'ev:e', type: 'end', name: 'E', laneId: 'lane:a', sourceFacet: 1 },
+      ],
+      activities: [
+        { id: 'act:check', name: 'Check the charge', laneId: 'lane:a', systems: [], sourceFacet: 5 },
+        { id: 'act:fix', name: 'Raise a credit', laneId: 'lane:a', systems: [], sourceFacet: 5 },
+        { id: 'act:close', name: 'Close the case', laneId: 'lane:a', systems: [], sourceFacet: 5 },
+      ],
+      gateways: [
+        { id: 'gw:ok', type: 'exclusive', name: 'Charge correct?', condition: '', laneId: 'lane:a', sourceFacet: 6 },
+      ],
+      flows: [
+        { id: 'f0', from: 'ev:s', to: 'act:check' },
+        { id: 'f1', from: 'act:check', to: 'gw:ok' },
+        { id: 'f2', from: 'gw:ok', to: 'act:fix', condition: 'incorrect' },
+        { id: 'f3', from: 'gw:ok', to: 'act:close', condition: 'correct' },
+        { id: 'f4', from: 'act:fix', to: 'act:close' },
+        { id: 'f5', from: 'act:close', to: 'ev:e' },
+      ],
+      annotations: [
+        { id: 'ann:1', targetId: 'act:fix', kind: 'bottleneck', text: 'Manual', evidence: { facet: 12 } },
+      ],
+    };
+  }
+
+  // Automate one arm away and the diamond stops being a decision. Leaving it is
+  // invalid BPMN and tells a reader a choice is still being made.
+  it('removes a gateway left with one exit, and rewires past it', () => {
+    const applied = applyChangeSet(forked(), {
+      baseGraph: 'p', provenance: 'proposed', verified: false,
+      changes: [
+        { op: 'remove', target: 'act:fix', description: 'Credits raise themselves', rationale: 'r', resolvesAnnotationId: ['ann:1'] },
+      ],
+    });
+
+    expect(applied.graph.gateways).toHaveLength(0);
+    expect(applied.graph.activities.map((a) => a.id)).not.toContain('act:fix');
+    // The path still runs start → check → close → end.
+    const to = (from: string) => applied.graph.flows.filter((f) => f.from === from).map((f) => f.to);
+    expect(to('act:check')).toEqual(['act:close']);
+    expect(to('act:close')).toEqual(['ev:e']);
+  });
+
+  it('leaves a gateway that still branches alone', () => {
+    const applied = applyChangeSet(forked(), {
+      baseGraph: 'p', provenance: 'proposed', verified: false,
+      changes: [
+        { op: 'modify', target: 'act:fix', description: 'Reworded', rationale: 'r', resolvesAnnotationId: ['ann:1'] },
+      ],
+    });
+    expect(applied.graph.gateways).toHaveLength(1);
+    expect(applied.graph.flows.filter((f) => f.from === 'gw:ok')).toHaveLength(2);
+  });
+
+  it('creates no self-loop when the gateway led back to its own predecessor', () => {
+    const g = forked();
+    g.flows = [
+      { id: 'f0', from: 'ev:s', to: 'act:check' },
+      { id: 'f1', from: 'act:check', to: 'gw:ok' },
+      { id: 'f2', from: 'gw:ok', to: 'act:check', condition: 'retry' },
+      { id: 'f3', from: 'gw:ok', to: 'act:close', condition: 'done' },
+      { id: 'f5', from: 'act:close', to: 'ev:e' },
+    ];
+    g.activities = g.activities.filter((a) => a.id !== 'act:fix');
+    g.annotations = [{ id: 'ann:1', targetId: 'act:close', kind: 'bottleneck', text: 'x', evidence: { facet: 12 } }];
+
+    const applied = applyChangeSet(g, {
+      baseGraph: 'p', provenance: 'proposed', verified: false,
+      changes: [
+        { op: 'remove', target: 'act:close', description: 'gone', rationale: 'r', resolvesAnnotationId: ['ann:1'] },
+      ],
+    });
+    for (const f of applied.graph.flows) expect(f.from).not.toBe(f.to);
+  });
+});

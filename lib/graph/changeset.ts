@@ -11,7 +11,7 @@
  * verified, and the schema default enforces that even if a prompt tried.
  */
 import { config } from '@/lib/config';
-import { getClient } from '@/lib/engine/model';
+import { getClient, ANALYSIS_REQUEST } from '@/lib/engine/model';
 import { validateChangeSet } from './validate';
 import type { ChangeSet, ProcessGraph } from './schema';
 
@@ -151,7 +151,7 @@ Propose the change-set.`,
       tools: [TOOL],
       tool_choice: { type: 'tool', name: TOOL.name },
       messages,
-    });
+    }, ANALYSIS_REQUEST);
 
     const call = resp.content.find(
       (b): b is Extract<typeof b, { type: 'tool_use' }> => b.type === 'tool_use',

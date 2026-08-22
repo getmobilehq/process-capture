@@ -8,6 +8,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { config } from '@/lib/config';
 import type { Facet } from '@/lib/facets/facets';
 import { addUsage } from '@/lib/usage';
+import { ANALYSIS_REQUEST } from '@/lib/engine/model';
 
 export interface DraftStatement {
   content: string;
@@ -74,7 +75,7 @@ export async function draftFacet(input: {
         }\n\nStated facts for this facet:\n${bulletined}\n\nDraft the section body now.`,
       },
     ],
-  });
+  }, ANALYSIS_REQUEST);
   addUsage(resp.usage);
 
   const text = resp.content

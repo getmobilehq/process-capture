@@ -1,7 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const create = vi.fn();
-vi.mock('@/lib/engine/model', () => ({ getClient: () => ({ messages: { create } }) }));
+vi.mock('@/lib/engine/model', () => ({
+  getClient: () => ({ messages: { create } }),
+  // Analysis calls carry their own longer timeout — see lib/engine/model.ts.
+  ANALYSIS_REQUEST: { timeout: 180_000, maxRetries: 1 },
+}));
 
 import {
   assessAutomation,

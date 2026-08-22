@@ -11,7 +11,7 @@
  * that is a better outcome than a confident label a modeller cannot check.
  */
 import { config } from '@/lib/config';
-import { getClient } from '@/lib/engine/model';
+import { getClient, ANALYSIS_REQUEST } from '@/lib/engine/model';
 import { validateOpportunities } from './validate';
 import type { OpportunitySet, ProcessGraph } from './schema';
 
@@ -126,7 +126,7 @@ ${markdown}
       tools: [TOOL],
       tool_choice: { type: 'tool', name: TOOL.name },
       messages,
-    });
+    }, ANALYSIS_REQUEST);
 
     const call = resp.content.find(
       (b): b is Extract<typeof b, { type: 'tool_use' }> => b.type === 'tool_use',

@@ -983,3 +983,23 @@ decision, why it is the minimal option (§10).
   component importing the level colours from it would have pulled all of that into
   the browser bundle, which is what the build flagged. `autonomy-levels.ts` holds the
   scale and imports nothing.
+- **DL.125 · Analysis calls get their own timeout, because the client's is tuned for
+  an interview turn** — The shared Anthropic client uses 60 seconds and four
+  retries, which is right when an informant is watching a cursor and a fast failure
+  beats a long wait. It is wrong for analysis: a change-set call is handed a whole
+  specification and a whole graph and takes around 85 seconds to think, so every
+  attempt was killed at 60s and the retries consumed the rest. The request failed
+  after five minutes having never once been given long enough to succeed — it
+  presented as a hang, and it was impatience. `ANALYSIS_REQUEST` is 180 seconds with
+  one retry: longer per attempt, fewer attempts, worst case in about the same place.
+- **DL.126 · A decision left with one exit is collapsed, not kept** — Removing a step
+  can take a whole branch with it; automate the "is the charge correct?" check and
+  one arm of the gateway goes. What remained was a diamond with a single exit, which
+  is invalid BPMN and, worse, tells a reader a choice is still being made when it is
+  not. `applyChangeSet` now rewires past such gateways and drops them, repeated to a
+  fixed point because collapsing one can leave its predecessor with a single exit
+  too. This was hidden behind the timeout above — the second fault only surfaced once
+  the first was fixed.
+- **DL.127 · The loading copy says how long to expect** — Analysis takes a minute or
+  two on a long process. Silence for that long reads as a hang, which is part of why
+  the timeout above was reported as intermittent rather than total.

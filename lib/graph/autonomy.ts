@@ -25,7 +25,7 @@
  * gap to be closed is one nobody in the business will trust.
  */
 import { config } from '@/lib/config';
-import { getClient } from '@/lib/engine/model';
+import { getClient, ANALYSIS_REQUEST } from '@/lib/engine/model';
 import type { ProcessGraph } from './schema';
 import {
   AUTONOMY_LEVELS,
@@ -197,7 +197,7 @@ ${markdown}
       tools: [TOOL],
       tool_choice: { type: 'tool', name: TOOL.name },
       messages,
-    });
+    }, ANALYSIS_REQUEST);
 
     const call = resp.content.find(
       (b): b is Extract<typeof b, { type: 'tool_use' }> => b.type === 'tool_use',

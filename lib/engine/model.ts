@@ -49,6 +49,22 @@ export function getClient(): Anthropic {
   return client;
 }
 
+/**
+ * Per-request options for the analysis calls (R5).
+ *
+ * The client defaults — 60 seconds, four retries — are tuned for an interview
+ * turn, where an informant is watching a cursor blink and a fast failure beats a
+ * long wait. They are actively wrong for analysis: a change-set call is handed a
+ * whole specification and a whole graph, and reasoning over that takes longer than
+ * a minute. Every attempt then hit the timeout and burned the full retry budget,
+ * so the request failed after five minutes having never once been given long
+ * enough to succeed. It looked like a hang; it was an impatient client.
+ *
+ * Longer per attempt, fewer attempts, so the worst case is bounded at roughly the
+ * same place while a single attempt now has room to finish.
+ */
+export const ANALYSIS_REQUEST = { timeout: 180_000, maxRetries: 1 } as const;
+
 export async function callModel(params: CallParams): Promise<ModelResponse> {
   if (config.mockModel) {
     return await mockRespond(params);
