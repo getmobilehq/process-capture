@@ -1034,3 +1034,12 @@ decision, why it is the minimal option (§10).
   gateways clearing each other by the row gap still had their questions overlapping.
   Layout now stacks on a footprint that includes the label; the DI still emits a
   square diamond, because a stretched one would be wrong BPMN.
+- **DL.134 · Badges scale down with the canvas; only the upper bound is clamped** —
+  DL.132 clamped the lower bound at 0.75 on the reasoning that a badge should stay
+  legible. Rendered against a real nineteen-step process, that was plainly wrong: it
+  fits at about 0.29, so a 22px badge held at 0.75 covered a third of the activity it
+  annotated and hid the text underneath — the badges became the diagram. A badge is
+  an annotation, not a label: at a zoom where the step cannot be read there is
+  nothing to annotate, and a small dot saying "something is here" is the right amount
+  of presence. Recorded because the first version was reasoned rather than looked at,
+  and looking at it took one render.

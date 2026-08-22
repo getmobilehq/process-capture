@@ -23,11 +23,19 @@ import type { Annotation, Change, ProcessGraph } from '@/lib/graph/schema';
  * facet citation — the diagram stays readable and the evidence stays one tap away.
  */
 /**
- * Badges are HTML overlays, so without bounds they scale linearly with the canvas:
- * illegible at the zoom a long process fits at, and dominating the shapes at the
- * zoom you actually read it at. Clamped, they stay proportionate at both ends.
+ * Badges scale with the canvas, with only an upper bound.
+ *
+ * A first attempt clamped the *lower* bound at 0.75, on the reasoning that a badge
+ * should stay legible. Rendered, that was plainly wrong: a long process fits at
+ * about 0.29, so a 22px badge held at 0.75 covered a third of the activity it was
+ * annotating and hid the text underneath. The badges became the diagram.
+ *
+ * A badge is an annotation, not a label — at a zoom where the step itself cannot be
+ * read there is nothing for it to annotate, and a small dot saying "there is
+ * something here" is the correct amount of presence. The upper bound stops it
+ * ballooning when someone zooms right in.
  */
-const BADGE_SCALE = { min: 0.75, max: 1.4 };
+const BADGE_SCALE = { min: 0.2, max: 1.2 };
 
 /** Below this, a diagram is present but not readable — see `fitReadable`. */
 const READABLE_SCALE = 0.55;
