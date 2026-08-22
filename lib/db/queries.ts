@@ -848,7 +848,7 @@ export async function markDraftSubmitted(sessionId: string, seq: number, db: DB 
 export async function getProcessGraph(
   sessionId: string,
   specVersion: number,
-  kind: 'asis' | 'tobe' | 'opportunity',
+  kind: 'asis' | 'tobe' | 'opportunity' | 'autonomy',
   db: DB = getDb(),
 ) {
   return db
@@ -874,7 +874,7 @@ export async function saveProcessGraph(
   input: {
     sessionId: string;
     specVersion: number;
-    kind: 'asis' | 'tobe' | 'opportunity';
+    kind: 'asis' | 'tobe' | 'opportunity' | 'autonomy';
     graph: unknown;
     changeSet?: unknown;
   },
@@ -904,7 +904,7 @@ export async function saveDiagramLayout(
   input: {
     sessionId: string;
     specVersion: number;
-    kind: 'asis' | 'tobe' | 'opportunity';
+    kind: 'asis' | 'tobe' | 'opportunity' | 'autonomy';
     diagramXml: string | null;
   },
   db: DB = getDb(),
@@ -927,7 +927,7 @@ export async function saveDiagramLayout(
 export async function deleteProcessGraph(
   sessionId: string,
   specVersion: number,
-  kind: 'asis' | 'tobe' | 'opportunity',
+  kind: 'asis' | 'tobe' | 'opportunity' | 'autonomy',
   db: DB = getDb(),
 ) {
   return db

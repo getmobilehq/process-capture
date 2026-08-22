@@ -956,3 +956,30 @@ decision, why it is the minimal option (§10).
   file now says so, and names the alternative (Identity-Aware Proxy) as a change of
   design rather than a configuration flag — so the question gets asked before a
   migration date is booked rather than during it.
+- **DL.120 · Autonomy levels are a separate classification, not a relabelling of
+  R5.5** — L0–L3 is a finer instrument than automatable / assistable /
+  human-required, and it is deliberately assessed fresh rather than derived.
+  "Automatable" does not say whether anyone checks the result afterwards, and that
+  is precisely the L3/L2 distinction — the one a stakeholder needs, because it
+  decides whether a control disappears or merely moves. The R5.5 rules carry over
+  unchanged: no confident level without a cited facet, `unassessed` must say what is
+  missing, and the server refuses rather than accepting a plausible answer.
+- **DL.121 · L0 is a destination, not a failure** — "human only, by nature or by
+  design" is worded that way on purpose. Some work should stay human — an apology, a
+  judgement about a person — and a scale that treats every L0 as a gap to be closed
+  is one nobody in the business will trust, which makes the whole assessment easier
+  to dismiss.
+- **DL.122 · The swimlane is hand-rolled SVG, not the BPMN canvas** — Different
+  artefact, different reader: one page, printable, for people who will never open
+  the tool. Plain SVG prints at any size without rasterising, needs no library (P6),
+  and makes the layout a pure function of the data — the same process gives the same
+  picture every time, which a diagram in a board pack has to. Each step carries its
+  level as text as well as colour, so it survives being printed in black and white.
+- **DL.123 · PDF is the browser's print dialogue, not a PDF library** — A print
+  stylesheet plus `window.print()` produces a real vector PDF and adds no dependency.
+  A client-side PDF library would have added weight to produce something worse.
+- **DL.124 · The scale lives in a module with no dependencies** — `autonomy.ts`
+  reaches the model, so it imports the Anthropic SDK and the server config. A client
+  component importing the level colours from it would have pulled all of that into
+  the browser bundle, which is what the build flagged. `autonomy-levels.ts` holds the
+  scale and imports nothing.

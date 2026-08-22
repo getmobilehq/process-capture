@@ -328,7 +328,7 @@ export const processGraphs = pgTable(
       .references(() => sessions.id),
     /** The spec version this graph was extracted from — a new spec, a new graph. */
     specVersion: integer('spec_version').notNull(),
-    kind: text('kind', { enum: ['asis', 'tobe', 'opportunity'] }).notNull(),
+    kind: text('kind', { enum: ['asis', 'tobe', 'opportunity', 'autonomy'] }).notNull(),
     graph: jsonb('graph').notNull().$type<unknown>(),
     /**
      * For a to-be graph: the change-set it was derived from (R5.4).

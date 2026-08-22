@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { ProcessMap } from './ProcessMap';
 import { AutomationAssessment } from './AutomationAssessment';
+import { AutonomyReport, type AutonomyView } from './AutonomyReport';
 import { SpecView } from './SpecView';
 import { ChangeReview, type ReviewState } from './ChangeReview';
 import type { Change, ProcessGraph } from '@/lib/graph/schema';
@@ -17,7 +18,7 @@ import type { Change, ProcessGraph } from '@/lib/graph/schema';
  * To-be and Opportunities are declared but not built — showing the tabs disabled
  * is more honest than hiding them, since the delta specifies all three sub-views.
  */
-type Tab = 'spec' | 'map' | 'tobe' | 'opps' | 'assess';
+type Tab = 'spec' | 'map' | 'tobe' | 'opps' | 'assess' | 'levels';
 
 interface ToBe {
   graph: ProcessGraph;
@@ -53,6 +54,7 @@ export function SpecDetail({
   const [map, setMap] = useState<{ graph: ProcessGraph; xml: string; adjusted?: boolean } | null>(null);
   const [tobe, setTobe] = useState<ToBe | null>(null);
   const [assess, setAssess] = useState<{ assessment: never; processName: string } | null>(null);
+  const [levels, setLevels] = useState<AutonomyView | null>(null);
   const [opps, setOpps] = useState<{
     opportunities: { classifications: { activityId: string; label: string; rationale: string; evidence: number[] }[] };
     summary: { automatable: number; assistable: number; humanRequired: number; unclassified: number; total: number };
@@ -208,6 +210,28 @@ export function SpecDetail({
       setAssess(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'The assessment could not be produced.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  /** Levels attach to the as-is steps, so that map must exist first. */
+  async function runLevels() {
+    if (levels || loading) return;
+    if (!(map ?? (await drawMap()))) return;
+    setLoading(true);
+    setError(null);
+    setDetails([]);
+    try {
+      const res = await fetch(`/api/spec/${sessionId}/autonomy`, { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setDetails(Array.isArray(data.details) ? data.details : []);
+        throw new Error(data.error ?? 'The autonomy assessment could not be produced.');
+      }
+      setLevels(data as AutonomyView);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'The autonomy assessment could not be produced.');
     } finally {
       setLoading(false);
     }
@@ -378,6 +402,21 @@ export function SpecDetail({
             Automation assessment
           </button>
         )}
+        {toBeEnabled && (
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'levels'}
+            className={`pc-tab ${tab === 'levels' ? 'active' : ''}`}
+            onClick={() => {
+              setTab('levels');
+              void runLevels();
+            }}
+            title="How far each step could run without a person"
+          >
+            Autonomy levels
+          </button>
+        )}
       </nav>
 
       {tab === 'spec' && (
@@ -441,6 +480,25 @@ export function SpecDetail({
               />
             </>
           )}
+        </div>
+      )}
+
+      {tab === 'levels' && (
+        <div>
+          {loading && <p className="pc-map-status">Placing each step on the scale…</p>}
+          {error && (
+            <div className="pc-card" style={{ padding: 'var(--space-6)' }}>
+              <p style={{ marginTop: 0, color: 'var(--vm-red)', fontWeight: 700 }}>{error}</p>
+              {details.length > 0 && (
+                <ul className="t-body-s">
+                  {details.map((d) => (
+                    <li key={d}>{d}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+          {levels && <AutonomyReport view={levels} />}
         </div>
       )}
 
