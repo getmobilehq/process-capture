@@ -49,7 +49,11 @@ describe('shared rate limiting (SDD I-1)', () => {
 
   it('starts a fresh window once the old one has passed', async () => {
     const { db } = await makeTestDb();
-    const fast = { limit: 2, windowMs: 1000 };
+    // 600ms window, waited out with 500ms to spare. The first version allowed
+    // 100ms of margin and failed under full-suite load — a timing test that is
+    // only sometimes right is worse than none, because it teaches people to
+    // re-run rather than read.
+    const fast = { limit: 2, windowMs: 600 };
     await rateLimit('k', fast, db);
     await rateLimit('k', fast, db);
     expect((await rateLimit('k', fast, db)).allowed).toBe(false);
@@ -71,7 +75,7 @@ describe('shared rate limiting (SDD I-1)', () => {
   it('prunes windows that have passed, and leaves live ones alone', async () => {
     const { db } = await makeTestDb();
     await rateLimit('live', { limit: 5, windowMs: 60_000 }, db);
-    await rateLimit('dead', { limit: 5, windowMs: 1000 }, db);
+    await rateLimit('dead', { limit: 5, windowMs: 600 }, db);
     await new Promise((r) => setTimeout(r, 1100));
 
     expect(await pruneRateLimits(db)).toBe(1);

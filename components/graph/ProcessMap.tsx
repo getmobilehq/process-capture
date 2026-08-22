@@ -22,6 +22,16 @@ import type { Annotation, Change, ProcessGraph } from '@/lib/graph/schema';
  * BPMN text annotations, so clicking one can open the evidence panel with its
  * facet citation — the diagram stays readable and the evidence stays one tap away.
  */
+/**
+ * Badges are HTML overlays, so without bounds they scale linearly with the canvas:
+ * illegible at the zoom a long process fits at, and dominating the shapes at the
+ * zoom you actually read it at. Clamped, they stay proportionate at both ends.
+ */
+const BADGE_SCALE = { min: 0.75, max: 1.4 };
+
+/** Below this, a diagram is present but not readable — see `fitReadable`. */
+const READABLE_SCALE = 0.55;
+
 const KIND_LABEL: Record<Annotation['kind'], string> = {
   bottleneck: 'Bottleneck',
   risk: 'Risk',
@@ -137,7 +147,7 @@ export function ProcessMap({
               e.stopPropagation();
               setChange(change);
             });
-            overlays.add(safe, { position: { top: -12, left: -12 }, html: badge });
+            overlays.add(safe, { position: { top: -12, left: -12 }, html: badge, scale: BADGE_SCALE });
           }
         }
 
@@ -156,7 +166,7 @@ export function ProcessMap({
               e.stopPropagation();
               setOpp({ id, ...o });
             });
-            overlays.add(safe, { position: { bottom: -10, left: 10 }, html: badge });
+            overlays.add(safe, { position: { bottom: -10, left: 10 }, html: badge, scale: BADGE_SCALE });
           }
         }
 
@@ -172,7 +182,7 @@ export function ProcessMap({
             e.stopPropagation();
             setSelected(a);
           });
-          overlays.add(targetId, { position: { top: -12, right: 12 }, html: badge });
+          overlays.add(targetId, { position: { top: -12, right: 12 }, html: badge, scale: BADGE_SCALE });
         }
 
         setReady(true);
@@ -271,10 +281,30 @@ export function ProcessMap({
     c.zoom(Math.max(0.2, Math.min(4, c.viewbox().scale * (direction === 1 ? 1.25 : 0.8))));
   }
 
+  /**
+   * Fit, but never past the point of being readable.
+   *
+   * `fit-viewport` on a nineteen-step process yields about 0.4 — the whole diagram
+   * is on screen and none of it can be read, which is what "everything collapses"
+   * looks like. Where fitting would go below that, hold a readable zoom and put
+   * the start of the process under the reader instead, so they pan through it
+   * rather than squint at all of it. Fitting is right when it produces something
+   * worth looking at, and only then.
+   */
   const fit = useCallback(() => {
-    (
-      viewerRef.current?.get('canvas') as { zoom: (a: string, b?: string) => void } | undefined
-    )?.zoom('fit-viewport', 'auto');
+    const c = viewerRef.current?.get('canvas') as
+      | {
+          zoom: (a: string | number, b?: string | { x: number; y: number }) => void;
+          viewbox: () => { scale: number; inner: { x: number; y: number; height: number } };
+        }
+      | undefined;
+    if (!c) return;
+
+    c.zoom('fit-viewport', 'auto');
+    const { scale, inner } = c.viewbox();
+    if (scale >= READABLE_SCALE) return;
+
+    c.zoom(READABLE_SCALE, { x: inner.x + 40, y: inner.y + inner.height / 2 });
   }, []);
 
   /**
@@ -302,10 +332,23 @@ export function ProcessMap({
   useEffect(() => {
     function onChange() {
       setFull(Boolean(document.fullscreenElement));
-      setTimeout(fit, 60);
+      // Twice, deliberately: the first refit catches the common case, the second
+      // covers browsers that report the change before the viewport has finished
+      // resizing — refitting against the old size is how a diagram ends up sitting
+      // in the corner of a large black rectangle.
+      setTimeout(fit, 80);
+      setTimeout(fit, 400);
     }
     document.addEventListener('fullscreenchange', onChange);
-    return () => document.removeEventListener('fullscreenchange', onChange);
+
+    // The stage also changes size on rotate and on a window resize.
+    const onResize = () => setTimeout(fit, 120);
+    window.addEventListener('resize', onResize);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', onChange);
+      window.removeEventListener('resize', onResize);
+    };
   }, [fit]);
 
   return (

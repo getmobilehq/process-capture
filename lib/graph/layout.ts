@@ -90,6 +90,27 @@ function sizeOf(graph: ProcessGraph, id: string): { width: number; height: numbe
 }
 
 /**
+ * How much vertical room a node needs, which is not the same as how big it is.
+ *
+ * A gateway is a 50px diamond, but its name renders *below* the shape — so two
+ * stacked gateways whose boxes clear each other by the row gap still have their
+ * labels overlapping, and a long question spills into whatever sits underneath.
+ * Layout reserves the label; the DI still emits a square diamond, because a
+ * stretched one would be wrong BPMN.
+ */
+function footprintOf(graph: ProcessGraph, id: string): { width: number; height: number } {
+  const size = sizeOf(graph, id);
+  const isShapeWithOuterLabel =
+    graph.gateways.some((g) => g.id === id) || graph.events.some((e) => e.id === id);
+  if (!isShapeWithOuterLabel) return size;
+
+  const name = nameOf(graph, id);
+  if (!name) return size;
+  const lines = Math.min(5, Math.max(1, Math.ceil(name.length / 16)));
+  return { width: size.width, height: size.height + lines * 12 + 8 };
+}
+
+/**
  * Longest-path layering. Cycles cannot extend a layer (a node never sits right of
  * itself), so a loop back to an earlier step degrades to a long edge rather than
  * hanging — process graphs legitimately contain rework loops.
@@ -145,7 +166,11 @@ export function layoutGraph(graph: ProcessGraph): LayoutResult {
   const fallbackLane = laneOrder[0];
 
   const sizes = new Map<string, { width: number; height: number }>();
-  for (const id of layer.keys()) sizes.set(id, sizeOf(graph, id));
+  const footprints = new Map<string, { width: number; height: number }>();
+  for (const id of layer.keys()) {
+    sizes.set(id, sizeOf(graph, id));
+    footprints.set(id, footprintOf(graph, id));
+  }
 
   // ── Columns ────────────────────────────────────────────────────────────────
   const maxLayer = Math.max(0, ...[...layer.values()]);
@@ -178,7 +203,7 @@ export function layoutGraph(graph: ProcessGraph): LayoutResult {
     for (let l = 0; l <= maxLayer; l += 1) {
       const stack = seats.get(`${laneId}:${l}`) ?? [];
       const h =
-        stack.reduce((sum, id) => sum + sizes.get(id)!.height, 0) +
+        stack.reduce((sum, id) => sum + footprints.get(id)!.height, 0) +
         Math.max(0, stack.length - 1) * ROW_GAP;
       tallest = Math.max(tallest, h);
     }
@@ -202,21 +227,24 @@ export function layoutGraph(graph: ProcessGraph): LayoutResult {
     const height = laneHeight.get(laneId)!;
 
     const stackH =
-      stack.reduce((sum, id) => sum + sizes.get(id)!.height, 0) +
+      stack.reduce((sum, id) => sum + footprints.get(id)!.height, 0) +
       Math.max(0, stack.length - 1) * ROW_GAP;
     let top = band + (height - stackH) / 2;
 
     for (const id of stack) {
       const size = sizes.get(id)!;
+      const foot = footprints.get(id)!;
       const l = layer.get(id)!;
       nodes.set(id, {
         id,
         x: colX[l] + (colWidth[l] - size.width) / 2,
+        // The shape sits at the top of its footprint; the space below is the
+        // label's, which the renderer will fill.
         y: top,
         width: size.width,
         height: size.height,
       });
-      top += size.height + ROW_GAP;
+      top += foot.height + ROW_GAP;
     }
   }
 

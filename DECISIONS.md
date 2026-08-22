@@ -1019,3 +1019,18 @@ decision, why it is the minimal option (§10).
   condition labels live. At 60 there was nowhere for them to go but on top of the
   boxes either side, so the placement above would have had to give up more often
   than not.
+- **DL.131 · Fitting stops at a readable scale** — `fit-viewport` on a nineteen-step
+  process yields about 0.4: the whole diagram on screen and none of it legible,
+  which is what "everything collapses" looks like from the reader's side. Where
+  fitting would go below 0.55, the map holds a readable zoom and puts the start of
+  the process under the reader instead, so they pan through it rather than squint at
+  all of it. Fitting is right when it produces something worth looking at.
+- **DL.132 · Badge overlays are scale-clamped** — They are HTML, so without bounds
+  they scale linearly with the canvas: illegible at the zoom a long process fits at,
+  and dominating the shapes at the zoom you actually read it at. Clamped to
+  0.75–1.4 they stay proportionate at both ends.
+- **DL.133 · Layout reserves the label space beneath a gateway, the DI does not** —
+  A gateway is a 50px diamond whose name renders *below* it, so two stacked
+  gateways clearing each other by the row gap still had their questions overlapping.
+  Layout now stacks on a footprint that includes the label; the DI still emits a
+  square diamond, because a stretched one would be wrong BPMN.
