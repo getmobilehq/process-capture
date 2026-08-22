@@ -54,6 +54,26 @@ export interface BpmnOptions {
   includeAnnotations?: boolean;
 }
 
+/**
+ * The short form of a condition, for the diagram only.
+ *
+ * Extracted conditions read like sentences — "Credit £500–£2,000 — Operations
+ * Manager pathway" — because that is how someone describes a rule out loud. On a
+ * diagram they are edge labels, and edge labels are conventionally two or three
+ * words: the branch, not the reasoning. Long ones wrap to four lines each and
+ * three of them leaving one gateway will collide however carefully they are
+ * placed, because there is genuinely not room.
+ *
+ * So the label carries the discriminator and the full text stays in the graph,
+ * where the evidence panel and the export can show it. Splitting on the em-dash
+ * is not a guess: it is how the extractor phrases these, "answer — because".
+ */
+const shortCondition = (text: string): string => {
+  const head = text.split(/\s+[—–-]\s+/)[0].trim();
+  const candidate = head.length >= 2 && head.length <= 28 ? head : text.trim();
+  return candidate.length <= 28 ? candidate : `${candidate.slice(0, 27).trimEnd()}…`;
+};
+
 export function toBpmnXml(graph: ProcessGraph, opts: BpmnOptions = {}): string {
   const layout = layoutGraph(graph);
   const pid = xmlId(`Process_${graph.processId}`);
@@ -122,7 +142,7 @@ export function toBpmnXml(graph: ProcessGraph, opts: BpmnOptions = {}): string {
       (f) =>
         `    <bpmn:sequenceFlow id="${xmlId(f.id)}" sourceRef="${xmlId(f.from)}" targetRef="${xmlId(
           f.to,
-        )}"${f.condition ? ` name="${esc(f.condition)}"` : ''} />`,
+        )}"${f.condition ? ` name="${esc(shortCondition(f.condition))}"` : ''} />`,
     )
     .join('\n');
 
@@ -170,8 +190,18 @@ export function toBpmnXml(graph: ProcessGraph, opts: BpmnOptions = {}): string {
   //
   // So: reserve a rectangle per label, and nudge it clear of everything already
   // reserved. Deterministic, so the same graph places labels the same way twice.
-  const LABEL_W = 96;
-  const LABEL_H = 16;
+  // Sized from the text, not assumed. Conditions on a real process run to fifty
+  // characters — "Credit £500–£2,000 — Operations Manager pathway" — which wraps to
+  // four lines. Reserving a single line meant every one of them overlapped by three
+  // times its own height, which is the overlap that survived the first two fixes.
+  const LABEL_W = 132;
+  // 12, not 19. The renderer wraps narrower than the bounds suggest, so a label
+  // measured as one line arrives as two and sits on its neighbour. Under-estimating
+  // costs a little empty space; over-estimating costs a collision.
+  const CHARS_PER_LINE = 12;
+  const LABEL_LINE_H = 13;
+  const labelHeight = (text: string) =>
+    Math.max(1, Math.min(6, Math.ceil(text.length / CHARS_PER_LINE))) * LABEL_LINE_H + 4;
   const placed: { x: number; y: number; width: number; height: number }[] = [
     ...[...layout.nodes.values()].map((b) => ({ x: b.x, y: b.y, width: b.width, height: b.height })),
   ];
@@ -196,17 +226,26 @@ export function toBpmnXml(graph: ProcessGraph, opts: BpmnOptions = {}): string {
     b: { x: number; y: number; width: number; height: number },
   ) => a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
 
-  function placeLabel(x: number, y: number) {
-    // Try just above the line first, then step away in both directions. Bounded,
-    // because a label that cannot find space is better slightly off than looped for.
-    for (const dy of [-20, -38, -56, 14, 32, 50, -74, 68]) {
-      const rect = { x: x - LABEL_W / 2, y: y + dy - LABEL_H / 2, width: LABEL_W, height: LABEL_H };
-      if (!placed.some((p) => overlaps(rect, p))) {
-        placed.push(rect);
-        return rect;
+  function placeLabel(x: number, y: number, text: string) {
+    const h = labelHeight(text);
+
+    // Search along the flow as well as across it. Trying only vertical offsets put
+    // every label from one decision in a single column, so they ran out of room and
+    // stacked; stepping right lets a fan of conditions spread along their edges,
+    // which is also where a reader looks for them.
+    for (const dx of [0, 30, 60, -26, 90]) {
+      for (const dy of [-(h / 2 + 14), h / 2 + 14, -(h + 30), h + 30, -(h * 1.6 + 40), h * 1.6 + 40]) {
+        const rect = { x: x + dx - LABEL_W / 2, y: y + dy - h / 2, width: LABEL_W, height: h };
+        if (!placed.some((p) => overlaps(rect, p))) {
+          placed.push(rect);
+          return rect;
+        }
       }
     }
-    const fallback = { x: x - LABEL_W / 2, y: y - 20 - LABEL_H / 2, width: LABEL_W, height: LABEL_H };
+
+    // Nowhere clear. Park it well below rather than on top of something — a label
+    // slightly adrift can be read; one printed over a box cannot.
+    const fallback = { x: x - LABEL_W / 2, y: y + 120, width: LABEL_W, height: h };
     placed.push(fallback);
     return fallback;
   }
@@ -228,7 +267,7 @@ export function toBpmnXml(graph: ProcessGraph, opts: BpmnOptions = {}): string {
       // diagram away from the choice it describes.
       let label = '';
       if (f.condition) {
-        const r = placeLabel(x1 + 34, y1);
+        const r = placeLabel(x1 + 40, y1, shortCondition(f.condition));
         label = `\n        <bpmndi:BPMNLabel>\n          <dc:Bounds x="${Math.round(
           r.x,
         )}" y="${Math.round(r.y)}" width="${r.width}" height="${r.height}" />\n        </bpmndi:BPMNLabel>`;

@@ -1043,3 +1043,19 @@ decision, why it is the minimal option (§10).
   nothing to annotate, and a small dot saying "something is here" is the right amount
   of presence. Recorded because the first version was reasoned rather than looked at,
   and looking at it took one render.
+- **DL.135 · Condition labels are shortened for the diagram, not for the record** —
+  Extracted conditions read like sentences — "Credit £500–£2,000 — Operations Manager
+  pathway" — because that is how a person describes a rule out loud. As BPMN edge
+  labels they are wrong: labels there are conventionally two or three words, the
+  branch rather than the reasoning. Three fifty-character conditions leaving one
+  gateway collide however carefully they are placed, because there is genuinely not
+  room. The label now carries the discriminator ("Credit £500–£2,000", "Yes", "No")
+  and the full text stays in the graph for the evidence panel and the export.
+  Splitting on the em-dash is not a guess — it is how the extractor phrases them,
+  "answer — because".
+- **DL.136 · Label boxes are measured from their text, and the estimate errs narrow**
+  — A fixed one-line reservation meant every wrapped label overlapped by three times
+  its own height. Height now follows the character count at twelve per line, which is
+  narrower than the bounds imply: the renderer wraps tighter than the box suggests,
+  so a label measured as one line arrives as two and sits on its neighbour.
+  Under-estimating costs a little empty space, over-estimating costs a collision.
