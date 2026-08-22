@@ -19,3 +19,7 @@ transcribe_fallback = false
 # See the note in variables.tf before changing these.
 # max_instances  = 3
 # retention_days = 365
+
+# Uptime and budget alerts. Leave empty and nothing is created — the deployment
+# works, it simply tells nobody when it stops answering.
+alert_email = ""

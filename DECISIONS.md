@@ -1059,3 +1059,23 @@ decision, why it is the minimal option (§10).
   narrower than the bounds imply: the renderer wraps tighter than the box suggests,
   so a label measured as one line arrives as two and sits on its neighbour.
   Under-estimating costs a little empty space, over-estimating costs a collision.
+- **DL.137 · Boot migrations take an advisory lock, resolving the contradiction
+  DL.93 introduced** — Raising `max_instances` from 1 to 3 made concurrent boot
+  migrations possible, and Drizzle's migrator takes no lock of its own. This was not
+  theoretical: five migrators against an empty database produced one success and
+  four duplicate-key failures. A Postgres advisory lock serialises them — whoever
+  arrives first migrates, the rest wait and find nothing to do. A lock rather than a
+  one-shot job, because a job must be sequenced ahead of every deploy by whatever
+  runs the deploy, and a step that must be remembered is a step that will eventually
+  be forgotten. `lock_timeout` is bounded so a lock left by a killed container
+  cannot hang every boot that follows, and a timeout fails the start rather than
+  proceeding: a server without its schema serves 500s and reads like an application
+  bug.
+- **DL.138 · An uptime check, because probes tell Cloud Run and not a person** —
+  Startup and liveness probes restart a container; they notify nobody. With
+  interviews running twenty-five to forty minutes, the realistic failure is silence:
+  the service is down, an informant gives up, and it surfaces when someone asks how
+  the pilot went. The check polls `/health` from three regions and alerts after two
+  consecutive failures rather than one — an alert that cries wolf is an alert people
+  stop reading. Alerting is off unless `alert_email` is set, so a deployment without
+  it still works and simply tells nobody.

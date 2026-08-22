@@ -2,9 +2,18 @@
 // Uses only production dependencies (postgres + drizzle-orm).
 //
 // The container runs this before starting the server, so a fresh deployment
-// creates its own tables. That is safe because the service is pinned to a single
-// instance (DL.57) — two containers migrating concurrently would race, so if
-// max-instances is ever raised this must move to a one-shot Cloud Run Job.
+// creates its own tables.
+//
+// More than one instance may boot at once — max-instances is no longer pinned to
+// 1 — and Drizzle's migrator takes no lock of its own, so two containers running
+// this together would race on the same journal. A Postgres advisory lock
+// serialises them: whoever arrives first migrates, the others wait and then find
+// nothing to do, because applying migrations is idempotent.
+//
+// A lock rather than a one-shot job: a job would have to be sequenced ahead of
+// every deploy by whatever runs the deploy, and a step that must be remembered is
+// a step that will eventually be forgotten. This holds wherever the container is
+// started from.
 import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
@@ -32,9 +41,22 @@ const sql = postgres(url, {
   onnotice: () => {},
 });
 
+// Any constant works as long as every instance uses the same one.
+const MIGRATION_LOCK = 4_297_113_001;
+
 try {
-  await migrate(drizzle(sql), { migrationsFolder: './drizzle' });
-  console.log('Migrations applied.');
+  // Bounded, so a lock left behind by a killed container cannot hang every boot
+  // that follows. On timeout we fail rather than proceed: starting without the
+  // schema serves 500s on every request and reads like an application bug.
+  await sql`set lock_timeout = '120s'`;
+  await sql`select pg_advisory_lock(${MIGRATION_LOCK})`;
+
+  try {
+    await migrate(drizzle(sql), { migrationsFolder: './drizzle' });
+    console.log('Migrations applied.');
+  } finally {
+    await sql`select pg_advisory_unlock(${MIGRATION_LOCK})`;
+  }
 } catch (err) {
   // Fail loudly and refuse to start. A server that boots without its tables
   // serves 500s on every request and reads like an application bug.

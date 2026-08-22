@@ -13,6 +13,7 @@ resource "google_project_service" "required" {
     "compute.googleapis.com",
     "vpcaccess.googleapis.com",
     "aiplatform.googleapis.com",
+    "monitoring.googleapis.com",
   ])
 
   service            = each.value
