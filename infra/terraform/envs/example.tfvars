@@ -3,7 +3,6 @@
 #
 # Secrets are never here — pass them as environment variables:
 #   export TF_VAR_db_password="$(openssl rand -base64 24)"
-#   export TF_VAR_retention_token="$(openssl rand -hex 32)"
 
 project_id = "your-gcp-project"
 region     = "europe-west2"
@@ -23,3 +22,19 @@ transcribe_fallback = false
 # Uptime and budget alerts. Leave empty and nothing is created — the deployment
 # works, it simply tells nobody when it stops answering.
 alert_email = ""
+
+# Anyone here may also trigger the retention sweep by hand, on top of the
+# scheduler. Addresses, not secrets — a Google-signed token is still required.
+# retention_callers = ["you@example.com"]
+
+# ── Deploying into an organisation's project ────────────────────────────────
+# Defaults assume the auto-created `default` VPC and a project that permits
+# public services. Where that is not true, see README §"Deploying into an
+# organisation's project" — these are the switches, none of which changes the app.
+# network                        = "shared-vpc-prod"
+# subnetwork                     = "magpie-euw2"
+# network_project_id             = "host-project-id"
+# manage_private_services_access = false
+# manage_apis                    = false
+# allow_public_access            = false
+# ingress                        = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"

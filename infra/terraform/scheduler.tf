@@ -1,9 +1,10 @@
 # The nightly retention sweep (SDD issue I-2). Without this, RETENTION_DAYS is a
 # number nothing acts on and interview content is kept forever.
 #
-# The endpoint returns 404 unless RETENTION_TOKEN is set on the service, so this
-# job is inert until the secret has a version. That is the intended order: create
-# the infrastructure, run the sweep by hand in report mode, then let it run.
+# The endpoint returns 404 unless RETENTION_CALLERS is set on the service, and 401
+# unless the OIDC token below names one of them. Nothing shared is sent: the
+# scheduler proves who it is, and the service decides whether that identity may
+# delete interview content.
 resource "google_cloud_scheduler_job" "retention" {
   name        = "${var.name}-retention"
   region      = var.region
@@ -23,10 +24,6 @@ resource "google_cloud_scheduler_job" "retention" {
 
     headers = {
       "Content-Type" = "application/json"
-      # NOT Authorization — the OIDC token below occupies that header. OIDC says
-      # "this really is the scheduler"; the token says "and it is allowed to do
-      # this". Either alone would do less.
-      "X-Retention-Token" = var.retention_token
     }
 
     oidc_token {

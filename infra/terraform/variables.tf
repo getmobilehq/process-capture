@@ -39,16 +39,22 @@ variable "db_password" {
   sensitive   = true
 }
 
-variable "retention_token" {
+variable "retention_callers" {
   description = <<-EOT
-    Shared token the retention sweep must present. Supply it out of band:
-      export TF_VAR_retention_token="$(openssl rand -hex 32)"
+    Extra identities allowed to trigger the retention sweep by hand, on top of the
+    scheduler's own service account, which is always permitted.
 
-    Terraform holds this because the scheduler job has to send it, so it is in
-    state alongside db_password — see the backend note in versions.tf.
+    Addresses, not secrets: possessing one grants nothing without a Google-signed
+    token for it. To run the sweep as yourself, add your address here and call it
+    with an identity token minted for this service:
+
+      curl -X POST "$URL/api/admin/retention?dryRun=1" \
+        -H "Authorization: Bearer $(gcloud auth print-identity-token --audiences=$URL)"
+
+    Empty is the safe default and leaves only the scheduler able to run it.
   EOT
-  type        = string
-  sensitive   = true
+  type        = list(string)
+  default     = []
 }
 
 variable "db_tier" {
@@ -145,4 +151,94 @@ variable "labels" {
   description = "Labels applied to every resource that accepts them."
   type        = map(string)
   default     = { app = "magpie", managed-by = "terraform" }
+}
+
+# ── Where it plugs into the network ─────────────────────────────────────────
+# Defaults describe a project with the auto-created `default` VPC, which is what
+# a fresh project has and what the proving environment uses. A corporate project
+# usually has neither: `compute.skipDefaultNetworkCreation` is a common org
+# policy, and the project is attached to a Shared VPC owned by a platform team.
+# These exist so that difference is a tfvars file rather than a fork.
+
+variable "network" {
+  description = "VPC network name for the database peering and Cloud Run egress."
+  type        = string
+  default     = "default"
+}
+
+variable "subnetwork" {
+  description = "Subnetwork in `region`. Direct VPC egress attaches to a subnet, not a network."
+  type        = string
+  default     = "default"
+}
+
+variable "network_project_id" {
+  description = <<-EOT
+    Project that owns the network, when it is not this one — i.e. the Shared VPC
+    host project. Empty means the network lives in `project_id`.
+  EOT
+  type        = string
+  default     = ""
+}
+
+variable "manage_private_services_access" {
+  description = <<-EOT
+    Create the peering that gives Cloud SQL a private address. True on a project
+    you control. FALSE on a Shared VPC: private services access is configured once
+    on the host project by the team that owns it, and a second attempt from here
+    both fails and is the wrong place to ask.
+  EOT
+  type        = bool
+  default     = true
+}
+
+variable "manage_apis" {
+  description = <<-EOT
+    Enable the required Google APIs. Set false where a platform team enables APIs
+    centrally and the deploying identity has no serviceusage rights — Terraform
+    then assumes they are already on and fails plainly if they are not.
+  EOT
+  type        = bool
+  default     = true
+}
+
+# ── How it is reached ───────────────────────────────────────────────────────
+
+variable "ingress" {
+  description = <<-EOT
+    Cloud Run ingress. INGRESS_TRAFFIC_ALL is required for informants to open a
+    tokenised link directly. Where an organisation refuses public services, set
+    INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER and put a load balancer with IAP in
+    front — the app is unchanged, but the invite links must then resolve to it.
+  EOT
+  type        = string
+  default     = "INGRESS_TRAFFIC_ALL"
+}
+
+variable "allow_public_access" {
+  description = <<-EOT
+    Grant roles/run.invoker to allUsers. The interview face is opened from a
+    tokenised link by people with no Google account, so authorisation is the token
+    and the console password, not IAM.
+
+    Set false where `iam.allowedPolicyMemberDomains` forbids allUsers — which is
+    the norm in a large organisation. The service then answers only callers the
+    fronting load balancer authenticates, and that must be in place first or the
+    deployment is unreachable, including by you.
+  EOT
+  type        = bool
+  default     = true
+}
+
+variable "vertex_least_privilege" {
+  description = <<-EOT
+    Grant a custom role carrying only aiplatform.endpoints.predict rather than
+    roles/aiplatform.user, which also permits creating datasets, training jobs and
+    endpoints. Transcription only predicts.
+
+    Set false if a policy forbids custom roles, or to fall back quickly should a
+    future Vertex call need a permission the narrow role lacks.
+  EOT
+  type        = bool
+  default     = true
 }

@@ -47,13 +47,38 @@ Ask early. The answer determines the shape of the deployment:
   new project id, and everything below works as written.
 - **Refused** → the answer is **Identity-Aware Proxy**: informants sign in with
   their own account, the org policy is untouched, and the exception file is
-  deleted. It costs a global load balancer and a domain, and it removes the "no
-  account, no training" property the interview face was built around. It is a
-  change of design, not a configuration flag — budget for it rather than
-  discovering it on the day.
+  deleted. Set `allow_public_access = false` and
+  `ingress = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"`, and put the load balancer
+  in front **before** applying, or the service is unreachable including by you. It
+  costs a global load balancer and a domain, and it removes the "no account, no
+  training" property the interview face was built around. The switches exist, but
+  it is still a change of design rather than a configuration flag — budget for it
+  rather than discovering it on the day.
 
 If they can put the pilot behind their VPN instead, that is a third answer and a
 good one: drop `allUsers`, keep everything else.
+
+---
+
+## What a corporate project changes
+
+The configuration's defaults describe a project with the auto-created `default`
+VPC and an identity that may enable APIs. A fresh project looks like that; an
+organisation's project usually does not. None of this needs a fork — each is a
+variable — but each needs an answer from whoever runs the platform, and it is
+cheaper to ask now than at the apply.
+
+| Ask them | If the answer is not the default | Set |
+|---|---|---|
+| Does this project have its own VPC, or is it attached to a Shared VPC? | Shared VPC | `network`, `subnetwork`, `network_project_id`, and `manage_private_services_access = false` — the peering belongs to the host project and a second attempt from here fails |
+| Which subnet in `europe-west2` is allocated to this workload? | (there is always one) | `subnetwork` |
+| May the deploying identity enable APIs, or are they enabled centrally? | Centrally | `manage_apis = false` |
+| Is `iam.allowedPolicyMemberDomains` enforced? | Yes | see above — this is the one that can stop you |
+| Are custom IAM roles permitted? | No | `vertex_least_privilege = false`, falling back to `roles/aiplatform.user` |
+
+The Shared VPC case also needs `roles/compute.networkUser` on the subnet for this
+project's service accounts. That is a grant on *their* host project, so it is
+their action, not yours — which is exactly why it is worth asking before the day.
 
 ---
 
@@ -69,17 +94,20 @@ Get these three answers first. Each of them changes the plan:
 
 ### 2 · State bucket
 
-Terraform state contains the database password, the retention token and the
-session secret in cleartext. It belongs in the new project, not the old one.
+Terraform state contains the database password and the session secret in
+cleartext. It belongs in the new project, not the old one — and it is now made by
+Terraform rather than by hand, so the new bucket has versioning, uniform access
+and public access prevention without anyone having to remember them:
 
 ```bash
 export NEW=the-new-project-id
-export REGION=europe-west2
 
-gcloud storage buckets create gs://$NEW-tfstate \
-  --project=$NEW --location=$REGION --uniform-bucket-level-access
-gcloud storage buckets update gs://$NEW-tfstate --versioning
+cd infra/terraform/bootstrap
+tofu init && tofu apply -var project_id=$NEW
+cd ..
 ```
+
+It prints the two lines for `envs/vmo2.backend.hcl`.
 
 ### 3 · Environment files
 
@@ -101,7 +129,6 @@ registry before anything else:
 ```bash
 tofu init -backend-config=envs/vmo2.backend.hcl -reconfigure
 export TF_VAR_db_password="$(openssl rand -base64 24)"
-export TF_VAR_retention_token="$(openssl rand -hex 32)"
 
 tofu apply -var-file=envs/vmo2.tfvars -target=google_artifact_registry_repository.magpie
 ```
@@ -163,7 +190,8 @@ URL=$(tofu output -raw service_url)
 curl -s $URL/health
 open $URL/console
 
-curl -s -X POST -H "X-Retention-Token: $TF_VAR_retention_token" \
+curl -s -X POST \
+  -H "Authorization: Bearer $(gcloud auth print-identity-token --audiences=$URL)" \
   "$URL/api/admin/retention?dryRun=1"
 ```
 

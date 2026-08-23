@@ -53,23 +53,10 @@ resource "google_secret_manager_secret_version" "session_secret" {
   secret_data = random_password.session_secret.result
 }
 
-# The retention token is Terraform's because the scheduler job must send it; a
-# value only one side knows is no use to the other.
-resource "google_secret_manager_secret" "retention_token" {
-  secret_id = "${var.name}-retention-token"
-  labels    = var.labels
-
-  replication {
-    auto {}
-  }
-
-  depends_on = [google_project_service.required]
-}
-
-resource "google_secret_manager_secret_version" "retention_token" {
-  secret      = google_secret_manager_secret.retention_token.id
-  secret_data = var.retention_token
-}
+# There is no retention-token secret any more. The sweep authenticates the
+# caller's identity from its OIDC token instead, which removes a shared value that
+# had to sit in clear text in the scheduler job's configuration for anyone with
+# cloudscheduler.jobs.get to read (DL.146).
 
 resource "google_secret_manager_secret" "database_url" {
   secret_id = "${var.name}-database-url"

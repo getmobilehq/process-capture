@@ -10,6 +10,29 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
+# Production dependencies only, resolved separately from the build.
+#
+# The runner used to copy the builder's node_modules, which is everything `npm ci`
+# installed — Playwright and its browsers, Vitest, drizzle-kit, the whole test
+# toolchain — shipped to an internet-facing container that never runs any of it.
+# That is a larger image, a longer pull on a cold start, and a much larger set of
+# packages whose CVEs someone has to answer for. A separate stage rather than
+# `npm prune` in the builder, so the build's own tools are never in the layer that
+# is copied forward.
+#
+# `--omit=dev` alone is not enough, which is not obvious and cost a wrong first
+# attempt: `next` declares `@playwright/test` as an OPTIONAL PEER, so npm records
+# it in the lockfile as a production package and installs it — browsers and all —
+# even though nothing here has it as anything but a devDependency. Omitting
+# optional and peer as well takes node_modules from 350M to 166M and removes the
+# test toolchain entirely. Every genuine runtime peer (react, react-dom) is a
+# direct dependency, so nothing needed goes missing; the running container below
+# is the check on that claim.
+FROM node:20-bookworm AS deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --omit=optional --omit=peer
+
 FROM node:20-bookworm-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
@@ -29,7 +52,7 @@ COPY --from=builder /app/scripts/migrate.mjs ./scripts/migrate.mjs
 # private address only, so this is the path in that does not involve opening the
 # network for an errand.
 COPY --from=builder /app/scripts/console-user.mjs ./scripts/console-user.mjs
-COPY --from=builder /app/node_modules ./node_modules
+COPY --from=deps /app/node_modules ./node_modules
 
 # Drop root. An internet-facing Next.js app with 'unsafe-eval' in its CSP should
 # not be uid 0 — any RCE would otherwise be root in the container, one hop from

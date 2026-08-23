@@ -438,3 +438,48 @@ confirmed against the live model.
 
 R5.3–R5.6 — the bpmn-js rendering block. Everything below it is now built and
 gated: the graph, its validators, the extractor and the serialiser.
+
+---
+
+## Security review + deployment hardening (2026-08-23)
+
+Two passes, in the order the risks bite: the application-layer findings from the
+review, then the infrastructure work that has to survive the move to VMO2's GCP.
+
+### Application (DL.139–144)
+
+| Finding | Fix | Proof |
+|---|---|---|
+| One informant's free text reached another's system prompt via the shared pick-list | Unconfirmed entities stay in the interview that named them; names sanitised on write | `tests/unit/picklist.test.ts` |
+| No CSRF check on any cookie-authenticated POST | `Origin`/`Referer` verified against the proxy host on all 15, login and logout included | `tests/unit/same-origin.test.ts` |
+| Six routes returned raw exception text | `serverError()` logs, returns a sentence | — |
+| `DATABASE_URL` echoed in a startup exception | Names only the scheme | — |
+| Sign-in leaked account existence by timing | Unknown address costs a decoy bcrypt compare | — |
+| `entityId` accepted across projects | `getEntityInProject` checks project and kind | `tests/unit/picklist.test.ts` |
+| CSP allowed `unsafe-inline` and `unsafe-eval` | Per-request nonce in `middleware.ts`; `unsafe-eval` dev-only | Production build driven in a browser |
+
+### Infrastructure (DL.145–151)
+
+- **Transferable now:** `prevent_destroy` on the database, the retention sweep moved
+  from a shared token to OIDC identity, a custom least-privilege Vertex role, its own
+  service account for the account-administration job, the state bucket created by a
+  `bootstrap/` module rather than by hand, production-only dependencies in the image
+  (1.1G → 663M).
+- **Parameterised for VMO2:** `network`, `subnetwork`, `network_project_id`,
+  `manage_private_services_access`, `manage_apis`, `ingress`, `allow_public_access`,
+  `vertex_least_privilege`. Defaults unchanged, so the proving environment is
+  unaffected. `moved.tf` keeps the added `count`s from reading as destroy-and-create.
+
+### Not done, and why
+
+1. **No `tofu plan` against the live project.** Reading the database password out of
+   Secret Manager was refused in this session, and a plan needs it. **Run it before
+   applying** — `moved.tf` should report three moves and no destroys.
+2. **The narrow Vertex role is unverified.** `aiplatform.endpoints.predict` is the
+   right permission on paper for a publisher-model `generateContent`, but no apply
+   has tested it. If transcription 403s, `vertex_least_privilege = false` restores
+   the predefined role immediately.
+3. **The Shared VPC path is written, not proven.** There is no shared-VPC project to
+   test it against; the first VMO2 apply is the test.
+4. **I-4, the penetration test**, remains deferred to the real VMO2 environment, as
+   agreed.

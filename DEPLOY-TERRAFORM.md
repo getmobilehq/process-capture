@@ -106,10 +106,9 @@ cp terraform.tfvars.example terraform.tfvars
 
 ```bash
 export TF_VAR_db_password="$(openssl rand -base64 24)"
-export TF_VAR_retention_token="$(openssl rand -hex 32)"
 ```
 
-> **Note.** Save those two values somewhere durable — a password manager, not a terminal buffer. Losing them is not fatal, but recovering means a fresh `apply` to rotate them, and the retention token is needed again in Step 10.
+> **Note.** Save that somewhere durable — a password manager, not a terminal buffer. Losing it is not fatal, but recovering means a fresh `apply` to rotate it. There is no retention token to keep: the sweep authenticates the caller's Google identity instead.
 
 Leave `image` as it is for now. It is set in Step 6, once there is an image to point at.
 
@@ -205,9 +204,11 @@ curl -s -o /dev/null -w '%{http_code}\n' $URL/health
 
 Interview content is a named person's account of their own job, held with their work email address. The retention sweep is what stops it being kept forever. Terraform has already scheduled it for 02:30 nightly — but run it once by hand, in report mode, before you trust it.
 
+Add your own address to `retention_callers` in your tfvars and apply, then:
+
 ```bash
 curl -s -X POST \
-  -H "X-Retention-Token: $TF_VAR_retention_token" \
+  -H "Authorization: Bearer $(gcloud auth print-identity-token --audiences=$URL)" \
   "$URL/api/admin/retention?dryRun=1"
 ```
 

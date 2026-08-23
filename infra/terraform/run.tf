@@ -18,12 +18,6 @@ resource "google_secret_manager_secret_iam_member" "session_secret" {
   member    = "serviceAccount:${google_service_account.magpie.email}"
 }
 
-resource "google_secret_manager_secret_iam_member" "retention_token" {
-  secret_id = google_secret_manager_secret.retention_token.id
-  role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${google_service_account.magpie.email}"
-}
-
 resource "google_secret_manager_secret_iam_member" "database_url" {
   secret_id = google_secret_manager_secret.database_url.id
   role      = "roles/secretmanager.secretAccessor"
@@ -33,10 +27,29 @@ resource "google_secret_manager_secret_iam_member" "database_url" {
 # Voice-to-text through Vertex AI runs as this service, not as a key holder —
 # which is the point: nothing to issue, rotate or govern, and the audio never
 # leaves the project.
+#
+# roles/aiplatform.user is far more than that needs: it also permits creating
+# datasets, training jobs, endpoints and models. Magpie only ever predicts, so the
+# default is a custom role holding exactly that one permission. `var.vertex_least_privilege = false`
+# falls back to the predefined role for an organisation that forbids custom roles,
+# or to unblock quickly if a future Vertex call needs something the narrow role
+# does not carry.
+resource "google_project_iam_custom_role" "vertex_predict" {
+  count       = var.vertex_least_privilege ? 1 : 0
+  role_id     = "${replace(var.name, "-", "_")}_vertex_predict"
+  title       = "Magpie Vertex predict"
+  description = "Call a Vertex publisher model. Nothing else."
+  permissions = ["aiplatform.endpoints.predict"]
+}
+
 resource "google_project_iam_member" "vertex_user" {
   project = var.project_id
-  role    = "roles/aiplatform.user"
-  member  = "serviceAccount:${google_service_account.magpie.email}"
+  role = (
+    var.vertex_least_privilege
+    ? google_project_iam_custom_role.vertex_predict[0].id
+    : "roles/aiplatform.user"
+  )
+  member = "serviceAccount:${google_service_account.magpie.email}"
 }
 
 resource "google_cloud_run_v2_service" "magpie" {
@@ -48,7 +61,7 @@ resource "google_cloud_run_v2_service" "magpie" {
   # revision is wedged, which is the one time you are most in a hurry.
   deletion_protection = false
   # Google's front end terminates TLS and forwards; the app is not exposed directly.
-  ingress = "INGRESS_TRAFFIC_ALL"
+  ingress = var.ingress
 
   template {
     service_account = google_service_account.magpie.email
@@ -67,8 +80,8 @@ resource "google_cloud_run_v2_service" "magpie" {
 
     vpc_access {
       network_interfaces {
-        network    = data.google_compute_network.default.id
-        subnetwork = data.google_compute_subnetwork.default.id
+        network    = data.google_compute_network.selected.id
+        subnetwork = data.google_compute_subnetwork.selected.id
       }
       # Only private ranges go over the VPC; the model API still egresses normally.
       egress = "PRIVATE_RANGES_ONLY"
@@ -157,14 +170,16 @@ resource "google_cloud_run_v2_service" "magpie" {
         }
       }
 
+      # Who may trigger the retention sweep, by identity rather than by secret
+      # (lib/retention-auth.ts). The scheduler's own account, plus anyone named in
+      # var.retention_callers for running it by hand. Not a secret: knowing an
+      # address grants nothing without a Google-signed token for it.
       env {
-        name = "RETENTION_TOKEN"
-        value_source {
-          secret_key_ref {
-            secret  = google_secret_manager_secret.retention_token.secret_id
-            version = "latest"
-          }
-        }
+        name = "RETENTION_CALLERS"
+        value = join(",", concat(
+          [google_service_account.scheduler.email],
+          var.retention_callers,
+        ))
       }
 
       env {
@@ -199,18 +214,22 @@ resource "google_cloud_run_v2_service" "magpie" {
     google_project_iam_member.vertex_user,
     google_secret_manager_secret_iam_member.external,
     google_secret_manager_secret_iam_member.database_url,
-    google_secret_manager_secret_iam_member.retention_token,
     google_secret_manager_secret_iam_member.session_secret,
     google_secret_manager_secret_version.session_secret,
     google_secret_manager_secret_version.database_url,
-    google_secret_manager_secret_version.retention_token,
   ]
 }
 
 # The interview face is opened by informants from a tokenised link, so the
 # service itself is public. Authorisation is the token and the console password,
 # not IAM.
+#
+# Conditional because this is the grant a large organisation is most likely to
+# refuse: `iam.allowedPolicyMemberDomains` forbids allUsers outright, and no
+# exception request changes the code. Turning it off leaves the service reachable
+# only through whatever authenticates in front of it, which has to exist first.
 resource "google_cloud_run_v2_service_iam_member" "public" {
+  count    = var.allow_public_access ? 1 : 0
   name     = google_cloud_run_v2_service.magpie.name
   location = google_cloud_run_v2_service.magpie.location
   role     = "roles/run.invoker"

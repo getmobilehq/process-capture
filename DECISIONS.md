@@ -1124,3 +1124,61 @@ decision, why it is the minimal option (§10).
   style *attributes* are used throughout for coverage colours and lane geometry,
   cannot be nonced individually, and cannot execute. Verified against a production
   build — hydration, sign-in, and the bpmn-js canvas all render with no violations.
+- **DL.145 · The network is a variable, not an assumption** — `network.tf` read a
+  network and subnetwork literally named `default`, which is what a fresh project
+  has and what the proving environment uses. An organisation's project usually has
+  neither: `compute.skipDefaultNetworkCreation` is a common org policy and the
+  project is attached to a Shared VPC owned by a platform team. That would have
+  been discovered at the VMO2 apply, which is the worst moment to discover it.
+  `network`, `subnetwork` and `network_project_id` now name it, and
+  `manage_private_services_access` turns off the peering resources entirely,
+  because on a Shared VPC that peering exists already and belongs to somebody else.
+  `manage_apis` does the same for service enablement where a platform team owns it.
+  The defaults are unchanged, so the proving environment is unaffected.
+- **DL.146 · The retention sweep authenticates identity, not a shared token
+  (supersedes DL.78)** — The token had to sit in clear text in the Cloud Scheduler
+  job's configuration, readable by anyone with `cloudscheduler.jobs.get`, and it
+  was in Terraform state and plan output besides. A secret that half a dozen
+  viewers can read is not a secret, and this endpoint deletes interview content.
+  The scheduler already sends a Google-signed OIDC token; the route now verifies
+  it, checks the audience is this deployment, and checks the identity against
+  `RETENTION_CALLERS`. Nothing to rotate, nothing to leak, and the log names who
+  ran it. `google-auth-library` was already a direct dependency for Vertex, so this
+  adds none (P6). All three failure modes return the same 401 — telling a caller
+  which check it failed tells it how to pass.
+- **DL.147 · Least privilege for Vertex, as a custom role** — `roles/aiplatform.user`
+  also permits creating datasets, training jobs, endpoints and models. Transcription
+  only predicts, so the default is now a custom role carrying
+  `aiplatform.endpoints.predict` and nothing else. `vertex_least_privilege = false`
+  falls back, for an organisation that forbids custom roles or to unblock quickly
+  if a future Vertex call needs a permission the narrow role lacks. Unverified
+  against a live apply — the first apply is the test.
+- **DL.148 · The account-administration job gets its own identity** — It ran as the
+  service's account, which holds the model key, the console password and Vertex
+  predict. The job needs one thing, the database URL. Anyone who can execute a job
+  can reach what that job's identity can reach, so sharing the account made "run
+  the account tool" a route to every other secret in the deployment.
+- **DL.149 · `moved` blocks, because adding `count` is a rename** — Putting `count`
+  on an existing resource changes its state address from `foo.bar` to `foo.bar[0]`,
+  and Terraform reads that as one resource gone and another arrived: a destroy and
+  a create. For the peering range and the service networking connection that would
+  take the database's private address with them. This configuration has already
+  produced one plan that would have destroyed the database; `moved.tf` is what
+  stops the parameterisation producing a second.
+- **DL.150 · The state bucket is Terraform's, in a bootstrap module** — It was made
+  by hand, which is ordinary and wrong: state holds the database password, and "I
+  think I remembered to turn versioning on" is not a property anyone can audit. Nor
+  could it be reproduced identically at VMO2 by someone who did not make this one.
+  A separate root module with local state, because a bucket cannot hold the state
+  describing itself, and the chicken-and-egg is not worth solving for something that
+  runs once. Versioning, uniform access and enforced public access prevention are
+  now properties of the code.
+- **DL.151 · `--omit=dev` alone does not remove the dev dependencies** — The runner
+  copied the builder's `node_modules`: Playwright and its browsers, Vitest,
+  drizzle-kit, the whole test toolchain, in an internet-facing container that never
+  runs any of it. The first fix did not work and the check caught it — `next`
+  declares `@playwright/test` as an *optional peer*, so npm records it in the
+  lockfile as a production package and installs it regardless. Omitting optional and
+  peer as well takes `node_modules` from 350M to 166M and the image from 1.1G to
+  663M. Every genuine runtime peer is a direct dependency, and the container was
+  started and driven to prove it.

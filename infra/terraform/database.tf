@@ -27,7 +27,7 @@ resource "google_sql_database_instance" "magpie" {
     ip_configuration {
       # No public address at all. Cloud Run reaches it over the peering above.
       ipv4_enabled                                  = false
-      private_network                               = data.google_compute_network.default.id
+      private_network                               = data.google_compute_network.selected.id
       enable_private_path_for_google_cloud_services = true
     }
 
@@ -52,6 +52,15 @@ resource "google_sql_database_instance" "magpie" {
       name  = "cloudsql.iam_authentication"
       value = "on"
     }
+  }
+
+  # Three guards, and they stop different people. `deletion_protection` stops
+  # Terraform; `deletion_protection_enabled` stops gcloud, the console and any API
+  # caller; `prevent_destroy` stops the plan being generated at all, which is the
+  # only one that catches the case that actually happened — a change elsewhere
+  # proposing to replace the database as a side effect (see network.tf).
+  lifecycle {
+    prevent_destroy = true
   }
 
   depends_on = [google_service_networking_connection.private_vpc]

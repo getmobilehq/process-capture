@@ -18,14 +18,22 @@ about — build and push first, then apply with the tag.
 
 ## Before the first apply
 
-State holds the database password and the retention token, because Terraform must
-know both to manage the SQL user and the scheduler job. **Put state in a bucket,
-not on a laptop**, then uncomment the backend in `versions.tf`:
+State holds the database password, because Terraform must know it to manage the
+SQL user. **Put state in a bucket, not on a laptop.** The `bootstrap/` module
+creates that bucket with versioning, uniform access and public access prevention
+already on, so it is the same bucket in every environment rather than whatever
+the last person remembered to type:
 
 ```bash
-gcloud storage buckets create gs://$PROJECT-tfstate \
-  --location=europe-west2 --uniform-bucket-level-access
-gcloud storage buckets update gs://$PROJECT-tfstate --versioning
+cd bootstrap
+tofu init && tofu apply -var project_id=$PROJECT
+cd ..
+```
+
+It prints the two lines to put in `envs/<name>.backend.hcl`. Then:
+
+```bash
+tofu init -backend-config=envs/<name>.backend.hcl
 ```
 
 ## 1 · Configure
@@ -33,11 +41,11 @@ gcloud storage buckets update gs://$PROJECT-tfstate --versioning
 ```bash
 cp terraform.tfvars.example terraform.tfvars   # edit project_id and image
 export TF_VAR_db_password="$(openssl rand -base64 24)"
-export TF_VAR_retention_token="$(openssl rand -hex 32)"
 ```
 
-Keep those two exports somewhere you can find them again — a rotation means a new
-`apply`, not a lost deployment.
+Keep that somewhere you can find it again — a rotation means a new `apply`, not a
+lost deployment. There is no retention token to keep any more: the sweep
+authenticates the caller's identity instead (see §6).
 
 ## 2 · Create the registry, then push an image
 
@@ -98,8 +106,14 @@ you want to override that.
 The scheduler runs nightly at 02:30. Run it once by hand in report mode first —
 it tells you what would go without touching anything:
 
+Nothing shared is sent. The endpoint verifies a Google-signed identity token and
+checks the identity against `RETENTION_CALLERS`, which always contains the
+scheduler's service account. To run it as yourself, add your address to
+`retention_callers` in your tfvars, apply, then:
+
 ```bash
-curl -s -X POST -H "X-Retention-Token: $TF_VAR_retention_token" \
+curl -s -X POST \
+  -H "Authorization: Bearer $(gcloud auth print-identity-token --audiences=$URL)" \
   "$URL/api/admin/retention?dryRun=1"
 ```
 
@@ -108,9 +122,27 @@ curl -s -X POST -H "X-Retention-Token: $TF_VAR_retention_token" \
 | | |
 |---|---|
 | **Image build** | See above. Belongs to CI, not to infrastructure state. |
-| **`max_instances` above 1** | Rate limiting is in-process (SDD issue I-1), so a second instance doubles the effective limit. This is a correctness constraint, not a capacity choice. |
+| **Image build** | Belongs to CI, not to infrastructure state. |
 | **Analysis views** | `enable_tobe` is false. The to-be map and opportunity overlay are proposals until a human has reviewed them, and a pilot audience should not meet them unlabelled. |
 | **Custom domain and load balancer** | Not needed for a pilot; the app already follows whatever hostname is in front of it. |
+
+## Deploying into an organisation's project
+
+The defaults describe a project with the auto-created `default` VPC and no policy
+against public services — which is what a fresh project looks like, and what the
+proving environment is. A corporate project usually differs in four ways, and each
+one is a variable rather than a fork:
+
+| What is different | Set |
+|---|---|
+| No `default` network; a Shared VPC instead | `network`, `subnetwork`, `network_project_id`, and `manage_private_services_access = false` — the host project's team owns the peering |
+| APIs enabled centrally, no serviceusage rights | `manage_apis = false` |
+| `iam.allowedPolicyMemberDomains` forbids `allUsers` | `allow_public_access = false`, and put an authenticating load balancer in front **first** |
+| Public ingress refused | `ingress = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"` |
+
+The last two change how informants reach an invite link, so they are a
+conversation with the platform team before they are a config change. Everything
+else in this configuration is unaffected.
 
 ## Undoing it
 

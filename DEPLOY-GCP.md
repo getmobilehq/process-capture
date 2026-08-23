@@ -179,31 +179,41 @@ Interview content is a named person's account of their own job, held with their 
 email address. `RETENTION_DAYS` sets how long it is kept — 365 by default — and Cloud
 Scheduler is what makes that real. **Without this step nothing ever expires.**
 
+There is no shared token. The endpoint verifies a Google-signed identity token and
+checks who it names, so nothing has to be generated, stored or rotated. Name the
+identities allowed to run it — the scheduler's account, plus yourself if you want to
+trigger it by hand. Without `RETENTION_CALLERS` the endpoint returns 404: a destructive
+route stays absent until you turn it on.
+
 ```bash
-# A shared secret for the scheduler to present. Without RETENTION_TOKEN set, the
-# endpoint returns 404 — a destructive route stays absent until you turn it on.
-SWEEP=$(openssl rand -hex 32)
-printf "$SWEEP" | gcloud secrets create retention-token --data-file=-
+gcloud iam service-accounts create magpie-scheduler \
+  --display-name="Magpie retention scheduler"
+SA="magpie-scheduler@$PROJECT.iam.gserviceaccount.com"
 
 gcloud run services update magpie --region=$REGION \
-  --update-secrets=RETENTION_TOKEN=retention-token:latest \
-  --update-env-vars=RETENTION_DAYS=365
+  --update-env-vars="RETENTION_CALLERS=$SA,you@example.com,RETENTION_DAYS=365"
+
+gcloud run services add-iam-policy-binding magpie --region=$REGION \
+  --member="serviceAccount:$SA" --role=roles/run.invoker
 ```
 
 Run it once by hand, in report mode, before you schedule anything — it tells you what
 would go without touching it:
 
 ```bash
-curl -s -X POST -H "Authorization: Bearer $SWEEP" "$URL/api/admin/retention?dryRun=1"
+curl -s -X POST \
+  -H "Authorization: Bearer $(gcloud auth print-identity-token --audiences=$URL)" \
+  "$URL/api/admin/retention?dryRun=1"
 ```
 
-When that reads correctly, schedule the real sweep nightly:
+When that reads correctly, schedule the real sweep nightly. The scheduler mints its own
+token; there is nothing to paste:
 
 ```bash
 gcloud scheduler jobs create http magpie-retention \
   --location=$REGION --schedule="30 2 * * *" --time-zone="Europe/London" \
   --uri="$URL/api/admin/retention" --http-method=POST \
-  --headers="Authorization=Bearer $SWEEP"
+  --oidc-service-account-email="$SA" --oidc-token-audience="$URL"
 ```
 
 > **What it deletes.** A session expires `RETENTION_DAYS` after it finished, or after it
