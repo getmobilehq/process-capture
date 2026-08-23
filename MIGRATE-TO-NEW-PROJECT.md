@@ -133,8 +133,9 @@ export TF_VAR_db_password="$(openssl rand -base64 24)"
 tofu apply -var-file=envs/vmo2.tfvars -target=google_artifact_registry_repository.magpie
 ```
 
-Keep those two exports somewhere durable — a password manager. Losing them means
-a rotation, not a disaster, but it is avoidable work.
+Keep that export somewhere durable — a password manager. Losing it means a
+rotation, not a disaster, but it is avoidable work. There is no second export any
+more: the retention sweep authenticates an identity rather than a token.
 
 ### 5 · Build and push
 
@@ -162,13 +163,20 @@ gcloud org-policies set-policy /tmp/policy.yaml --project=$NEW
 If this is refused, stop and settle the IAP question before continuing — the
 apply will otherwise succeed with a service nobody outside the project can reach.
 
-### 7 · Everything else
+### 7 · Everything else — read the plan first
 
 ```bash
+tofu plan -var-file=envs/vmo2.tfvars    # read it
 tofu apply -var-file=envs/vmo2.tfvars
 ```
 
 Roughly fifteen minutes, nearly all of it Cloud SQL.
+
+**Read the plan.** Not as diligence-theatre — this configuration has once produced
+a plan that would have destroyed the database, and only `deletion_protection`
+caught it. On a fresh project every line is a create, so anything that is *not* a
+create is worth stopping for. On an existing project, see "Applying the hardening
+to an environment that already exists" below.
 
 ### 8 · The two secrets Terraform never holds
 
@@ -251,3 +259,82 @@ a technical one. If in doubt, start clean: it costs one seeded campaign.
 `tofu plan` may report one in-place change to `google_cloud_run_v2_service` that
 removes an empty `scaling` block with zero values. That is a provider artefact, not
 configuration — the block is not in our code. Applying it changes nothing.
+
+---
+
+## The hardening that travels with this (added 2026-08-23)
+
+Written after a security review of the pilot. It is all in the code above, so it
+arrives at the new project by being applied — nothing here is a separate exercise
+to schedule. It is listed because two items change how you operate the deployment,
+and three are unproven and worth watching on the first apply.
+
+### Changes how you operate it
+
+| | Before | Now |
+|---|---|---|
+| **Retention sweep** | A shared token, sent in a header the scheduler held in clear text | The caller's Google identity, verified. Add yourself to `retention_callers` to run it by hand — see step 9. There is no `TF_VAR_retention_token` any more, and the old `magpie-retention-token` secret is deleted on apply |
+| **State bucket** | Created by hand with `gcloud`, remembering to turn versioning on | `bootstrap/` module — step 2. Versioning, uniform access and enforced public-access prevention are properties of the code |
+
+### Applied silently, nothing to do
+
+- The database carries `prevent_destroy`, so a plan that would replace it fails to
+  generate rather than waiting for someone to notice it in the output.
+- Vertex runs under a custom role holding `aiplatform.endpoints.predict` alone,
+  instead of `roles/aiplatform.user` — which also permits creating datasets,
+  training jobs and endpoints.
+- The account-administration job has its own service account. It previously ran as
+  the service's, which holds the model key and the console password, so "run the
+  account tool" was a route to every other secret in the deployment.
+- The image carries production dependencies only — 1.1G to 663M, and the entire
+  test toolchain out of an internet-facing container.
+- The application-layer fixes (CSP nonce, CSRF on every cookie-authenticated POST,
+  no raw exception text, no timing signal on sign-in, entity ids scoped to their
+  project) are in the image and need no infrastructure.
+
+### Unproven — watch these on the first apply
+
+1. **The narrow Vertex role.** `aiplatform.endpoints.predict` is the right
+   permission on paper for a publisher-model call, but no apply has tested it. If
+   transcription starts returning 403, set `vertex_least_privilege = false` and
+   apply — that restores `roles/aiplatform.user` immediately. Test transcription
+   deliberately rather than waiting for an informant to find it: open an interview
+   and record one spoken answer.
+2. **The Shared VPC path.** `network`, `subnetwork`, `network_project_id` and
+   `manage_private_services_access` are written but have never run against a real
+   Shared VPC, because there is not one to test against. If the platform team hands
+   you one, the first apply is the test — and the failure to expect is the peering,
+   not the app.
+3. **`manage_apis = false`.** Where a platform team enables APIs centrally, a
+   missing one surfaces as that API's own error at whichever resource needs it,
+   rather than as a clear message here. Not a defect — the alternative was a
+   permission denial that named nothing — but know what you are reading.
+
+### Applying the hardening to an environment that already exists
+
+This matters for the proving environment, which stays running. Some of the above
+adds `count` to resources that are already there, and putting `count` on an
+existing resource renames it in state: `foo.bar` becomes `foo.bar[0]`. Terraform
+reads that as one resource gone and another arrived — a destroy and a create. On
+the peering range that would take the database's private address with it.
+
+`moved.tf` declares those renames, so the plan should say **three moves and no
+destroys**:
+
+```
+tofu plan -var-file=envs/<env>.tfvars
+
+  # expect, and nothing else destructive:
+  google_compute_global_address.private_ip              has moved to ...[0]
+  google_service_networking_connection.private_vpc      has moved to ...[0]
+  google_cloud_run_v2_service_iam_member.public         has moved to ...[0]
+
+  # expected destroys, both deliberate:
+  google_secret_manager_secret.retention_token          (no longer used)
+  google_secret_manager_secret_version.retention_token
+```
+
+If you see a destroy or replacement of `google_sql_database_instance.magpie`,
+`google_compute_global_address.private_ip` or
+`google_service_networking_connection.private_vpc` — **stop**. That is the failure
+this file exists to prevent, and it means a `moved` block did not match.
