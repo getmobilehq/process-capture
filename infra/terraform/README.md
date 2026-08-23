@@ -38,8 +38,15 @@ tofu init -backend-config=envs/<name>.backend.hcl
 
 ## 1 · Configure
 
+> **One variables file, always named.** There is deliberately no
+> `terraform.tfvars`: Terraform auto-loads that filename, and an auto-loaded file
+> silently overrides the `-var-file` you passed. That is not hypothetical — it
+> failed an apply here by holding a stale image tag while the named file held the
+> new one, and in CI it would have deployed the wrong image without erroring.
+> Every command below passes `-var-file` explicitly. Keep it that way.
+
 ```bash
-cp terraform.tfvars.example terraform.tfvars   # edit project_id and image
+cp envs/example.tfvars envs/<name>.tfvars    # edit project_id and image
 export TF_VAR_db_password="$(openssl rand -base64 24)"
 ```
 
@@ -62,7 +69,7 @@ docker build --platform linux/amd64 -t $TAG ../..
 docker push $TAG
 ```
 
-Then set `image = "<TAG>"` in `terraform.tfvars`.
+Then set `image = "<TAG>"` in `envs/<name>.tfvars`.
 
 > `--platform linux/amd64` matters if you build on an Apple Silicon machine.
 > Cloud Run will not run an arm64 image and the failure is not obvious.

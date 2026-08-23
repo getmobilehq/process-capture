@@ -60,7 +60,7 @@ gcloud auth login
 gcloud auth application-default login
 ```
 
-> **Note.** Skipping the second command is the single most common failure here. Terraform does not use your `gcloud` session — it looks for Application Default Credentials, and without them the first `tofu plan` fails with a confusing credentials error.
+> **Note.** Skipping the second command is the single most common failure here. Terraform does not use your `gcloud` session — it looks for Application Default Credentials, and without them the first `tofu plan -var-file=envs/pilot.tfvars` fails with a confusing credentials error.
 
 ```bash
 export PROJECT=your-project-id
@@ -100,8 +100,8 @@ Copy the example variables and edit them. The two secrets stay out of the file �
 
 ```bash
 cd infra/terraform
-cp terraform.tfvars.example terraform.tfvars
-# edit terraform.tfvars: set project_id and region
+cp envs/example.tfvars envs/pilot.tfvars
+# edit envs/pilot.tfvars: set project_id and region
 ```
 
 ```bash
@@ -118,7 +118,7 @@ Chicken and egg: Cloud Run needs an image, and the image needs somewhere to be p
 
 ```bash
 tofu init
-tofu apply -target=google_artifact_registry_repository.magpie
+tofu apply -var-file=envs/pilot.tfvars -target=google_artifact_registry_repository.magpie
 ```
 
 Terraform will also enable the required Google APIs, because the registry depends on them. Review the plan and type `yes`.
@@ -140,24 +140,24 @@ gcloud auth configure-docker ${REGION}-docker.pkg.dev
 docker build --platform linux/amd64 -t $TAG ../..
 docker push $TAG
 
-echo $TAG   # paste this into terraform.tfvars as `image`
+echo $TAG   # paste this into envs/pilot.tfvars as `image`
 ```
 
 > **Note.** `--platform linux/amd64` is not optional on an Apple Silicon Mac. Cloud Run cannot run an arm64 image, and the failure it gives you does not say so — the container simply never becomes ready.
 
-Now set `image = "<the tag you just echoed>"` in `terraform.tfvars`.
+Now set `image = "<the tag you just echoed>"` in `envs/pilot.tfvars`.
 
 ## Step 7 · Build everything else
 
 One apply creates the rest: private networking, the Cloud SQL instance, Secret Manager entries, the Cloud Run service with its own identity, and the nightly retention job.
 
 ```bash
-tofu apply
+tofu apply -var-file=envs/pilot.tfvars
 ```
 
 Read the plan before you accept it. It should create roughly twenty resources and destroy none. Then type `yes`.
 
-> **Note.** Expect about fifteen minutes, nearly all of it waiting for Cloud SQL. This is normal and there is nothing to do but wait. If it fails part way, run `tofu apply` again — it picks up where it stopped rather than starting over.
+> **Note.** Expect about fifteen minutes, nearly all of it waiting for Cloud SQL. This is normal and there is nothing to do but wait. If it fails part way, run `tofu apply -var-file=envs/pilot.tfvars` again — it picks up where it stopped rather than starting over.
 
 *Check it worked:*
 ```bash
@@ -226,8 +226,8 @@ Build, push, update the tag, apply. Terraform replaces the Cloud Run revision an
 TAG=$(tofu output -raw image_repository)/magpie:$(date +%Y-%m-%d)
 docker build --platform linux/amd64 -t $TAG ../..
 docker push $TAG
-# set image = "$TAG" in terraform.tfvars
-tofu apply
+# set image = "$TAG" in envs/pilot.tfvars
+tofu apply -var-file=envs/pilot.tfvars
 ```
 
 ### Rotating the console password
@@ -247,7 +247,7 @@ These are Terraform's, so change the variable and apply.
 
 ```bash
 export TF_VAR_db_password="$(openssl rand -base64 24)"
-tofu apply
+tofu apply -var-file=envs/pilot.tfvars
 ```
 
 ### Reading the logs
@@ -263,8 +263,8 @@ gcloud run services logs read magpie --region=$REGION --limit=100
 Deliberately two steps, so it cannot happen by accident. Set `deletion_protection = false` on the database in `database.tf`, apply that, then destroy.
 
 ```bash
-tofu apply    # with deletion_protection = false
-tofu destroy
+tofu apply -var-file=envs/pilot.tfvars    # with deletion_protection = false
+tofu destroy -var-file=envs/pilot.tfvars
 ```
 
 ## Moving to a different GCP project
@@ -332,7 +332,7 @@ A previous partial apply left the private IP range behind. Import it rather than
 
 **The nightly retention sweep does nothing**
 
-Check the job ran: `gcloud scheduler jobs describe magpie-retention --location=$REGION`. A 401 in the logs means the token the job sends and the one the service holds have diverged — re-run `tofu apply` so both come from the same variable.
+Check the job ran: `gcloud scheduler jobs describe magpie-retention --location=$REGION`. A 401 in the logs means the identity the job presents is not one the service permits — check that `RETENTION_CALLERS` on the service contains the scheduler's service account, and that the job's OIDC audience is the service URL.
 
 ## What this deliberately does not do
 

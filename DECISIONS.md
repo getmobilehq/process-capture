@@ -1182,3 +1182,27 @@ decision, why it is the minimal option (§10).
   peer as well takes `node_modules` from 350M to 166M and the image from 1.1G to
   663M. Every genuine runtime peer is a direct dependency, and the container was
   started and driven to prove it.
+- **DL.152 · One variables file, always named — no `terraform.tfvars`** — Terraform
+  auto-loads that filename, and an auto-loaded file silently overrides the
+  `-var-file` you passed. It failed an apply here by holding a stale image tag
+  while `envs/univelcity.tfvars` held the new one, and the error named a variable
+  mismatch rather than the cause. In CI the same drift would deploy the wrong image
+  without erroring at all. The file and its example are gone; every documented
+  command passes `-var-file` explicitly.
+- **DL.153 · CI builds the image, and it is manual to apply** — `.gitlab-ci.yml`
+  runs verify → build → plan → deploy, with deploy manual on the default branch and
+  applying the exact plan that was reviewed rather than a fresh one. The plan job
+  fails by itself if it sees a destroy of the database, the peering address or the
+  peering connection: this configuration has produced that plan once, and a grep is
+  a cheaper guard than a person's attention. Kaniko rather than docker-in-docker,
+  because dind needs a privileged runner and most organisations will not grant one.
+  Building on a Linux runner also ends the arm64 trap, where an Apple Silicon build
+  is accepted by Cloud Run and then simply never becomes ready. The eval harness is
+  deliberately excluded — it makes real model calls, so on every push it spends real
+  money. Unverified: there is no GitLab here, so the first pipeline run is the test.
+- **DL.154 · `.next-build` was 74MB of committed build output** — Committed by
+  accident in 5298197 and carried in every clone and archive since; more than half
+  the handover zip. Nothing references it — `distDir` is `.next`, the E2E suite uses
+  `.next-e2e`, and only a stale `tsconfig` include glob mentioned it. Untracked and
+  ignored. Found by measuring the archive before recommending the archive command,
+  which is the only reason it surfaced.

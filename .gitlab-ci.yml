@@ -1,0 +1,210 @@
+# Magpie — GitLab CI/CD
+#
+# Four stages: verify what the code does, build one image, plan the change,
+# apply it on a human's click. The apply is deliberately never automatic — this
+# configuration has once produced a plan that would have destroyed the database,
+# and the answer to that is a person reading the plan, not a faster pipeline.
+#
+# ── Before this runs, set these CI/CD variables ────────────────────────────────
+#
+#   GCP_PROJECT_ID       e.g. vmo2-magpie-prod
+#   GCP_PROJECT_NUMBER   the numeric one, for the WIF audience
+#   GCP_REGION           europe-west2
+#   TF_STATE_BUCKET      from infra/terraform/bootstrap (see the deployment guide)
+#   TF_ENV               the envs/<name> prefix, e.g. vmo2
+#   GCP_SERVICE_ACCOUNT  the deploy identity, e.g. magpie-deploy@<project>.iam.gserviceaccount.com
+#
+#   Then ONE of:
+#   • Workload Identity Federation (preferred, no long-lived key):
+#       GCP_WIF_POOL, GCP_WIF_PROVIDER
+#   • A service account key, if the organisation will not do WIF:
+#       GCP_SA_KEY — file-type variable, masked, containing the JSON key
+#
+# WIF is the one to ask for. A JSON key is a credential that never expires and
+# lives in a CI variable; most security teams refuse it, and they are right to.
+#
+# ── Unverified ────────────────────────────────────────────────────────────────
+# This file has never run. There is no GitLab instance here to run it against, so
+# the first pipeline IS the test. The parts most likely to need adjusting are the
+# runner images your organisation permits and the WIF audience string, which must
+# match the provider exactly.
+
+stages:
+  - verify
+  - build
+  - plan
+  - deploy
+
+variables:
+  # One image per commit, so a deployment always names exactly what is in it.
+  IMAGE: ${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/magpie/magpie:${CI_COMMIT_SHORT_SHA}
+  TF_ROOT: infra/terraform
+  # Terraform reads this and needs no -var for it.
+  TF_IN_AUTOMATION: "true"
+
+# ── Authentication ────────────────────────────────────────────────────────────
+# Produces /tmp/gcp-creds.json and points GOOGLE_APPLICATION_CREDENTIALS at it.
+# Both the Google Terraform provider and Kaniko read that variable, so nothing
+# below needs gcloud installed.
+.gcp_auth: &gcp_auth |
+  if [ -n "$GCP_WIF_POOL" ]; then
+    echo "Authenticating by Workload Identity Federation"
+    echo "$GITLAB_OIDC_TOKEN" > /tmp/gitlab-oidc-token
+    cat > /tmp/gcp-creds.json <<JSON
+  {
+    "type": "external_account",
+    "audience": "//iam.googleapis.com/projects/${GCP_PROJECT_NUMBER}/locations/global/workloadIdentityPools/${GCP_WIF_POOL}/providers/${GCP_WIF_PROVIDER}",
+    "subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+    "token_url": "https://sts.googleapis.com/v1/token",
+    "service_account_impersonation_url": "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${GCP_SERVICE_ACCOUNT}:generateAccessToken",
+    "credential_source": { "file": "/tmp/gitlab-oidc-token", "format": { "type": "text" } }
+  }
+  JSON
+  elif [ -n "$GCP_SA_KEY" ]; then
+    echo "Authenticating with a service account key (prefer WIF)"
+    cp "$GCP_SA_KEY" /tmp/gcp-creds.json
+  else
+    echo "No GCP credentials configured. Set GCP_WIF_POOL + GCP_WIF_PROVIDER, or GCP_SA_KEY." >&2
+    exit 1
+  fi
+  export GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-creds.json
+
+.gcp_id_token:
+  id_tokens:
+    GITLAB_OIDC_TOKEN:
+      # Must match the `allowed_audiences` on the WIF provider exactly. If the
+      # pipeline fails with "unable to exchange token", this string is the first
+      # thing to check.
+      aud: https://iam.googleapis.com/projects/${GCP_PROJECT_NUMBER}/locations/global/workloadIdentityPools/${GCP_WIF_POOL}/providers/${GCP_WIF_PROVIDER}
+
+# ── Verify ────────────────────────────────────────────────────────────────────
+# Lint, types, and the unit/integration suite. These need no database service:
+# the suite runs Postgres in-process through pglite, deliberately, so that
+# `npm test` never depends on something being up.
+test:
+  stage: verify
+  image: node:20-bookworm
+  cache:
+    key:
+      files: [package-lock.json]
+    paths: [.npm]
+  script:
+    - npm ci --cache .npm --prefer-offline
+    - npm run lint
+    - npm run typecheck
+    - npm test
+
+# The E2E suite does need a real server, because the app under test runs in its
+# own Next process and pglite is in-process only.
+e2e:
+  stage: verify
+  image: node:20-bookworm
+  services:
+    - name: postgres:16
+      alias: postgres
+  variables:
+    POSTGRES_DB: magpie_e2e
+    POSTGRES_USER: postgres
+    POSTGRES_PASSWORD: magpie
+    E2E_DATABASE_URL: postgres://postgres:magpie@postgres:5432/magpie_e2e
+  cache:
+    key:
+      files: [package-lock.json]
+    paths: [.npm]
+  script:
+    - npm ci --cache .npm --prefer-offline
+    - npx playwright install --with-deps chromium
+    - npm run test:e2e
+  artifacts:
+    when: on_failure
+    paths: [test-results/]
+    expire_in: 1 week
+
+# The eval harness is NOT here on purpose. It makes real model calls against a
+# real key, so putting it on every push spends money on every push. Run it
+# deliberately: `npm run eval`.
+
+# ── Build ─────────────────────────────────────────────────────────────────────
+# Kaniko rather than docker-in-docker: dind needs a privileged runner, which many
+# organisations do not offer and none should offer casually. Kaniko reads
+# GOOGLE_APPLICATION_CREDENTIALS directly, so there is no docker login step and no
+# registry password anywhere.
+#
+# This also ends the architecture trap: a runner builds linux/amd64 natively, so
+# the arm64 image that Cloud Run silently never starts cannot happen again.
+build:
+  stage: build
+  extends: .gcp_id_token
+  image:
+    name: gcr.io/kaniko-project/executor:v1.23.2-debug
+    entrypoint: [""]
+  script:
+    - *gcp_auth
+    - /kaniko/executor
+      --context "${CI_PROJECT_DIR}"
+      --dockerfile "${CI_PROJECT_DIR}/Dockerfile"
+      --destination "${IMAGE}"
+      --destination "${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/magpie/magpie:latest"
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+# ── Plan ──────────────────────────────────────────────────────────────────────
+# Always -var-file. Never terraform.tfvars: an auto-loaded file silently overrides
+# the one you named, and that is exactly how an apply once ran against the wrong
+# image tag. The repository no longer contains one.
+.tofu:
+  extends: .gcp_id_token
+  image:
+    name: ghcr.io/opentofu/opentofu:1.8.5
+    entrypoint: [""]
+  before_script:
+    - *gcp_auth
+    - cd "${TF_ROOT}"
+    - tofu init -input=false
+      -backend-config="bucket=${TF_STATE_BUCKET}"
+      -backend-config="prefix=magpie"
+
+plan:
+  stage: plan
+  extends: .tofu
+  script:
+    - tofu plan -input=false -lock-timeout=5m
+      -var-file="envs/${TF_ENV}.tfvars"
+      -var="image=${IMAGE}"
+      -out=tfplan
+    # Human-readable copy, so the plan can be read in the job log and in the MR
+    # without anyone needing Terraform installed.
+    - tofu show -no-color tfplan | tee plan.txt
+    # Loud about the thing that matters. A destroy of any of these is the failure
+    # mode this pipeline exists to catch.
+    - |
+      if grep -qE '# (google_sql_database_instance|google_compute_global_address|google_service_networking_connection)\..* will be destroyed' plan.txt; then
+        echo "REFUSING: the plan destroys the database or its networking." >&2
+        exit 1
+      fi
+  artifacts:
+    paths:
+      - ${TF_ROOT}/tfplan
+      - ${TF_ROOT}/plan.txt
+    expire_in: 1 week
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+# ── Deploy ────────────────────────────────────────────────────────────────────
+# Manual, on the default branch, applying the exact plan that was reviewed —
+# not a fresh one. `tofu apply tfplan` cannot drift from what you read.
+deploy:
+  stage: deploy
+  extends: .tofu
+  script:
+    - tofu apply -input=false -auto-approve -lock-timeout=5m tfplan
+    - tofu output -raw service_url
+  environment:
+    name: ${TF_ENV}
+    url: https://console.cloud.google.com/run?project=${GCP_PROJECT_ID}
+  when: manual
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  needs: [plan, build]

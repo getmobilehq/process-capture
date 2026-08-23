@@ -44,3 +44,7 @@ tests/eval/*.log
 
 # Word/Office lock files
 ~$*
+
+# Next build output from an ad-hoc NEXT_DIST_DIR. Generated, never source —
+# 74MB of it was committed by accident in 5298197 and rode along in every archive.
+/.next-build
