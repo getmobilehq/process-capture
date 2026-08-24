@@ -242,3 +242,37 @@ variable "vertex_least_privilege" {
   type        = bool
   default     = true
 }
+
+# ── Where the interview model is called ─────────────────────────────────────
+
+variable "model_provider" {
+  description = <<-EOT
+    `anthropic` calls the direct API with a key from Secret Manager. `vertex`
+    calls the same Claude models through Vertex AI Model Garden in this project:
+    no key to issue or rotate, the service account is the credential, the traffic
+    stays inside Google's network, and the spend lands on the GCP invoice rather
+    than a second vendor agreement.
+
+    Before switching, the Anthropic models must be enabled once in Model Garden —
+    that is a terms acceptance in the console, and until it is done every call
+    returns 404.
+  EOT
+  type        = string
+  default     = "anthropic"
+
+  validation {
+    condition     = contains(["anthropic", "vertex"], var.model_provider)
+    error_message = "model_provider must be \"anthropic\" or \"vertex\"."
+  }
+}
+
+variable "vertex_model_region" {
+  description = <<-EOT
+    Region serving the interview model. Deliberately separate from the
+    transcription region: europe-west2 runs Gemini but serves no Anthropic model
+    at all, so Claude means europe-west1 at the nearest — EU rather than UK. That
+    is a data-residency decision to take deliberately, not to inherit.
+  EOT
+  type        = string
+  default     = "europe-west1"
+}

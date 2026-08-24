@@ -15,6 +15,17 @@ enable_tobe = true
 transcribe_provider = "gemini"
 transcribe_fallback = false
 
+# Where the interview model is called. "anthropic" is the direct API with a key;
+# "vertex" is the same Claude models through Model Garden in this project — no
+# key, the service account is the credential, spend on the GCP invoice.
+#
+# Before switching: enable the Anthropic models once in Vertex AI Model Garden
+# (a terms acceptance in the console) or every call returns 404. And note the
+# region — europe-west2 serves no Anthropic model, so Claude means EU, not UK.
+# model_provider      = "vertex"
+# vertex_model_region = "europe-west1"
+# model               = "claude-sonnet-4-5@20250929"   # Vertex names the version
+
 # See the note in variables.tf before changing these.
 # max_instances  = 3
 # retention_days = 365

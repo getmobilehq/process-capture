@@ -23,7 +23,8 @@
     "eval": "tsx scripts/eval.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.68.0",
+    "@anthropic-ai/sdk": "^0.120.0",
+    "@anthropic-ai/vertex-sdk": "^0.19.5",
     "bcryptjs": "^2.4.3",
     "bpmn-js": "^17.11.1",
     "drizzle-orm": "^0.44.6",

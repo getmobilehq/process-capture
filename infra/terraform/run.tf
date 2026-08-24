@@ -110,6 +110,14 @@ resource "google_cloud_run_v2_service" "magpie" {
         value = var.model
       }
       env {
+        name  = "MODEL_PROVIDER"
+        value = var.model_provider
+      }
+      env {
+        name  = "VERTEX_MODEL_REGION"
+        value = var.vertex_model_region
+      }
+      env {
         name  = "TRANSCRIBE_PROVIDER"
         value = var.transcribe_provider
       }

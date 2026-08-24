@@ -10,10 +10,14 @@
 # already hold to manage the SQL user — so writing it here reveals nothing state
 # does not already contain.
 locals {
-  secrets = {
-    anthropic-api-key = "Model API key."
-    admin-password    = "Console password."
-  }
+  secrets = merge(
+    { admin-password = "Console password." },
+    # Only on the direct-API path. On Vertex there is no key, and a secret with no
+    # version is not merely untidy — Cloud Run refuses to start a revision whose
+    # secret reference cannot be resolved, so an empty container would break the
+    # deployment it was meant to serve.
+    var.model_provider == "anthropic" ? { anthropic-api-key = "Model API key." } : {},
+  )
 }
 
 resource "google_secret_manager_secret" "external" {

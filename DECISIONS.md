@@ -1206,3 +1206,33 @@ decision, why it is the minimal option (§10).
   `.next-e2e`, and only a stale `tsconfig` include glob mentioned it. Untracked and
   ignored. Found by measuring the archive before recommending the archive command,
   which is the only reason it surfaced.
+- **DL.155 · The interview model can run through Vertex, not only the direct API**
+  — `MODEL_PROVIDER=vertex` calls the same Claude models through Vertex AI Model
+  Garden in our own project. It removes the API key entirely — the service account
+  is the credential, exactly as transcription already works — keeps interview
+  content inside Google's network, and puts the spend on an existing GCP invoice
+  rather than requiring a second vendor agreement. That is the real answer to the
+  internal question about using Gemini instead of Claude: the concern was a third
+  party and a second contract, and this removes both without giving up the model.
+  Default stays `anthropic`, so an existing deployment is untouched.
+
+  Three things this surfaced, none of them obvious from the documentation:
+
+  1. **europe-west2 serves no Anthropic model at all** — only Gemini and the
+     embedding models. Probed, not assumed. So Claude on Vertex means europe-west1
+     at the nearest: EU, not UK. `VERTEX_MODEL_REGION` is therefore a separate
+     variable from `VERTEX_REGION`, because inheriting the transcription region
+     would 404 every interview turn.
+  2. **The models must be enabled in Model Garden per project.** Until that terms
+     acceptance happens, project-scoped calls return 404 — which reads as a wrong
+     model id rather than a missing entitlement, and cost twenty minutes here.
+  3. **`@anthropic-ai/vertex-sdk` requires `@anthropic-ai/sdk` >= 0.115**, so
+     installing it beside our 0.68 produced a second nested copy of the core SDK.
+     Two versions of the client library in one tree is worse than the problem it
+     solves, so the core SDK went 0.68 → 0.120. Typecheck, 363 tests and a live
+     tool-use call against the real API all pass on it.
+
+  The clients share no base class carrying `messages`, so `ModelClient` states the
+  contract the engine actually needs — `messages.create` — rather than casting one
+  client into a pretence of being the other. The engine, the six analysis call
+  sites and every tool definition are unchanged.

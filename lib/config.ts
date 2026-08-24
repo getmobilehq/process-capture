@@ -20,6 +20,29 @@ function int(name: string, fallback: number): number {
 export const config = {
   anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? '',
   model: str('MODEL', 'claude-sonnet-4-6'),
+  /**
+   * Where the interview model is called.
+   *
+   * `anthropic` is the direct API and the default, so nothing changes for an
+   * existing deployment. `vertex` calls the same Claude models through Vertex AI
+   * Model Garden in our own GCP project — no API key, the service account is the
+   * credential, the traffic never leaves Google's network, and the spend lands on
+   * the existing GCP invoice rather than a second vendor agreement.
+   *
+   * The model id differs between the two, which is the one thing that does not
+   * carry over: Vertex names a version explicitly (`claude-sonnet-4-5@20250929`)
+   * where the direct API takes an alias. P5 still holds — it is configuration
+   * either way, and no application code knows which is in use.
+   */
+  modelProvider: str('MODEL_PROVIDER', 'anthropic') as 'anthropic' | 'vertex',
+  /**
+   * Region serving the interview model, kept separate from `VERTEX_REGION`
+   * because they genuinely differ: transcription runs in europe-west2, and
+   * europe-west2 does not serve Claude at all. europe-west1 is the closest region
+   * that does — which makes this an EU-not-UK decision somebody has to take
+   * deliberately rather than inherit from a default.
+   */
+  vertexModelRegion: str('VERTEX_MODEL_REGION', 'europe-west1'),
   // Optional voice input: OpenAI Whisper transcription (V1.1 enhancement).
   // When unset, the mic button is not offered.
   openaiApiKey: process.env.OPENAI_API_KEY ?? '',

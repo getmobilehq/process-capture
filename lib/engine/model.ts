@@ -4,6 +4,7 @@
  * mock.ts) so every gate below the live-model phase runs offline and reproducibly.
  */
 import Anthropic from '@anthropic-ai/sdk';
+import { AnthropicVertex } from '@anthropic-ai/vertex-sdk';
 import { config } from '@/lib/config';
 import type { DB } from '@/lib/db';
 import { TOOL_DEFINITIONS } from './tools';
@@ -38,15 +39,58 @@ export interface CallParams {
   db: DB;
 }
 
-let client: Anthropic | null = null;
-/** Shared client, so extraction passes inherit the same retry posture (R5.1). */
-export function getClient(): Anthropic {
+/**
+ * What the engine actually needs from a client: the messages resource, nothing
+ * else. Narrower than either concrete class, which is the point — the two clients
+ * share no base that carries `messages`, and this states the real contract rather
+ * than casting one into a pretence of being the other.
+ */
+export interface ModelClient {
+  messages: {
+    create(
+      body: Anthropic.MessageCreateParamsNonStreaming,
+      options?: { timeout?: number; maxRetries?: number },
+    ): Promise<Anthropic.Message>;
+  };
+}
+
+let client: ModelClient | null = null;
+/**
+ * Shared client, so extraction passes inherit the same retry posture (R5.1).
+ *
+ * Two ways to reach the same models. The direct API takes a key; Vertex takes the
+ * ambient Google credentials — on Cloud Run that is the service account, so there
+ * is no key to issue, rotate or govern, and interview content never leaves the
+ * project. Both clients extend `BaseAnthropic` and expose the identical
+ * `messages.create`, which is what lets this be a branch here and nothing at all
+ * anywhere else: the engine, the six analysis call sites and every tool
+ * definition are unchanged.
+ */
+export function getClient(): ModelClient {
+  if (client) return client;
+
   // Extra retries + a generous timeout ride out transient connection blips
   // (EHOSTUNREACH / fetch failed), which otherwise abort a turn or an eval run.
-  if (!client) {
-    client = new Anthropic({ apiKey: config.anthropicApiKey, maxRetries: 4, timeout: 60_000 });
+  const shared = { maxRetries: 4, timeout: 60_000 };
+
+  if (config.modelProvider === 'vertex') {
+    if (!config.vertexProject) {
+      throw new Error('MODEL_PROVIDER=vertex needs VERTEX_PROJECT set to the GCP project id.');
+    }
+    client = new AnthropicVertex({
+      projectId: config.vertexProject,
+      region: config.vertexModelRegion,
+      ...shared,
+    });
+  } else {
+    client = new Anthropic({ apiKey: config.anthropicApiKey, ...shared });
   }
   return client;
+}
+
+/** Test seam: forget the cached client so a changed provider takes effect. */
+export function resetClient(): void {
+  client = null;
 }
 
 /**
