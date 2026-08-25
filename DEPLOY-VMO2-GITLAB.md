@@ -60,58 +60,71 @@ None of them are wanted at VMO2. The keys must be reissued under VMO2's accounts
 and the environment files describe your project. Leaving them in the archive is
 the single most likely way to leak a credential in this whole exercise.
 
+A `git bundle` excludes all four by construction, because git never tracked them.
+That is the argument for the command below over anything that copies a folder.
+
 ### The command
 
 ```bash
 cd ~/Desktop/studio/reddy
-
-git archive --format=zip --prefix=magpie/ -o ~/magpie-source.zip HEAD
+git bundle create ~/magpie-handover.bundle --all
 ```
 
-`git archive` takes only what git tracks, so every ignored file — `.env`,
-`node_modules`, `.next`, the env files, Terraform's working directory — is
-excluded by construction rather than by you remembering. That is why it is the
-right tool here.
+One file, about 34 MB, containing the full history and nothing else.
 
-**Commit anything you want to carry before running it.** `git archive HEAD`
-exports the last commit, not your working tree.
+### Why a bundle and not a zip
 
-### If you want the history too
+The obvious move is to zip the folder, and it is the wrong one: **`zip -r` ignores
+`.gitignore` entirely.** Doing it that way here produced a 140 MB archive carrying
+115 MB of OpenTofu provider binaries from `infra/terraform/bootstrap/.terraform/`
+and a 23 MB copy of the design system — because the exclusion list covered the
+top-level `.terraform` and not the one in `bootstrap/`.
 
-The commit history is not required — `DECISIONS.md` and `STATUS.md` carry the
-reasoning in-tree — but it is useful provenance, and it is only about 48 MB:
+Nothing secret escaped that time. But a zip is only as safe as the exclusion list,
+and an exclusion list is a thing you can forget an entry in. A bundle contains
+committed objects and nothing else, so every ignored file is excluded by
+construction rather than by anyone remembering.
+
+`git archive --format=zip HEAD` is the same idea without the history, if you would
+rather not carry commits across.
+
+### Verify it before it leaves the machine
+
+Do not skip this. Clone it somewhere clean and build it exactly as the far end will:
 
 ```bash
-cd ~/Desktop/studio
-zip -r ~/magpie-with-history.zip reddy \
-  -x "reddy/node_modules/*" "reddy/.next/*" "reddy/.next-e2e/*" \
-     "reddy/infra/terraform/.terraform/*" "reddy/.env" \
-     "reddy/infra/terraform/envs/univelcity.*" \
-     "reddy/test-results/*" "reddy/playwright-report/*"
+git clone ~/magpie-handover.bundle /tmp/check && cd /tmp/check
+git bundle verify ~/magpie-handover.bundle      # "records a complete history"
+
+ls -a | grep -E "^\.env$" && echo "STOP — .env is in the archive"
+ls infra/terraform/envs/                        # only example.* should be here
+
+npm ci && npm run typecheck && npm test         # expect 363 passing
+shasum -a 256 ~/magpie-handover.bundle          # note it; compare at the far end
 ```
 
-**Check it before it leaves the machine:**
+If the history is going too, satisfy yourself it carries no credential:
 
 ```bash
-unzip -l ~/magpie-with-history.zip | grep -E "\.env$|univelcity" && echo "STOP — secrets in the archive" || echo "clean"
+git cat-file --batch-check --batch-all-objects | awk '$2=="blob" {print $1}' | \
+  while read -r sha; do
+    git cat-file blob "$sha" 2>/dev/null | \
+      grep -aqE "sk-ant-api[0-9]{2}-|AIza[0-9A-Za-z_-]{30,}|BEGIN (RSA )?PRIVATE KEY" \
+      && echo "HIT $sha"
+  done
 ```
 
-### What is in it
-
-About 55 MB zipped, 890 files. Half of it is material rather than code: 24 MB
-`VMO2 Design System` and 24 MB `reference/`. Those are VMO2's own materials — Aeonik Pro is VMO2-licensed — so
-they belong in VMO2's GitLab more properly than they belong where they are now.
-Check whether their GitLab has a file-size or LFS policy before the first push.
+Silence is the pass. A secret removed in a later commit is still in the history,
+which is exactly what this catches and what a glance at the working tree does not.
 
 ---
 
 ## 2 · On the official machine
 
-Unpack, then confirm it is whole before trusting it.
-
 ```bash
-unzip magpie-source.zip -d ~/work
-cd ~/work/magpie
+shasum -a 256 magpie-handover.bundle     # compare with the hash you noted
+git clone magpie-handover.bundle magpie
+cd magpie
 
 node --version        # needs 20 or later
 npm ci
@@ -119,7 +132,7 @@ npm run typecheck
 npm test
 ```
 
-If `npm test` passes — 357 tests at the time of writing — the archive is intact
+If `npm test` passes — 363 tests at the time of writing — the archive is intact
 and the toolchain works. That is the whole check; nothing further is needed at
 this stage.
 
@@ -130,24 +143,20 @@ runner, which is one of the real gains of this change.
 
 ## 3 · Create the GitLab project and push
 
-```bash
-cd ~/work/magpie
-
-# If you used git archive, there is no history — start one.
-git init
-git add -A
-git commit -m "feat: Magpie SME interview tool, initial import"
-
-git remote add origin https://gitlab.<vmo2-domain>/<group>/magpie.git
-git push -u origin main
-```
-
-If you carried the history, just re-point the remote:
+The clone inherits `origin` pointing at the personal GitHub repository the bundle
+came from. Re-point it **before** you push anything, or a reflex `git push` from a
+VMO2 machine goes somewhere it should not:
 
 ```bash
+cd magpie
+git remote -v                            # shows the old origin
 git remote set-url origin https://gitlab.<vmo2-domain>/<group>/magpie.git
+git remote -v                            # confirm it changed
 git push -u origin main
 ```
+
+If you took the history-less `git archive` route instead, there is no repository
+yet — `git init`, commit everything, then add the remote as above.
 
 The pipeline definition (`.gitlab-ci.yml`) is already in the repository, so the
 first push will try to run it. Expect it to fail on missing variables — that is
@@ -548,6 +557,7 @@ Every one of these has actually happened.
 
 | Symptom | Cause | Fix |
 |---|---|---|
+| Handover archive is enormous, or carries files you excluded | `zip -r` ignores `.gitignore`, so it takes whatever is on disk — provider binaries, build output, the design-system zip | Use `git bundle create --all`. It contains committed objects only |
 | Revision never becomes ready, no useful error | An arm64 image. Cloud Run cannot run it and does not say so | Only builds from an Apple Silicon laptop. The pipeline builds on a Linux runner, so this cannot recur through CI |
 | `Invalid Tier (db-g1-small) for (ENTERPRISE_PLUS)` | The API now defaults to Enterprise Plus | Already fixed: `edition = "ENTERPRISE"` in `database.tf` |
 | `constraints/sql.restrictPublicIp` blocks the apply | Correct policy, and this configuration already satisfies it | The database has no public IP. If it still fails, the peering has not been created — check `manage_private_services_access` |

@@ -1236,3 +1236,15 @@ decision, why it is the minimal option (§10).
   contract the engine actually needs — `messages.create` — rather than casting one
   client into a pretence of being the other. The engine, the six analysis call
   sites and every tool definition are unchanged.
+- **DL.156 · The handover is a git bundle, not a zip of the folder** — `zip -r`
+  ignores `.gitignore` entirely. Building the handover that way produced a 140MB
+  archive carrying 115MB of OpenTofu provider binaries from
+  `infra/terraform/bootstrap/.terraform/` and a 23MB copy of the design system:
+  the exclusion list covered the top-level `.terraform` and not the one in
+  `bootstrap/`, created two days earlier. Nothing secret escaped, but a zip is only
+  as safe as its exclusion list and an exclusion list is a thing you can forget an
+  entry in. `git bundle create --all` contains committed objects and nothing else,
+  so every ignored file is excluded by construction — 34MB, full history, verified
+  by cloning it and running the suite from the clone. Found by measuring the
+  archive rather than trusting the command, which is the same reason `.next-build`
+  surfaced (DL.154).
