@@ -1,6 +1,6 @@
 # Magpie at VMO2 — from archive to running pilot
 
-A single path to follow, in order, from the zip on your personal machine to a
+A single path to follow, in order, from the archive on your personal machine to a
 deployment VMO2's own pipeline owns. Written for the situation you are actually
 in: GitLab is being stood up for CI/CD, the code has to reach your official
 machine as an archive, and the GCP project will be one VMO2 gives you rather than
@@ -11,6 +11,58 @@ has never been tested, it says so.
 
 **Read section 0 before you book a date.** Three of its answers are not yours to
 give, and each has a lead time.
+
+---
+
+## Before you begin — what you were sent
+
+Two things travel together. Keep this document *outside* the archive: it tells you
+how to open the archive, so it is no use to you inside it.
+
+| | |
+|---|---|
+| **`magpie-handover.bundle`** | ~34 MB. The entire repository — source, infrastructure, pipeline, documentation and full commit history — as one file |
+| **This document** | The setup path, start to finish |
+
+A bundle is a git repository in a single file. You do not unzip it; you clone from
+it, and what you get is an ordinary working repository with its history intact.
+
+**First, check it arrived whole.** Compare against the checksum sent with the file:
+
+```bash
+shasum -a 256 magpie-handover.bundle
+```
+
+If it does not match, stop — copy it again rather than working from a damaged
+archive.
+
+### What is not in it, and never was
+
+Four things are deliberately absent, and none is an oversight:
+
+| Missing | Why | Where it is dealt with |
+|---|---|---|
+| `.env` | Contains live API keys, the console password and the session secret | §11 — reissue under VMO2's own accounts |
+| `envs/univelcity.*` | Describes the proving environment, not yours | §7 — you write `envs/vmo2.tfvars` |
+| `node_modules/` | 495 MB of rebuildable dependencies | §2 — `npm ci` |
+| Terraform state | Lives in a GCS bucket, holds the database password | §4.1 — a new bucket in the VMO2 project |
+
+No credential of any kind is in the archive or anywhere in its history. That was
+checked by scanning every object in the repository, not by inspecting the working
+tree — a secret removed in a later commit is still in the history, and only the
+first method finds it.
+
+### Roughly how long
+
+| | |
+|---|---|
+| §0 questions to VMO2 | Ask on day one. Two answers gate everything else |
+| §1–3 archive to GitLab | Under an hour |
+| §4–7 GCP prerequisites, WIF, variables | Half a day, most of it authentication |
+| §8–10 first pipeline, first deploy | An hour, plus ~15 min of Cloud SQL |
+| §11–13 secrets, accounts, proving it | An hour |
+
+The elapsed time is dominated by §0, not by the work.
 
 ---
 
