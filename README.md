@@ -31,11 +31,25 @@ P1–P8 and the phase gates in §8 / eval gates in §9 define "done".
 ## Quick start
 
 ```bash
-npm install
-cp .env.example .env        # then fill in ANTHROPIC_API_KEY and ADMIN_PASSWORD
+# 1 · Postgres. Not SQLite — that was V1 and the URL format is the giveaway.
+docker run -d --name magpie-pg -e POSTGRES_PASSWORD=magpie -p 5434:5432 postgres:16
+docker exec magpie-pg psql -U postgres -c "create database magpie"
+
+# 2 · The app.
+npm ci
+cp .env.example .env        # fill DATABASE_URL, ADMIN_PASSWORD, SESSION_SECRET
 npm run setup               # migrate + seed the demo "Consumer operations" campaign
 npm run dev                 # http://localhost:3000
 ```
+
+`DATABASE_URL=postgres://postgres:magpie@localhost:5434/magpie` — port 5434
+because 5433 is usually taken. A `file:` URL is refused at startup with a message
+saying so, rather than failing four screens later as a Postgres error about a
+database named after a file path.
+
+**No API key to hand?** `MOCK_MODEL=1 npm run dev` runs the deterministic
+responder. Every screen works and no model is called — the right way to prove a
+fresh machine is set up correctly before spending anything.
 
 - Console: <http://localhost:3000/console> (sign in with `ADMIN_PASSWORD`).
 - Create a campaign, add an interviewee → copy their link → open it to be interviewed.
@@ -47,7 +61,8 @@ npm run dev                 # http://localhost:3000
 | `ANTHROPIC_API_KEY` | Anthropic API key (interview engine + spec drafting). |
 | `MODEL` | Model id (default `claude-sonnet-4-6`). Models are configuration (P5). |
 | `MODEL_TEMPERATURE`, `MODEL_MAX_TOKENS` | Sampling + output cap. |
-| `DATABASE_URL` | SQLite file URL (default `file:./data/app.db`). |
+| `DATABASE_URL` | Postgres connection string. A `file:` URL is refused at startup. |
+| `MODEL_PROVIDER` | `anthropic` (direct API, needs a key) or `vertex` (Model Garden, no key). |
 | `BASE_URL` | Public base URL; invite links are `BASE_URL/i/{token}`. |
 | `ADMIN_PASSWORD` | Console access (bcrypt-hashed at boot; pilot-grade auth). |
 | `RETENTION_DAYS` | Surfaced in the privacy notice. |
@@ -111,21 +126,22 @@ Key flows:
 
 ## Operations
 
-### The database is one file
+### The database is Postgres
 
-State lives in `data/app.db` (plus `-wal` / `-shm` sidecars in WAL mode). There is no
-external datastore. To **back up**, copy the file while the app is quiescent, or use
-SQLite's online backup:
+State lives in Postgres — locally a container, in production Cloud SQL with a private
+address only. V1 used a single SQLite file; the schema was written so the swap was a
+connection string and a re-migrate, and that swap has happened.
 
 ```bash
-# Simple copy (fine between interviews):
-cp data/app.db backups/app-$(date +%F).db
+# Back up locally:
+docker exec magpie-pg pg_dump -U postgres magpie > backups/magpie-$(date +%F).sql
 
-# Consistent online backup while running:
-sqlite3 data/app.db ".backup 'backups/app-$(date +%F).db'"
+# Restore:
+docker exec -i magpie-pg psql -U postgres magpie < backups/magpie-2026-08-25.sql
 ```
 
-To **restore**, stop the app, replace `data/app.db` (remove stale `-wal`/`-shm`), restart.
+In production Cloud SQL takes automated backups with point-in-time recovery and
+thirty days of retention — see `infra/terraform/database.tf`.
 
 ### Deployment (container)
 
