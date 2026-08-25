@@ -16,8 +16,11 @@ Files present today:
 - `process-capture-demo.html` — the approved interactive demo. **The UX and visual reference.**
   Open it to see the golden path, layout, and brand execution the built product must reproduce.
 - `SME-interview-tool-V1-spec.docx` — the product spec `BUILD-REQUIREMENTS.md` operationalises.
-- `VMO2 Design System/` — the brand system (tokens, Aeonik Pro fonts, logos, UI kits). Copy
-  tokens/fonts/logo into the app; do not restyle or approximate.
+- `public/brand/` — the tokens, Aeonik Pro fonts and logo the app actually uses, copied
+  from VMO2's design system. The full design system folder was removed from this
+  repository and its history: it was 24 MB of licensed fonts, UI kits and a PowerPoint
+  toolkit that nothing in the build reads, and it is VMO2's material to hold, not this
+  repository's to redistribute. Use these tokens; do not restyle or approximate.
 
 Before building, `BUILD-REQUIREMENTS.md` §4 expects these reference artefacts relocated into
 `/reference` (read-only) and brand assets copied into `/public/brand`.
@@ -121,7 +124,7 @@ record in `DECISIONS.md`, continue.
 
 ## Brand
 
-All styling derives from `VMO2 Design System/colors_and_type.css` tokens — use semantic tokens
+All styling derives from `public/brand/colors_and_type.css` tokens — use semantic tokens
 (`--fg`, `--bg`, `--brand-primary`), raw swatches (`--o2-blue #0050FF`, `--vm-red #E10A0A`,
 `--vmo2-pink #FF0090`) only for logo/brand splashes. Font is **Aeonik Pro** (paid; the woff files
 are VMO2-licensed). The signature motif is the **capsule + endcap circle** — a pill label with a
